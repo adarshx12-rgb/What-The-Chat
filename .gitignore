@@ -1,0 +1,9 @@
+# Local MP4 backend dependencies (regenerate via npm install / start-server.bat)
+server/node_modules/
+
+# Unrelated nested project living in this folder — not part of this repo
+growing-giant/
+
+# Claude Code tooling cache for this directory (auto-managed, not project source)
+.agents/
+skills-lock.json

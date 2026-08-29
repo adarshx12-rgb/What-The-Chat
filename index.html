@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Chat Story Recorder</title>
+<style>
+  :root{
+    --bg:#101215; --panel:#181b20; --panel2:#1f232a; --border:#2a2f38;
+    --text:#e8eaed; --muted:#8b93a1; --accent:#25d366; --accent-dark:#1da851;
+    --danger:#e5534b; --input-bg:#12151a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:'Segoe UI',Arial,sans-serif;height:100%;}
+  body.resizing{user-select:none;cursor:col-resize;}
+  #app{display:flex;height:100vh;overflow:hidden;}
+
+  #leftPanel{width:400px;flex-shrink:0;background:var(--panel);
+    overflow-y:auto;padding:16px;}
+  #resizeHandle{width:6px;flex-shrink:0;cursor:col-resize;background:var(--border);}
+  #resizeHandle:hover, #resizeHandle.dragging{background:var(--accent);}
+  #rightPanel{flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:flex-start;padding:20px;overflow-y:auto;background:#0b0d10;}
+
+  h1{font-size:16px;margin:0 0 14px;color:var(--text);}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+    margin:22px 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  h2:first-of-type{margin-top:0;}
+
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;}
+  input[type=text],input[type=number],input[type=date],input[type=time],
+  select,textarea{
+    width:100%;background:var(--input-bg);border:1px solid var(--border);
+    color:var(--text);border-radius:6px;padding:7px 8px;font-size:13px;
+    font-family:inherit;
+  }
+  textarea{resize:vertical;min-height:44px;}
+  input[type=color]{width:44px;height:30px;padding:2px;background:var(--input-bg);
+    border:1px solid var(--border);border-radius:6px;cursor:pointer;}
+  input[type=file]{font-size:12px;color:var(--muted);}
+  input[type=checkbox]{margin-right:6px;vertical-align:middle;}
+
+  .row{display:flex;gap:10px;}
+  .row > div{flex:1;min-width:0;}
+  .inline{display:flex;align-items:center;gap:8px;}
+
+  button{cursor:pointer;font-family:inherit;font-size:12.5px;border-radius:6px;
+    border:1px solid var(--border);background:var(--panel2);color:var(--text);
+    padding:7px 10px;}
+  button:hover{background:#262b33;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button.primary{background:var(--accent);border-color:var(--accent-dark);color:#06210f;font-weight:600;}
+  button.primary:hover{background:#2fe075;}
+  button.danger{background:transparent;color:var(--danger);border-color:#5a2f2c;}
+  button.small{padding:4px 7px;font-size:11px;}
+  button.segbtn{flex:1;}
+  button.segbtn.active{background:var(--accent);color:#06210f;border-color:var(--accent-dark);font-weight:600;}
+
+  .seg{display:flex;gap:6px;}
+
+  #avatarPreview{width:44px;height:44px;border-radius:50%;object-fit:cover;
+    background:#333;border:1px solid var(--border);}
+  .avatarRow{display:flex;align-items:center;gap:10px;}
+
+  #messageList{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+  .msgCard{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;}
+  .msgCardHead{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .msgCardHead .seg{flex:1;}
+  .composeRow{display:flex;gap:8px;align-items:stretch;}
+  .composeRow textarea{flex:1;min-width:0;}
+  .sendBtn{background:var(--accent);color:#06210f;border-color:var(--accent-dark);
+    font-weight:600;white-space:nowrap;padding:7px 12px;}
+  .sendBtn:hover{background:#2fe075;}
+  .fieldsRow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .fieldsRow > div{flex:1;min-width:70px;}
+  .fieldsRow label{margin:0 0 3px;}
+  .delRow{margin-top:6px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;}
+
+  #addMessageBtn{width:100%;margin-top:6px;}
+
+  .themeSubField{display:none;}
+  .themeSubField.show{display:block;}
+
+  /* right panel */
+  #playbackControls{display:flex;gap:10px;margin-bottom:14px;}
+  .canvas-wrap{display:flex;align-items:center;gap:18px;}
+  .phone-frame{background:#000;border-radius:44px;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  #previewCanvas{display:block;width:min(28vw,340px);height:auto;border-radius:30px;background:#000;}
+
+  .recorder-panel{width:130px;flex-shrink:0;background:var(--panel2);
+    border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;
+    flex-direction:column;align-items:stretch;gap:8px;font-size:11.5px;}
+  .recorder-panel .label{color:var(--muted);font-weight:600;}
+  .rec-row{display:flex;align-items:center;gap:6px;}
+  .rec-buttons{display:flex;flex-direction:column;gap:6px;}
+  .rec-buttons button{width:100%;}
+  .rec-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);display:inline-block;}
+  .rec-dot.blink{animation:blink 1s infinite;}
+  @keyframes blink{50%{opacity:.15;}}
+  .backend-status{font-size:10px;color:var(--muted);}
+  .backend-status.connected{color:var(--accent);}
+  .backend-note{font-size:10px;color:#e0a94a;}
+
+  #recNote{font-size:11px;color:var(--muted);margin-top:10px;max-width:420px;text-align:center;}
+
+  ::-webkit-scrollbar{width:9px;}
+  ::-webkit-scrollbar-thumb{background:#30353f;border-radius:5px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="leftPanel">
+    <h1>WhatsApp Chat Story Recorder</h1>
+
+    <h2>Contact &amp; Status</h2>
+    <label for="contactNameInput">Contact name</label>
+    <input type="text" id="contactNameInput">
+
+    <label>Avatar</label>
+    <div class="avatarRow">
+      <img id="avatarPreview" alt="avatar preview">
+      <input type="file" id="avatarInput" accept="image/*">
+      <button class="small" id="removeAvatarBtn">Reset</button>
+    </div>
+
+    <label for="statusModeSelect">Header status</label>
+    <select id="statusModeSelect">
+      <option value="online">online</option>
+      <option value="lastSeen">last seen ...</option>
+      <option value="typing">typing... (forced)</option>
+    </select>
+    <div id="lastSeenField" class="themeSubField">
+      <label for="lastSeenInput">Last seen text</label>
+      <input type="text" id="lastSeenInput" placeholder="today at 11:47 PM">
+    </div>
+
+    <h2>Platform &amp; Theme</h2>
+    <label>Platform</label>
+    <div class="seg">
+      <button class="segbtn" id="platformAndroidBtn">Android</button>
+      <button class="segbtn" id="platformIosBtn">iOS</button>
+    </div>
+
+    <label>Chrome mode</label>
+    <div class="seg">
+      <button class="segbtn" id="chromeLightBtn">Light</button>
+      <button class="segbtn" id="chromeDarkBtn">Dark</button>
+    </div>
+
+    <label for="wallpaperTypeSelect">Wallpaper</label>
+    <select id="wallpaperTypeSelect">
+      <option value="default">Default doodle</option>
+      <option value="custom">Custom image</option>
+      <option value="solid">Solid color</option>
+      <option value="gradient">Gradient</option>
+    </select>
+    <div id="wallpaperCustomField" class="themeSubField">
+      <label for="wallpaperFileInput">Wallpaper image</label>
+      <input type="file" id="wallpaperFileInput" accept="image/*">
+    </div>
+    <div id="wallpaperSolidField" class="themeSubField">
+      <label for="wallpaperSolidInput">Solid color</label>
+      <input type="color" id="wallpaperSolidInput" value="#e5ddd5">
+    </div>
+    <div id="wallpaperGradientField" class="themeSubField">
+      <label>Gradient (top → bottom)</label>
+      <div class="row">
+        <div><input type="color" id="wallpaperGradFromInput" value="#075e54"></div>
+        <div><input type="color" id="wallpaperGradToInput" value="#128c7e"></div>
+      </div>
+    </div>
+
+    <label>Bubble colors</label>
+    <div class="row">
+      <div>
+        <label for="bubbleMeInput">Me</label>
+        <input type="color" id="bubbleMeInput" value="#d9fdd3">
+      </div>
+      <div>
+        <label for="bubbleContactInput">Contact</label>
+        <input type="color" id="bubbleContactInput" value="#ffffff">
+      </div>
+    </div>
+
+    <h2>Messages</h2>
+    <div id="messageList"></div>
+    <button id="addMessageBtn">+ Add message</button>
+  </div>
+
+  <div id="resizeHandle"></div>
+
+  <div id="rightPanel">
+    <div id="playbackControls">
+      <button id="resetBtn">⟲ Reset chat</button>
+    </div>
+
+    <div class="canvas-wrap">
+      <div class="recorder-panel">
+        <span class="label">Recorder</span>
+        <div class="rec-row">
+          <span class="rec-dot" id="fullRecDot" style="visibility:hidden"></span>
+          <span id="fullRecTimer">00:00</span>
+        </div>
+        <div class="rec-buttons">
+          <button id="fullStartBtn" class="small">Start</button>
+          <button id="fullPauseBtn" class="small" style="display:none">Pause</button>
+          <button id="fullResumeBtn" class="small" style="display:none">Resume</button>
+          <button id="fullStopBtn" class="small" style="display:none">Stop</button>
+        </div>
+        <span class="backend-status" id="fullBackendStatus">MP4 backend: checking…</span>
+        <span class="backend-note" id="fullBackendNote" style="display:none"></span>
+      </div>
+
+      <div class="phone-frame">
+        <canvas id="previewCanvas" width="1080" height="1920"></canvas>
+      </div>
+    </div>
+
+    <div id="recNote">Recording never uses screen/tab capture — the preview is drawn frame-by-frame
+      onto a canvas and captured directly via <code>canvas.captureStream()</code>, so the OS mouse
+      cursor can never appear in the exported video.</div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+/* ---------------------------------------------------------------------
+ * Constants & platform theme tokens
+ * ------------------------------------------------------------------- */
+const CANVAS_W = 1080, CANVAS_H = 1920;
+const CHAT_PAD_X = 26;
+const BUBBLE_PAD_X = 26, BUBBLE_PAD_TOP = 18, BUBBLE_PAD_BOTTOM = 14, TS_ROW_H = 30;
+const LINE_HEIGHT = 42, MSG_FONT_SIZE = 32, TS_FONT_SIZE = 22;
+const BUBBLE_GAP = 16, GROUP_GAP_EXTRA = 6;
+const MIN_BUBBLE_W = 160;
+const MAX_BUBBLE_W = Math.round(CANVAS_W * 0.72);
+const MAX_TEXT_W = MAX_BUBBLE_W - BUBBLE_PAD_X * 2;
+const FOOTER_H = 150;
+const WHATSAPP_GREEN = '#00a884';
+
+const PLATFORM = {
+  android: {
+    statusBarH: 64, headerH: 172,
+    bubbleRadius: 10, tailRadius: 3,
+    font: "'Segoe UI',Roboto,Arial,sans-serif",
+    headerBgLight: '#008069', headerBgDark: '#1f2c34',
+    headerTextLight: '#ffffff', headerTextDark: '#e9edef',
+    headerSubLight: 'rgba(255,255,255,.85)', headerSubDark: 'rgba(233,237,239,.6)',
+    backIcon: 'arrow', notch: false,
+  },
+  ios: {
+    statusBarH: 100, headerH: 190,
+    bubbleRadius: 24, tailRadius: 4,
+    font: "-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif",
+    headerBgLight: '#f6f6f6', headerBgDark: '#101c26',
+    headerTextLight: '#0b0b0b', headerTextDark: '#f2f2f2',
+    headerSubLight: 'rgba(0,0,0,.5)', headerSubDark: 'rgba(242,242,242,.55)',
+    backIcon: 'chevron', notch: true,
+  }
+};
+
+/* ---------------------------------------------------------------------
+ * State
+ * ------------------------------------------------------------------- */
+let uidCounter = 1;
+function uid(){ return 'm' + (uidCounter++); }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+const state = {
+  contact: { name: 'Alex', avatarImg: null, statusMode: 'online', lastSeenText: 'today at 11:47 PM' },
+  platform: 'android',
+  theme: {
+    chromeMode: 'light',
+    wallpaperType: 'default',
+    wallpaperImg: null,
+    wallpaperSolid: '#e5ddd5',
+    wallpaperGradFrom: '#075e54',
+    wallpaperGradTo: '#128c7e',
+    bubbleColorMe: '#d9fdd3',
+    bubbleColorContact: '#ffffff',
+  },
+  messages: [
+    { id: uid(), sender: 'contact', text: 'hey are you still awake', date: today(), time: '23:47', status: 'read', deleted: false },
+    { id: uid(), sender: 'me', text: 'yeah whats up', date: today(), time: '23:48', status: 'read', deleted: false },
+    { id: uid(), sender: 'contact', text: 'i keep hearing something tapping on my window', date: today(), time: '23:49', status: 'read', deleted: false },
+    { id: uid(), sender: 'contact', text: 'its probably nothing', date: today(), time: '23:50', status: 'read', deleted: false },
+  ],
+};
+
+/* ---------------------------------------------------------------------
+ * DOM refs
+ * ------------------------------------------------------------------- */
+const $ = (id) => document.getElementById(id);
+const previewCanvas = $('previewCanvas');
+const previewCtx = previewCanvas.getContext('2d');
+
+/* ---------------------------------------------------------------------
+ * Manual reveal state — messages appear in the preview only when their
+ * row's Send button is clicked, never on a timer.
+ * ------------------------------------------------------------------- */
+const previewState = { revealedCount: 0 };
+
+function resetPreview(){
+  previewState.revealedCount = 0;
+  scrollOffsetCurrent = 0;
+}
+
+function revealUpTo(msgId){
+  const idx = state.messages.findIndex((m) => m.id === msgId);
+  if (idx < 0) return;
+  previewState.revealedCount = Math.max(previewState.revealedCount, idx + 1);
+}
+
+function anyRecorderActive(){
+  return fullRecorder.state !== 'idle';
+}
+
+/* ---------------------------------------------------------------------
+ * Drawing helpers
+ * ------------------------------------------------------------------- */
+function roundRectPath(ctx, x, y, w, h, r){
+  const { tl, tr, br, bl } = r;
+  ctx.beginPath();
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + w - tr, y);
+  ctx.arcTo(x + w, y, x + w, y + tr, tr);
+  ctx.lineTo(x + w, y + h - br);
+  ctx.arcTo(x + w, y + h, x + w - br, y + h, br);
+  ctx.lineTo(x + bl, y + h);
+  ctx.arcTo(x, y + h, x, y + h - bl, bl);
+  ctx.lineTo(x, y + tl);
+  ctx.arcTo(x, y, x + tl, y, tl);
+  ctx.closePath();
+}
+
+const wrapCache = new Map();
+function getWrappedLines(ctx, msg, font, maxWidth){
+  const key = msg.id + '|' + msg.text + '|' + font + '|' + maxWidth;
+  const cached = wrapCache.get(key);
+  if (cached) return cached;
+  ctx.font = font;
+  const paragraphs = String(msg.text || '').split('\n');
+  const lines = [];
+  for (const para of paragraphs){
+    if (para === ''){ lines.push(''); continue; }
+    const words = para.split(' ');
+    let cur = '';
+    for (const word of words){
+      const test = cur ? cur + ' ' + word : word;
+      if (ctx.measureText(test).width > maxWidth && cur){
+        lines.push(cur);
+        cur = word;
+        while (ctx.measureText(cur).width > maxWidth && cur.length > 1){
+          let i = cur.length - 1;
+          while (i > 1 && ctx.measureText(cur.slice(0, i)).width > maxWidth) i--;
+          lines.push(cur.slice(0, i));
+          cur = cur.slice(i);
+        }
+      } else {
+        cur = test;
+      }
+    }
+    lines.push(cur);
+  }
+  wrapCache.set(key, lines);
+  return lines;
+}
+
+function to12h(hhmm){
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12; if (h12 === 0) h12 = 12;
+  return h12 + ':' + String(m).padStart(2, '0') + ' ' + period;
+}
+
+function formatDateDivider(dateStr){
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  const days = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+  const months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+  return days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + d.getDate();
+}
+
+function drawTicks(ctx, x, y, status, chromeMode){
+  const color = status === 'read' ? '#53bdeb' : (chromeMode === 'dark' ? '#8696a0' : '#8f8f8f');
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  function check(offsetX){
+    ctx.beginPath();
+    ctx.moveTo(x + offsetX, y + 5);
+    ctx.lineTo(x + offsetX + 4, y + 9);
+    ctx.lineTo(x + offsetX + 11, y);
+    ctx.stroke();
+  }
+  if (status === 'sent'){ check(6); }
+  else { check(0); check(7); }
+}
+
+/* offscreen wallpaper doodle pattern, built once per (chromeMode) */
+const wallpaperPatternCache = {};
+function getDefaultWallpaperPattern(ctx, chromeMode){
+  if (wallpaperPatternCache[chromeMode]) return wallpaperPatternCache[chromeMode];
+  const tile = document.createElement('canvas');
+  tile.width = 220; tile.height = 220;
+  const tctx = tile.getContext('2d');
+  const bg = chromeMode === 'dark' ? '#0b141a' : '#e5ddd5';
+  const doodle = chromeMode === 'dark' ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.045)';
+  tctx.fillStyle = bg;
+  tctx.fillRect(0, 0, 220, 220);
+  tctx.strokeStyle = doodle;
+  tctx.fillStyle = doodle;
+  tctx.lineWidth = 3;
+  // a few stylized leaf/circle doodles, approximating the WhatsApp wallpaper motif
+  function leaf(cx, cy, s, rot){
+    tctx.save();
+    tctx.translate(cx, cy);
+    tctx.rotate(rot);
+    tctx.beginPath();
+    tctx.ellipse(0, 0, s, s * 0.55, 0, 0, Math.PI * 2);
+    tctx.fill();
+    tctx.restore();
+  }
+  leaf(40, 40, 14, 0.4);
+  leaf(150, 70, 10, -0.6);
+  leaf(90, 150, 12, 1.1);
+  leaf(180, 190, 9, 0.2);
+  tctx.beginPath(); tctx.arc(30, 130, 6, 0, Math.PI * 2); tctx.fill();
+  tctx.beginPath(); tctx.arc(190, 30, 5, 0, Math.PI * 2); tctx.fill();
+  const pattern = ctx.createPattern(tile, 'repeat');
+  wallpaperPatternCache[chromeMode] = pattern;
+  return pattern;
+}
+
+function drawWallpaper(ctx, x, y, w, h){
+  const th = state.theme;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  if (th.wallpaperType === 'solid'){
+    ctx.fillStyle = th.wallpaperSolid;
+    ctx.fillRect(x, y, w, h);
+  } else if (th.wallpaperType === 'gradient'){
+    const g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, th.wallpaperGradFrom);
+    g.addColorStop(1, th.wallpaperGradTo);
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+  } else if (th.wallpaperType === 'custom' && th.wallpaperImg){
+    const img = th.wallpaperImg;
+    const scale = Math.max(w / img.width, h / img.height);
+    const dw = img.width * scale, dh = img.height * scale;
+    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = getDefaultWallpaperPattern(ctx, state.theme.chromeMode);
+    ctx.fillRect(x, y, w, h);
+  }
+  ctx.restore();
+}
+
+function drawDefaultAvatar(ctx, cx, cy, r){
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#9aa5b1';
+  ctx.fill();
+  ctx.clip();
+  ctx.fillStyle = '#e7ebef';
+  ctx.beginPath();
+  ctx.arc(cx, cy - r * 0.28, r * 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy + r * 1.15, r * 0.85, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
+  const color = chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.font = '600 30px ' + tokens.font;
+  ctx.fillText('9:41', 40, statusBarH / 2);
+
+  // signal bars
+  const bx = w - 190, by = statusBarH / 2 + 8;
+  for (let i = 0; i < 4; i++){
+    const bh = 8 + i * 6;
+    ctx.fillRect(bx + i * 12, by - bh, 8, bh);
+  }
+  // wifi arc
+  ctx.beginPath();
+  ctx.arc(w - 120, statusBarH / 2 + 6, 14, Math.PI * 1.2, Math.PI * 1.8);
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  // battery
+  ctx.strokeRect(w - 90, statusBarH / 2 - 10, 40, 20);
+  ctx.fillRect(w - 48, statusBarH / 2 - 5, 5, 10);
+  ctx.fillRect(w - 86, statusBarH / 2 - 6, 32, 12);
+
+  if (tokens.notch){
+    ctx.fillStyle = '#000';
+    roundRectPath(ctx, w / 2 - 80, 14, 160, 34, { tl: 17, tr: 17, br: 17, bl: 17 });
+    ctx.fill();
+  }
+}
+
+function drawBackIcon(ctx, tokens, chrome, x, y){
+  const color = chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (tokens.backIcon === 'chevron'){
+    ctx.moveTo(x + 16, y - 18);
+    ctx.lineTo(x - 2, y);
+    ctx.lineTo(x + 16, y + 18);
+  } else {
+    ctx.moveTo(x + 18, y - 16);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x + 18, y + 16);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 36, y);
+  }
+  ctx.stroke();
+}
+
+function drawHeaderActionIcons(ctx, tokens, chrome, w, cy){
+  const color = chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 4;
+  // video camera
+  let x = w - 260;
+  roundRectPath(ctx, x, cy - 18, 46, 36, { tl: 6, tr: 6, br: 6, bl: 6 });
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 46, cy - 6);
+  ctx.lineTo(x + 68, cy - 18);
+  ctx.lineTo(x + 68, cy + 18);
+  ctx.lineTo(x + 46, cy + 6);
+  ctx.closePath();
+  ctx.fill();
+  // phone
+  x = w - 170;
+  ctx.beginPath();
+  ctx.arc(x + 12, cy, 16, 0.3, Math.PI * 1.7);
+  ctx.stroke();
+  // menu / more
+  x = w - 70;
+  for (let i = 0; i < 3; i++){
+    ctx.beginPath();
+    ctx.arc(x, cy - 16 + i * 16, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/* ---------------------------------------------------------------------
+ * Layout + main draw
+ * ------------------------------------------------------------------- */
+let scrollOffsetCurrent = 0;
+
+function computeVisibleState(){
+  const visibleCount = Math.min(previewState.revealedCount, state.messages.length);
+  let typingActive = false;
+  if (visibleCount < state.messages.length){
+    typingActive = state.messages[visibleCount].sender === 'contact';
+  }
+  return { visibleCount, typingActive, typingIsContact: typingActive };
+}
+
+function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
+  const blocks = [];
+  let y = 20;
+  let lastDate = null;
+  for (let i = 0; i < visibleCount; i++){
+    const m = state.messages[i];
+    if (!m.deleted && !m.text.trim()) continue;
+    if (m.date && m.date !== lastDate){
+      blocks.push({ type: 'date', y, h: 60, text: formatDateDivider(m.date) });
+      y += 60 + 14;
+      lastDate = m.date;
+    }
+    const font = MSG_FONT_SIZE + 'px ' + tokens.font;
+    let lines, h, w;
+    if (m.deleted){
+      const delText = m.sender === 'me' ? 'You deleted this message' : 'This message was deleted';
+      lines = [delText];
+      ctx.font = 'italic ' + font;
+      const tw = ctx.measureText(delText).width;
+      w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, tw + BUBBLE_PAD_X * 2));
+      h = BUBBLE_PAD_TOP + LINE_HEIGHT + TS_ROW_H + BUBBLE_PAD_BOTTOM;
+    } else {
+      lines = getWrappedLines(ctx, m, font, MAX_TEXT_W);
+      ctx.font = font;
+      let maxLineW = 0;
+      for (const l of lines) maxLineW = Math.max(maxLineW, ctx.measureText(l).width);
+      w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, maxLineW + BUBBLE_PAD_X * 2));
+      h = BUBBLE_PAD_TOP + lines.length * LINE_HEIGHT + TS_ROW_H + BUBBLE_PAD_BOTTOM;
+    }
+    blocks.push({ type: 'bubble', msg: m, y, h, w, lines });
+    const nextSameSender = state.messages[i + 1] && state.messages[i + 1].sender === m.sender && i + 1 < visibleCount;
+    y += h + (nextSameSender ? BUBBLE_GAP : BUBBLE_GAP + GROUP_GAP_EXTRA);
+  }
+  if (typingActive){
+    blocks.push({ type: 'typing', y, h: 70 });
+    y += 70 + BUBBLE_GAP;
+  }
+  return { blocks, totalHeight: y };
+}
+
+function drawChatArea(ctx, originY, height, now){
+  const tokens = PLATFORM[state.platform];
+  const chromeMode = state.theme.chromeMode;
+  drawWallpaper(ctx, 0, originY, CANVAS_W, height);
+
+  const messagesH = height - FOOTER_H;
+  const { visibleCount, typingActive } = computeVisibleState();
+  const { blocks, totalHeight } = buildBlocks(ctx, tokens, visibleCount, typingActive, MAX_TEXT_W);
+
+  const scrollTarget = Math.max(0, totalHeight - (messagesH - 20));
+  scrollOffsetCurrent += (scrollTarget - scrollOffsetCurrent) * 0.22;
+  if (Math.abs(scrollTarget - scrollOffsetCurrent) < 0.5) scrollOffsetCurrent = scrollTarget;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, originY, CANVAS_W, messagesH);
+  ctx.clip();
+
+  for (const b of blocks){
+    const y = originY + b.y - scrollOffsetCurrent;
+    if (y + b.h < originY - 40 || y > originY + messagesH + 40) continue;
+
+    if (b.type === 'date'){
+      const text = b.text;
+      ctx.font = '600 ' + 24 + 'px ' + tokens.font;
+      const tw = ctx.measureText(text).width;
+      const pillW = tw + 44, pillH = 46;
+      const px = CANVAS_W / 2 - pillW / 2;
+      ctx.fillStyle = chromeMode === 'dark' ? '#182229' : '#ffffff';
+      roundRectPath(ctx, px, y, pillW, pillH, { tl: 10, tr: 10, br: 10, bl: 10 });
+      ctx.fill();
+      ctx.fillStyle = chromeMode === 'dark' ? '#8696a0' : '#54656f';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(text, CANVAS_W / 2, y + pillH / 2 + 1);
+      continue;
+    }
+
+    if (b.type === 'typing'){
+      const bw = 150, bh = 70;
+      const bx = CHAT_PAD_X;
+      ctx.fillStyle = state.theme.bubbleColorContact;
+      roundRectPath(ctx, bx, y, bw, bh, { tl: tokens.bubbleRadius, tr: tokens.bubbleRadius, br: tokens.bubbleRadius, bl: 4 });
+      ctx.fill();
+      const dotY = y + bh / 2;
+      for (let i = 0; i < 3; i++){
+        const phase = now / 1000 * 5 + i * 0.9;
+        const off = Math.sin(phase) * 6;
+        ctx.beginPath();
+        ctx.fillStyle = chromeMode === 'dark' ? '#8696a0' : '#93999f';
+        ctx.arc(bx + 34 + i * 26, dotY + off, 7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      continue;
+    }
+
+    // bubble
+    const m = b.msg;
+    const isMe = m.sender === 'me';
+    const bw = b.w, bh = b.h;
+    const bx = isMe ? (CANVAS_W - CHAT_PAD_X - bw) : CHAT_PAD_X;
+    const radii = isMe
+      ? { tl: tokens.bubbleRadius, tr: tokens.bubbleRadius, br: tokens.tailRadius, bl: tokens.bubbleRadius }
+      : { tl: tokens.bubbleRadius, tr: tokens.bubbleRadius, br: tokens.bubbleRadius, bl: tokens.tailRadius };
+    ctx.fillStyle = isMe ? state.theme.bubbleColorMe : state.theme.bubbleColorContact;
+    roundRectPath(ctx, bx, y, bw, bh, radii);
+    ctx.fill();
+
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    if (m.deleted){
+      ctx.font = 'italic ' + MSG_FONT_SIZE + 'px ' + tokens.font;
+      ctx.fillStyle = chromeMode === 'dark' ? '#8696a0' : '#8a8a8a';
+      ctx.fillText(b.lines[0], bx + BUBBLE_PAD_X, y + BUBBLE_PAD_TOP + 26);
+    } else {
+      ctx.font = MSG_FONT_SIZE + 'px ' + tokens.font;
+      ctx.fillStyle = chromeMode === 'dark' ? '#e9edef' : '#111b21';
+      let ly = y + BUBBLE_PAD_TOP + 26;
+      for (const line of b.lines){
+        ctx.fillText(line, bx + BUBBLE_PAD_X, ly);
+        ly += LINE_HEIGHT;
+      }
+    }
+
+    // timestamp + ticks row
+    const tsY = y + bh - BUBBLE_PAD_BOTTOM - 10;
+    ctx.font = TS_FONT_SIZE + 'px ' + tokens.font;
+    ctx.fillStyle = chromeMode === 'dark' ? 'rgba(233,237,239,.5)' : 'rgba(0,0,0,.45)';
+    ctx.textAlign = 'right';
+    const timeText = to12h(m.time || '00:00');
+    const ticksW = isMe ? 24 : 0;
+    ctx.fillText(timeText, bx + bw - BUBBLE_PAD_X - ticksW - (isMe ? 6 : 0), tsY);
+    if (isMe){
+      const tw = ctx.measureText(timeText).width;
+      drawTicks(ctx, bx + bw - BUBBLE_PAD_X - ticksW + 2, tsY - 9, m.status || 'read', chromeMode);
+      void tw;
+    }
+  }
+
+  ctx.restore();
+
+  drawFooterBar(ctx, tokens, chromeMode, 0, originY + messagesH, CANVAS_W, FOOTER_H);
+}
+
+function drawSmileyIcon(ctx, cx, cy, r, color){
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.15, r * 0.12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r * 0.35, cy - r * 0.15, r * 0.12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy + r * 0.05, r * 0.55, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+}
+
+function drawCameraIconSmall(ctx, cx, cy, r, color){
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+  roundRectPath(ctx, cx - r, cy - r * 0.7, r * 2, r * 1.4, { tl: 4, tr: 4, br: 4, bl: 4 });
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.45, 0, Math.PI * 2); ctx.stroke();
+}
+
+function drawMicIconSmall(ctx, cx, cy, r, color){
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.5;
+  roundRectPath(ctx, cx - r * 0.32, cy - r * 0.9, r * 0.64, r * 1.1, { tl: r * 0.32, tr: r * 0.32, br: r * 0.32, bl: r * 0.32 });
+  ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.55, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy + r * 0.55); ctx.lineTo(cx, cy + r * 0.85); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - r * 0.3, cy + r * 0.85); ctx.lineTo(cx + r * 0.3, cy + r * 0.85); ctx.stroke();
+}
+
+function drawFooterBar(ctx, tokens, chromeMode, x, y, w, h){
+  const pillH = 74;
+  const pillY = y + (h - pillH) / 2;
+  const btnR = 42;
+  const pillLeft = x + 24;
+  const pillRight = x + w - 24 - btnR * 2 - 14;
+  const pillW = pillRight - pillLeft;
+
+  const pillBg = chromeMode === 'dark' ? '#1f2c34' : '#ffffff';
+  const iconColor = chromeMode === 'dark' ? 'rgba(233,237,239,.55)' : 'rgba(0,0,0,.4)';
+  const textColor = chromeMode === 'dark' ? 'rgba(233,237,239,.4)' : 'rgba(0,0,0,.35)';
+
+  roundRectPath(ctx, pillLeft, pillY, pillW, pillH, { tl: pillH / 2, tr: pillH / 2, br: pillH / 2, bl: pillH / 2 });
+  ctx.fillStyle = pillBg;
+  ctx.fill();
+
+  drawSmileyIcon(ctx, pillLeft + 46, pillY + pillH / 2, 20, iconColor);
+
+  ctx.font = '30px ' + tokens.font;
+  ctx.fillStyle = textColor;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('Message', pillLeft + 88, pillY + pillH / 2 + 2);
+
+  drawCameraIconSmall(ctx, pillRight - 42, pillY + pillH / 2, 20, iconColor);
+
+  const fabCx = x + w - 24 - btnR;
+  const fabCy = y + h / 2;
+  ctx.beginPath();
+  ctx.arc(fabCx, fabCy, btnR, 0, Math.PI * 2);
+  ctx.fillStyle = WHATSAPP_GREEN;
+  ctx.fill();
+  drawMicIconSmall(ctx, fabCx, fabCy, 24, '#ffffff');
+}
+
+function drawTopChrome(ctx, typingIsContact){
+  const tokens = PLATFORM[state.platform];
+  const chromeMode = state.theme.chromeMode;
+  const bg = chromeMode === 'dark' ? tokens.headerBgDark : tokens.headerBgLight;
+  const totalTopH = tokens.statusBarH + tokens.headerH;
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, CANVAS_W, totalTopH);
+
+  drawStatusIcons(ctx, tokens, chromeMode, CANVAS_W, tokens.statusBarH);
+
+  const headerCy = tokens.statusBarH + tokens.headerH / 2;
+  drawBackIcon(ctx, tokens, chromeMode, 40, headerCy);
+
+  const avatarR = 40;
+  const avatarCx = 128, avatarCy = headerCy;
+  if (state.contact.avatarImg){
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarCx, avatarCy, avatarR, 0, Math.PI * 2);
+    ctx.clip();
+    const img = state.contact.avatarImg;
+    const scale = Math.max((avatarR * 2) / img.width, (avatarR * 2) / img.height);
+    const dw = img.width * scale, dh = img.height * scale;
+    ctx.drawImage(img, avatarCx - dw / 2, avatarCy - dh / 2, dw, dh);
+    ctx.restore();
+  } else {
+    drawDefaultAvatar(ctx, avatarCx, avatarCy, avatarR);
+  }
+
+  const nameColor = chromeMode === 'dark' ? tokens.headerTextDark : tokens.headerTextLight;
+  const subColor = chromeMode === 'dark' ? tokens.headerSubDark : tokens.headerSubLight;
+  const textX = 190;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = nameColor;
+  ctx.font = '600 40px ' + tokens.font;
+  ctx.fillText(state.contact.name || 'Contact', textX, headerCy - 2);
+
+  let subtitle;
+  if (typingIsContact) subtitle = 'typing...';
+  else if (state.contact.statusMode === 'typing') subtitle = 'typing...';
+  else if (state.contact.statusMode === 'lastSeen') subtitle = 'last seen ' + (state.contact.lastSeenText || '');
+  else subtitle = 'online';
+  ctx.fillStyle = subColor;
+  ctx.font = '26px ' + tokens.font;
+  ctx.fillText(subtitle, textX, headerCy + 32);
+
+  drawHeaderActionIcons(ctx, tokens, chromeMode, CANVAS_W, headerCy);
+}
+
+function draw(ctx, now){
+  const tokens = PLATFORM[state.platform];
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  const { typingIsContact } = computeVisibleState();
+  drawTopChrome(ctx, typingIsContact);
+  const chatY = tokens.statusBarH + tokens.headerH;
+  drawChatArea(ctx, chatY, CANVAS_H - chatY, now);
+}
+
+/* ---------------------------------------------------------------------
+ * Animation loop
+ * ------------------------------------------------------------------- */
+function loop(now){
+  draw(previewCtx, now);
+  updateRecTimers(now);
+  updateResetButtonState();
+  requestAnimationFrame(loop);
+}
+
+/* ---------------------------------------------------------------------
+ * Recorder controller
+ * ------------------------------------------------------------------- */
+let mp4BackendAvailable = false;
+let mp4BackendCheckPromise = null;
+
+function checkMp4Backend(){
+  mp4BackendCheckPromise = (async () => {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 1500);
+      const res = await fetch('http://127.0.0.1:8787/health', { signal: ctrl.signal });
+      clearTimeout(t);
+      mp4BackendAvailable = !!res.ok;
+    } catch (e) {
+      mp4BackendAvailable = false;
+    }
+    updateBackendIndicators();
+  })();
+  return mp4BackendCheckPromise;
+}
+
+function updateBackendIndicators(){
+  const text = mp4BackendAvailable
+    ? 'MP4 backend: connected'
+    : 'MP4 backend: not running (direct browser recording)';
+  const el = $('fullBackendStatus');
+  el.textContent = text;
+  el.classList.toggle('connected', mp4BackendAvailable);
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function convertViaMp4Backend(blob){
+  const form = new FormData();
+  form.append('video', blob, 'recording');
+  const res = await fetch('http://127.0.0.1:8787/convert', { method: 'POST', body: form });
+  if (!res.ok) throw new Error('convert failed: ' + res.status);
+  return await res.blob();
+}
+
+function pickMimeType(){
+  const candidates = [
+    'video/mp4;codecs=avc1.42E01E',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ];
+  for (const c of candidates){
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return '';
+}
+
+function setNote(kind, msg){
+  const el = $(kind + 'BackendNote');
+  if (!msg){ el.style.display = 'none'; el.textContent = ''; return; }
+  el.style.display = 'block';
+  el.textContent = msg;
+}
+
+function makeRecorder(kind, canvas){
+  const ctrl = {
+    kind, canvas,
+    state: 'idle', // idle | recording | paused
+    mediaRecorder: null,
+    chunks: [],
+    mimeType: '',
+    recStartWall: 0, recPausedAccum: 0, recPauseStart: 0,
+  };
+
+  function setButtons(){
+    $(kind + 'StartBtn').style.display = ctrl.state === 'idle' ? 'inline-block' : 'none';
+    $(kind + 'PauseBtn').style.display = ctrl.state === 'recording' ? 'inline-block' : 'none';
+    $(kind + 'ResumeBtn').style.display = ctrl.state === 'paused' ? 'inline-block' : 'none';
+    $(kind + 'StopBtn').style.display = ctrl.state !== 'idle' ? 'inline-block' : 'none';
+    const dot = $(kind + 'RecDot');
+    dot.style.visibility = ctrl.state !== 'idle' ? 'visible' : 'hidden';
+    dot.classList.toggle('blink', ctrl.state === 'recording');
+  }
+
+  ctrl.start = function(){
+    if (ctrl.state !== 'idle') return;
+    const stream = canvas.captureStream(30);
+    ctrl.mimeType = pickMimeType();
+    try {
+      ctrl.mediaRecorder = ctrl.mimeType
+        ? new MediaRecorder(stream, { mimeType: ctrl.mimeType })
+        : new MediaRecorder(stream);
+    } catch (e) {
+      ctrl.mediaRecorder = new MediaRecorder(stream);
+      ctrl.mimeType = '';
+    }
+    ctrl.chunks = [];
+    ctrl.mediaRecorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) ctrl.chunks.push(ev.data); };
+    ctrl.mediaRecorder.onstop = async () => {
+      const blob = new Blob(ctrl.chunks, { type: ctrl.mimeType || 'video/webm' });
+      await mp4BackendCheckPromise;
+      if (mp4BackendAvailable){
+        try {
+          const mp4Blob = await convertViaMp4Backend(blob);
+          downloadBlob(mp4Blob, `whatsapp-chat-${kind}-${Date.now()}.mp4`);
+          setNote(kind, '');
+          return;
+        } catch (err) {
+          setNote(kind, 'MP4 backend conversion failed — downloaded the original recording instead.');
+        }
+      } else {
+        setNote(kind, 'MP4 backend not running — downloaded the original recording directly. See server/README.md to enable automatic MP4 conversion.');
+      }
+      const ext = (ctrl.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+      downloadBlob(blob, `whatsapp-chat-${kind}-${Date.now()}.${ext}`);
+    };
+    ctrl.mediaRecorder.start();
+    ctrl.state = 'recording';
+    ctrl.recStartWall = performance.now();
+    ctrl.recPausedAccum = 0;
+    setButtons();
+  };
+
+  ctrl.pause = function(){
+    if (ctrl.state !== 'recording') return;
+    if (ctrl.mediaRecorder.state === 'recording') ctrl.mediaRecorder.pause();
+    ctrl.recPauseStart = performance.now();
+    ctrl.state = 'paused';
+    setButtons();
+  };
+
+  ctrl.resume = function(){
+    if (ctrl.state !== 'paused') return;
+    if (ctrl.mediaRecorder.state === 'paused') ctrl.mediaRecorder.resume();
+    ctrl.recPausedAccum += performance.now() - ctrl.recPauseStart;
+    ctrl.state = 'recording';
+    setButtons();
+  };
+
+  ctrl.stop = function(){
+    if (ctrl.state === 'idle') return;
+    try { ctrl.mediaRecorder.stop(); } catch (e) {}
+    ctrl.state = 'idle';
+    setButtons();
+  };
+
+  setButtons();
+  return ctrl;
+}
+
+const fullRecorder = makeRecorder('full', previewCanvas);
+
+function updateRecTimers(now){
+  const ctrl = fullRecorder;
+  const el = $(ctrl.kind + 'RecTimer');
+  if (ctrl.state === 'idle'){ el.textContent = '00:00'; return; }
+  let ms;
+  if (ctrl.state === 'recording') ms = now - ctrl.recStartWall - ctrl.recPausedAccum;
+  else ms = ctrl.recPauseStart - ctrl.recStartWall - ctrl.recPausedAccum;
+  const secs = Math.max(0, Math.floor(ms / 1000));
+  el.textContent = String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+}
+
+function updateResetButtonState(){
+  $('resetBtn').disabled = anyRecorderActive();
+}
+
+/* ---------------------------------------------------------------------
+ * Left panel resize handle
+ * ------------------------------------------------------------------- */
+function wireResizeHandle(){
+  const handle = $('resizeHandle');
+  const leftPanel = $('leftPanel');
+  const MIN_W = 280, MAX_W = 720;
+  let dragging = false;
+
+  handle.addEventListener('mousedown', (e) => {
+    dragging = true;
+    handle.classList.add('dragging');
+    document.body.classList.add('resizing');
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    leftPanel.style.width = Math.min(MAX_W, Math.max(MIN_W, e.clientX)) + 'px';
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.classList.remove('resizing');
+  });
+}
+
+/* ---------------------------------------------------------------------
+ * Left panel: static wiring
+ * ------------------------------------------------------------------- */
+function wireGlobalControls(){
+  $('contactNameInput').value = state.contact.name;
+  $('contactNameInput').addEventListener('input', (e) => { state.contact.name = e.target.value; });
+
+  $('avatarInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        state.contact.avatarImg = img;
+        $('avatarPreview').src = reader.result;
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  $('removeAvatarBtn').addEventListener('click', () => {
+    state.contact.avatarImg = null;
+    $('avatarPreview').removeAttribute('src');
+  });
+
+  $('statusModeSelect').value = state.contact.statusMode;
+  $('statusModeSelect').addEventListener('change', (e) => {
+    state.contact.statusMode = e.target.value;
+    $('lastSeenField').classList.toggle('show', e.target.value === 'lastSeen');
+  });
+  $('lastSeenField').classList.toggle('show', state.contact.statusMode === 'lastSeen');
+  $('lastSeenInput').value = state.contact.lastSeenText;
+  $('lastSeenInput').addEventListener('input', (e) => { state.contact.lastSeenText = e.target.value; });
+
+  function setPlatformButtons(){
+    $('platformAndroidBtn').classList.toggle('active', state.platform === 'android');
+    $('platformIosBtn').classList.toggle('active', state.platform === 'ios');
+  }
+  $('platformAndroidBtn').addEventListener('click', () => { state.platform = 'android'; setPlatformButtons(); });
+  $('platformIosBtn').addEventListener('click', () => { state.platform = 'ios'; setPlatformButtons(); });
+  setPlatformButtons();
+
+  function setChromeButtons(){
+    $('chromeLightBtn').classList.toggle('active', state.theme.chromeMode === 'light');
+    $('chromeDarkBtn').classList.toggle('active', state.theme.chromeMode === 'dark');
+  }
+  $('chromeLightBtn').addEventListener('click', () => { state.theme.chromeMode = 'light'; setChromeButtons(); });
+  $('chromeDarkBtn').addEventListener('click', () => { state.theme.chromeMode = 'dark'; setChromeButtons(); });
+  setChromeButtons();
+
+  function updateWallpaperFields(){
+    const t = $('wallpaperTypeSelect').value;
+    $('wallpaperCustomField').classList.toggle('show', t === 'custom');
+    $('wallpaperSolidField').classList.toggle('show', t === 'solid');
+    $('wallpaperGradientField').classList.toggle('show', t === 'gradient');
+  }
+  $('wallpaperTypeSelect').value = state.theme.wallpaperType;
+  $('wallpaperTypeSelect').addEventListener('change', (e) => {
+    state.theme.wallpaperType = e.target.value;
+    updateWallpaperFields();
+  });
+  updateWallpaperFields();
+
+  $('wallpaperFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => { state.theme.wallpaperImg = img; };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  $('wallpaperSolidInput').value = state.theme.wallpaperSolid;
+  $('wallpaperSolidInput').addEventListener('input', (e) => { state.theme.wallpaperSolid = e.target.value; });
+  $('wallpaperGradFromInput').value = state.theme.wallpaperGradFrom;
+  $('wallpaperGradFromInput').addEventListener('input', (e) => { state.theme.wallpaperGradFrom = e.target.value; });
+  $('wallpaperGradToInput').value = state.theme.wallpaperGradTo;
+  $('wallpaperGradToInput').addEventListener('input', (e) => { state.theme.wallpaperGradTo = e.target.value; });
+
+  $('bubbleMeInput').value = state.theme.bubbleColorMe;
+  $('bubbleMeInput').addEventListener('input', (e) => { state.theme.bubbleColorMe = e.target.value; });
+  $('bubbleContactInput').value = state.theme.bubbleColorContact;
+  $('bubbleContactInput').addEventListener('input', (e) => { state.theme.bubbleColorContact = e.target.value; });
+}
+
+/* ---------------------------------------------------------------------
+ * Message list rendering
+ * ------------------------------------------------------------------- */
+function addTimeMinutes(hhmm, mins){
+  let [h, m] = hhmm.split(':').map(Number);
+  m += mins;
+  h += Math.floor(m / 60);
+  m = ((m % 60) + 60) % 60;
+  h = ((h % 24) + 24) % 24;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+function addMessage(){
+  const last = state.messages[state.messages.length - 1];
+  state.messages.push({
+    id: uid(),
+    sender: last ? (last.sender === 'me' ? 'contact' : 'me') : 'contact',
+    text: 'New message',
+    date: last ? last.date : today(),
+    time: last ? addTimeMinutes(last.time, 1) : '21:30',
+    status: 'read',
+    deleted: false,
+  });
+  renderMessageList();
+}
+
+function removeMessage(id){
+  state.messages = state.messages.filter((m) => m.id !== id);
+  previewState.revealedCount = Math.min(previewState.revealedCount, state.messages.length);
+  renderMessageList();
+}
+
+function moveMessage(id, dir){
+  const i = state.messages.findIndex((m) => m.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= state.messages.length) return;
+  const tmp = state.messages[i];
+  state.messages[i] = state.messages[j];
+  state.messages[j] = tmp;
+  renderMessageList();
+}
+
+function sendMessage(msg){
+  if (!msg.text.trim()) return;
+  const idx = state.messages.findIndex((m) => m.id === msg.id);
+  if (idx < 0) return;
+  revealUpTo(msg.id);
+  const newMsg = {
+    id: uid(),
+    sender: msg.sender === 'me' ? 'contact' : 'me',
+    text: '',
+    date: msg.date,
+    time: addTimeMinutes(msg.time, 1),
+    status: 'read',
+    deleted: false,
+  };
+  state.messages.splice(idx + 1, 0, newMsg);
+  renderMessageList();
+  focusMessageTextarea(newMsg.id);
+}
+
+function focusMessageTextarea(id){
+  const card = document.querySelector('.msgCard[data-msg-id="' + id + '"]');
+  if (!card) return;
+  const textarea = card.querySelector('textarea');
+  if (!textarea) return;
+  textarea.focus();
+  card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function renderMessageList(){
+  const container = $('messageList');
+  container.innerHTML = '';
+  state.messages.forEach((m, idx) => {
+    const card = document.createElement('div');
+    card.className = 'msgCard';
+    card.dataset.msgId = m.id;
+
+    const head = document.createElement('div');
+    head.className = 'msgCardHead';
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    const btnContact = document.createElement('button');
+    btnContact.className = 'segbtn' + (m.sender === 'contact' ? ' active' : '');
+    btnContact.textContent = 'Contact';
+    btnContact.type = 'button';
+    btnContact.addEventListener('click', () => { m.sender = 'contact'; renderMessageList(); });
+    const btnMe = document.createElement('button');
+    btnMe.className = 'segbtn' + (m.sender === 'me' ? ' active' : '');
+    btnMe.textContent = 'Me';
+    btnMe.type = 'button';
+    btnMe.addEventListener('click', () => { m.sender = 'me'; renderMessageList(); });
+    seg.appendChild(btnContact); seg.appendChild(btnMe);
+    head.appendChild(seg);
+
+    const upBtn = document.createElement('button');
+    upBtn.className = 'small'; upBtn.textContent = '↑'; upBtn.type = 'button';
+    upBtn.disabled = idx === 0;
+    upBtn.addEventListener('click', () => moveMessage(m.id, -1));
+    const downBtn = document.createElement('button');
+    downBtn.className = 'small'; downBtn.textContent = '↓'; downBtn.type = 'button';
+    downBtn.disabled = idx === state.messages.length - 1;
+    downBtn.addEventListener('click', () => moveMessage(m.id, 1));
+    const delBtn = document.createElement('button');
+    delBtn.className = 'small danger'; delBtn.textContent = '✕'; delBtn.type = 'button';
+    delBtn.addEventListener('click', () => removeMessage(m.id));
+    head.appendChild(upBtn); head.appendChild(downBtn); head.appendChild(delBtn);
+    card.appendChild(head);
+
+    const composeRow = document.createElement('div');
+    composeRow.className = 'composeRow';
+
+    const textarea = document.createElement('textarea');
+    textarea.value = m.text;
+    textarea.addEventListener('input', (e) => {
+      m.text = e.target.value;
+      sendBtn.disabled = !e.target.value.trim();
+    });
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        if (!sendBtn.disabled) sendMessage(m);
+      }
+    });
+    composeRow.appendChild(textarea);
+
+    const sendBtn = document.createElement('button');
+    sendBtn.type = 'button';
+    sendBtn.className = 'sendBtn';
+    sendBtn.textContent = 'Send ➤';
+    sendBtn.title = 'Finalize this message and start typing the next one';
+    sendBtn.disabled = !m.text.trim();
+    sendBtn.addEventListener('click', () => sendMessage(m));
+    composeRow.appendChild(sendBtn);
+
+    card.appendChild(composeRow);
+
+    const fieldsRow = document.createElement('div');
+    fieldsRow.className = 'fieldsRow';
+
+    const dateWrap = document.createElement('div');
+    dateWrap.innerHTML = '<label>Date</label>';
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date'; dateInput.value = m.date;
+    dateInput.addEventListener('input', (e) => { m.date = e.target.value; });
+    dateWrap.appendChild(dateInput);
+    fieldsRow.appendChild(dateWrap);
+
+    const timeWrap = document.createElement('div');
+    timeWrap.innerHTML = '<label>Time</label>';
+    const timeInput = document.createElement('input');
+    timeInput.type = 'time'; timeInput.value = m.time;
+    timeInput.addEventListener('input', (e) => { m.time = e.target.value; });
+    timeWrap.appendChild(timeInput);
+    fieldsRow.appendChild(timeWrap);
+
+    if (m.sender === 'me'){
+      const statusWrap = document.createElement('div');
+      statusWrap.innerHTML = '<label>Ticks</label>';
+      const statusSelect = document.createElement('select');
+      ['sent', 'delivered', 'read'].forEach((s) => {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        if (m.status === s) opt.selected = true;
+        statusSelect.appendChild(opt);
+      });
+      statusSelect.addEventListener('change', (e) => { m.status = e.target.value; });
+      statusWrap.appendChild(statusSelect);
+      fieldsRow.appendChild(statusWrap);
+    }
+
+    card.appendChild(fieldsRow);
+
+    const delRow = document.createElement('div');
+    delRow.className = 'delRow';
+    const delCheck = document.createElement('input');
+    delCheck.type = 'checkbox'; delCheck.checked = !!m.deleted;
+    delCheck.addEventListener('change', (e) => { m.deleted = e.target.checked; });
+    const delLabel = document.createElement('label');
+    delLabel.style.margin = '0'; delLabel.textContent = 'Mark as deleted';
+    delRow.appendChild(delCheck); delRow.appendChild(delLabel);
+    card.appendChild(delRow);
+
+    container.appendChild(card);
+  });
+}
+
+/* ---------------------------------------------------------------------
+ * Init
+ * ------------------------------------------------------------------- */
+function init(){
+  wireGlobalControls();
+  wireResizeHandle();
+  renderMessageList();
+
+  $('addMessageBtn').addEventListener('click', addMessage);
+
+  $('resetBtn').addEventListener('click', () => resetPreview());
+
+  $('fullStartBtn').addEventListener('click', () => fullRecorder.start());
+  $('fullPauseBtn').addEventListener('click', () => fullRecorder.pause());
+  $('fullResumeBtn').addEventListener('click', () => fullRecorder.resume());
+  $('fullStopBtn').addEventListener('click', () => fullRecorder.stop());
+
+  requestAnimationFrame(loop);
+  checkMp4Backend();
+}
+
+init();
+</script>
+</body>
+</html>
