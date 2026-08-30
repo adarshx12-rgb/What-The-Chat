@@ -6,224 +6,409 @@
 <title>WhatsApp Chat Story Recorder</title>
 <style>
   :root{
-    --bg:#101215; --panel:#181b20; --panel2:#1f232a; --border:#2a2f38;
-    --text:#e8eaed; --muted:#8b93a1; --accent:#25d366; --accent-dark:#1da851;
-    --danger:#e5534b; --input-bg:#12151a;
+    --studio-bg:#09090b;
+    --studio-surface:#111113;
+    --studio-surface-raised:#18181b;
+    --studio-surface-hover:#202024;
+    --studio-border:#2a2a2f;
+    --studio-border-strong:#3f3f46;
+    --studio-text:#fafafa;
+    --studio-text-secondary:#a1a1aa;
+    --studio-text-tertiary:#71717a;
+    --studio-accent:#25d366;
+    --studio-accent-hover:#20bd5a;
+    --studio-accent-text:#052e16;
+    --studio-danger:#ef4444;
+    --studio-danger-bg:#2a1516;
+    --studio-warning:#f59e0b;
+    --studio-focus:#60a5fa;
+
+    --radius-sm:6px; --radius-md:8px; --radius-lg:12px;
+    --shadow-float:0 16px 48px rgb(0 0 0 / 45%);
+
+    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+    --space-5:20px; --space-6:24px; --space-8:32px;
+
+    --editor-w:400px; --export-w:268px;
+    --control-h:38px; --touch-h:44px;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
-    font-family:'Segoe UI',Arial,sans-serif;height:100%;}
+  html,body{margin:0;padding:0;background:var(--studio-bg);color:var(--studio-text);
+    font-family:Inter,'Segoe UI',system-ui,Arial,sans-serif;height:100%;
+    -webkit-font-smoothing:antialiased;}
   body.resizing{user-select:none;cursor:col-resize;}
-  #app{display:flex;height:100vh;overflow:hidden;}
+  #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 
-  #leftPanel{width:400px;flex-shrink:0;background:var(--panel);
-    overflow-y:auto;padding:16px;}
-  #resizeHandle{width:6px;flex-shrink:0;cursor:col-resize;background:var(--border);}
-  #resizeHandle:hover, #resizeHandle.dragging{background:var(--accent);}
-  #rightPanel{flex:1;display:flex;flex-direction:column;align-items:center;
-    justify-content:flex-start;padding:20px;overflow-y:auto;background:#0b0d10;}
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;}
 
-  h1{font-size:16px;margin:0 0 14px;color:var(--text);}
-  h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
-    margin:22px 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px;}
-  h2:first-of-type{margin-top:0;}
+  /* ---- header ---- */
+  #studioHeader{flex-shrink:0;height:52px;display:flex;align-items:center;
+    padding:0 var(--space-5);border-bottom:1px solid var(--studio-border);
+    background:var(--studio-surface);gap:var(--space-3);}
+  .headerBrand{display:flex;align-items:center;gap:var(--space-3);min-width:0;}
+  .brandMark{color:var(--studio-accent);display:flex;flex-shrink:0;}
+  .brandText{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+  .brandName{font-size:14px;font-weight:600;color:var(--studio-text);white-space:nowrap;}
+  .brandTag{font-size:11px;color:var(--studio-text-tertiary);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;}
 
-  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;}
+  /* ---- workspace layout: editor sidebar | phone stage | export panel ---- */
+  #workspace{flex:1;display:flex;min-height:0;position:relative;}
+  .tabsBar{display:none;}
+
+  #leftPanel{width:var(--editor-w);flex-shrink:0;background:var(--studio-surface);
+    overflow-y:auto;padding:var(--space-5);border-right:1px solid var(--studio-border);}
+  #resizeHandle{width:6px;flex-shrink:0;cursor:col-resize;background:transparent;position:relative;}
+  #resizeHandle::after{content:'';position:absolute;top:0;bottom:0;left:2px;width:2px;
+    background:var(--studio-border);}
+  #resizeHandle:hover::after,#resizeHandle.dragging::after{background:var(--studio-accent);}
+
+  #phoneStage{flex:1;display:flex;align-items:flex-start;justify-content:center;
+    padding:var(--space-6);overflow-y:auto;background:#0b0b0d;min-width:0;}
+
+  #exportPanel{width:var(--export-w);flex-shrink:0;background:var(--studio-surface);
+    border-left:1px solid var(--studio-border);overflow-y:auto;padding:var(--space-5);
+    display:flex;flex-direction:column;gap:var(--space-2);}
+
+  /* any element-specific "display:" rule in this sheet outranks the UA [hidden]
+     rule (author origin beats UA origin regardless of specificity) — restate
+     it once, globally, with !important so hidden="" always actually hides */
+  [hidden]{display:none !important;}
+
+  .panelTitle{font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--studio-text-secondary);margin:var(--space-6) 0 var(--space-3);font-weight:600;}
+  .panelTitle:first-child{margin-top:0;}
+  details.appearanceDetails{border-top:1px solid var(--studio-border);
+    margin-top:var(--space-6);padding-top:var(--space-2);}
+  #panelMessages{border-top:1px solid var(--studio-border);
+    margin-top:var(--space-6);padding-top:var(--space-2);}
+  details.appearanceDetails summary.panelTitle{cursor:pointer;margin-top:0;
+    display:flex;align-items:center;justify-content:space-between;list-style:none;user-select:none;}
+  details.appearanceDetails summary.panelTitle::-webkit-details-marker{display:none;}
+  details.appearanceDetails summary.panelTitle::after{content:'';width:8px;height:8px;
+    border-right:1.5px solid var(--studio-text-tertiary);border-bottom:1.5px solid var(--studio-text-tertiary);
+    transform:rotate(45deg);transition:transform .15s ease;flex-shrink:0;}
+  details.appearanceDetails[open] summary.panelTitle::after{transform:rotate(-135deg);}
+
+  label{display:block;font-size:12px;color:var(--studio-text-secondary);
+    margin:var(--space-3) 0 var(--space-1);font-weight:500;}
   input[type=text],input[type=number],input[type=date],input[type=time],
   select,textarea{
-    width:100%;background:var(--input-bg);border:1px solid var(--border);
-    color:var(--text);border-radius:6px;padding:7px 8px;font-size:13px;
-    font-family:inherit;
+    width:100%;background:var(--studio-bg);border:1px solid var(--studio-border);
+    color:var(--studio-text);border-radius:var(--radius-sm);padding:0 var(--space-3);
+    font-size:13px;font-family:inherit;height:var(--control-h);
   }
-  textarea{resize:vertical;min-height:44px;}
-  input[type=color]{width:44px;height:30px;padding:2px;background:var(--input-bg);
-    border:1px solid var(--border);border-radius:6px;cursor:pointer;}
-  input[type=file]{font-size:12px;color:var(--muted);}
-  input[type=checkbox]{margin-right:6px;vertical-align:middle;}
+  textarea{resize:vertical;min-height:60px;padding:var(--space-2) var(--space-3);height:auto;}
+  input[type=color]{width:44px;height:32px;padding:2px;background:var(--studio-bg);
+    border:1px solid var(--studio-border);border-radius:var(--radius-sm);cursor:pointer;}
+  input[type=file]{font-size:12px;color:var(--studio-text-secondary);height:auto;}
+  input[type=checkbox]{width:16px;height:16px;margin-right:var(--space-2);
+    vertical-align:middle;accent-color:var(--studio-accent);}
 
-  .row{display:flex;gap:10px;}
+  input:focus-visible,select:focus-visible,textarea:focus-visible,
+  button:focus-visible,[tabindex]:focus-visible{
+    outline:2px solid var(--studio-focus);outline-offset:2px;}
+  input:focus,select:focus,textarea:focus{border-color:var(--studio-border-strong);}
+
+  .row{display:flex;gap:var(--space-3);}
   .row > div{flex:1;min-width:0;}
-  .inline{display:flex;align-items:center;gap:8px;}
+  .inline{display:flex;align-items:center;gap:var(--space-2);}
+  .helperText{font-size:11.5px;color:var(--studio-text-tertiary);margin:var(--space-1) 0 0;line-height:1.5;}
 
-  button{cursor:pointer;font-family:inherit;font-size:12.5px;border-radius:6px;
-    border:1px solid var(--border);background:var(--panel2);color:var(--text);
-    padding:7px 10px;}
-  button:hover{background:#262b33;}
+  button{cursor:pointer;font-family:inherit;font-size:12.5px;border-radius:var(--radius-sm);
+    border:1px solid var(--studio-border);background:var(--studio-surface-raised);
+    color:var(--studio-text);padding:0 var(--space-3);height:var(--control-h);
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    transition:background .12s ease,border-color .12s ease,color .12s ease;}
+  button:hover{background:var(--studio-surface-hover);}
   button:disabled{opacity:.4;cursor:not-allowed;}
-  button.primary{background:var(--accent);border-color:var(--accent-dark);color:#06210f;font-weight:600;}
-  button.primary:hover{background:#2fe075;}
-  button.danger{background:transparent;color:var(--danger);border-color:#5a2f2c;}
-  button.small{padding:4px 7px;font-size:11px;}
+  button.btnBlock{width:100%;}
+  button.btnPrimary{background:var(--studio-accent);border-color:var(--studio-accent-hover);
+    color:var(--studio-accent-text);font-weight:600;}
+  button.btnPrimary:hover{background:var(--studio-accent-hover);}
+  button.btnDanger{background:transparent;color:var(--studio-danger);border-color:var(--studio-border);}
+  button.btnDanger:hover{background:var(--studio-danger-bg);border-color:#5a2a2a;}
+  button.small{padding:0 var(--space-2);height:32px;width:32px;flex-shrink:0;color:var(--studio-text-secondary);}
+  button.small:hover{color:var(--studio-text);}
+  button.danger{background:transparent;color:var(--studio-danger);border-color:var(--studio-border);}
+  button.danger:hover{background:var(--studio-danger-bg);border-color:#5a2a2a;}
   button.segbtn{flex:1;}
-  button.segbtn.active{background:var(--accent);color:#06210f;border-color:var(--accent-dark);font-weight:600;}
+  button.segbtn.active{background:var(--studio-accent);color:var(--studio-accent-text);
+    border-color:var(--studio-accent-hover);font-weight:600;}
 
-  .seg{display:flex;gap:6px;}
+  .seg{display:flex;gap:var(--space-2);}
 
   #avatarPreview{width:44px;height:44px;border-radius:50%;object-fit:cover;
-    background:#333;border:1px solid var(--border);}
-  .avatarRow{display:flex;align-items:center;gap:10px;}
+    background:var(--studio-surface-hover);border:1px solid var(--studio-border);}
+  .avatarRow{display:flex;align-items:center;gap:var(--space-3);}
 
-  #messageList{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
-  .msgCard{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;}
-  .msgCardHead{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  #messageList{display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-3);}
+  .msgCard{background:var(--studio-surface-raised);border:1px solid var(--studio-border);
+    border-radius:var(--radius-md);padding:var(--space-3);transition:border-color .12s ease;}
+  .msgCard:focus-within{border-color:var(--studio-border-strong);}
+  .msgCardHead{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);}
   .msgCardHead .seg{flex:1;}
-  .composeRow{display:flex;gap:8px;align-items:stretch;}
-  .composeRow textarea{flex:1;min-width:0;}
-  .sendBtn{background:var(--accent);color:#06210f;border-color:var(--accent-dark);
-    font-weight:600;white-space:nowrap;padding:7px 12px;}
-  .sendBtn:hover{background:#2fe075;}
-  .fieldsRow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
-  .fieldsRow > div{flex:1;min-width:70px;}
+  .composeRow{display:flex;gap:var(--space-2);align-items:stretch;}
+  .composeRow textarea{flex:1;min-width:0;min-height:44px;}
+  .sendBtn{background:var(--studio-accent);color:var(--studio-accent-text);
+    border-color:var(--studio-accent-hover);font-weight:600;white-space:nowrap;padding:0 var(--space-3);}
+  .sendBtn:hover{background:var(--studio-accent-hover);}
+  .fieldsRow{display:flex;gap:var(--space-2);margin-top:var(--space-2);flex-wrap:wrap;}
+  .fieldsRow > div{flex:1;min-width:88px;}
   .fieldsRow label{margin:0 0 3px;}
-  .delRow{margin-top:6px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;}
+  .delRow{margin-top:var(--space-2);font-size:11.5px;color:var(--studio-text-secondary);display:flex;align-items:center;}
+  .delRow label{margin:0;font-size:11.5px;color:var(--studio-text-secondary);}
 
-  #addMessageBtn{width:100%;margin-top:6px;}
+  #addMessageBtn{margin-top:var(--space-2);}
 
   .themeSubField{display:none;}
   .themeSubField.show{display:block;}
 
-  /* right panel */
-  #playbackControls{display:flex;gap:10px;margin-bottom:14px;}
-  .canvas-wrap{display:flex;align-items:center;gap:18px;}
-  .phone-frame{background:#000;border-radius:44px;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
-  #previewCanvas{display:block;width:min(28vw,340px);height:auto;border-radius:30px;background:#000;}
+  /* ---- phone stage ---- */
+  .phone-frame{background:#000;border-radius:44px;padding:14px;box-shadow:var(--shadow-float);}
+  #previewCanvas{display:block;width:min(30vw,360px);height:auto;border-radius:30px;background:#000;}
 
-  .recorder-panel{width:130px;flex-shrink:0;background:var(--panel2);
-    border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;
-    flex-direction:column;align-items:stretch;gap:8px;font-size:11.5px;}
-  .recorder-panel .label{color:var(--muted);font-weight:600;}
-  .rec-row{display:flex;align-items:center;gap:6px;}
-  .rec-buttons{display:flex;flex-direction:column;gap:6px;}
-  .rec-buttons button{width:100%;}
-  .rec-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);display:inline-block;}
+  /* ---- export panel ---- */
+  .recorder-panel{background:var(--studio-bg);border:1px solid var(--studio-border);
+    border-radius:var(--radius-md);padding:var(--space-3);display:flex;
+    flex-direction:column;gap:var(--space-2);font-size:12px;}
+  .recStateRow{display:flex;align-items:center;gap:var(--space-2);}
+  .recStateLabel{font-weight:600;color:var(--studio-text);}
+  .recTimer{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--studio-text-secondary);}
+  .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--studio-danger);flex-shrink:0;display:inline-block;}
   .rec-dot.blink{animation:blink 1s infinite;}
+  .rec-dot.paused{background:var(--studio-warning);animation:none;}
+  .rec-dot.done{background:var(--studio-accent);animation:none;}
   @keyframes blink{50%{opacity:.15;}}
-  .backend-status{font-size:10px;color:var(--muted);}
-  .backend-status.connected{color:var(--accent);}
-  .backend-note{font-size:10px;color:#e0a94a;}
+  .recHelper{font-size:11.5px;color:var(--studio-text-tertiary);margin:0;line-height:1.5;}
+  .rec-buttons{display:flex;flex-direction:column;gap:var(--space-2);}
+  .rec-buttons button{width:100%;}
+  .backend-status{font-size:11px;color:var(--studio-text-tertiary);margin:0;}
+  .backend-status.connected{color:var(--studio-accent);}
+  .backend-note{font-size:11px;color:var(--studio-warning);margin:0;line-height:1.5;}
 
-  #recNote{font-size:11px;color:var(--muted);margin-top:10px;max-width:420px;text-align:center;}
+  #recNote{font-size:11px;color:var(--studio-text-tertiary);line-height:1.5;
+    margin-top:auto;padding-top:var(--space-3);border-top:1px solid var(--studio-border);}
+  #recNote code{background:var(--studio-surface-hover);padding:1px 4px;border-radius:4px;}
+
+  /* ---- toasts ---- */
+  #toastRegion{position:fixed;bottom:var(--space-5);left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;gap:var(--space-2);z-index:1000;}
+  .toast{background:var(--studio-surface-raised);border:1px solid var(--studio-border-strong);
+    color:var(--studio-text);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);
+    display:flex;align-items:center;gap:var(--space-3);box-shadow:var(--shadow-float);
+    font-size:12.5px;animation:toastIn .18s ease-out;white-space:nowrap;}
+  .toast button{background:transparent;border:none;color:var(--studio-accent);
+    font-weight:600;padding:0;height:auto;}
+  @keyframes toastIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
   ::-webkit-scrollbar{width:9px;}
-  ::-webkit-scrollbar-thumb{background:#30353f;border-radius:5px;}
+  ::-webkit-scrollbar-thumb{background:var(--studio-surface-hover);border-radius:5px;}
+
+  @media (prefers-reduced-motion:reduce){
+    .rec-dot.blink{animation:none;}
+    .toast{animation:none;}
+    details.appearanceDetails summary.panelTitle::after{transition:none;}
+  }
+
+  /* ---- tablet & mobile: tab drawer instead of 3-zone layout ---- */
+  @media (max-width:1199.98px){
+    #workspace{flex-direction:column;overflow-y:auto;}
+    #resizeHandle{display:none;}
+    .tabsBar{display:flex;flex-shrink:0;border-bottom:1px solid var(--studio-border);
+      background:var(--studio-surface);position:sticky;top:0;z-index:5;}
+    .tabsBar .tabBtn{flex:1;border:none;border-radius:0;background:transparent;
+      height:var(--touch-h);color:var(--studio-text-secondary);border-bottom:2px solid transparent;}
+    .tabsBar .tabBtn.active{color:var(--studio-text);border-bottom-color:var(--studio-accent);font-weight:600;}
+    #phoneStage{order:-1;flex:none;padding:var(--space-4);}
+    #previewCanvas{width:min(70vw,380px);}
+    #leftPanel,#exportPanel{width:100%;border:none;}
+  }
+
+  @media (max-width:767.98px){
+    #previewCanvas{width:min(78vw,340px);}
+    .fieldsRow > div{min-width:70px;}
+    .composeRow .sendBtn,.rec-buttons button,#addMessageBtn,#resetBtn{min-height:var(--touch-h);}
+  }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <div id="leftPanel">
-    <h1>WhatsApp Chat Story Recorder</h1>
-
-    <h2>Contact &amp; Status</h2>
-    <label for="contactNameInput">Contact name</label>
-    <input type="text" id="contactNameInput">
-
-    <label>Avatar</label>
-    <div class="avatarRow">
-      <img id="avatarPreview" alt="avatar preview">
-      <input type="file" id="avatarInput" accept="image/*">
-      <button class="small" id="removeAvatarBtn">Reset</button>
-    </div>
-
-    <label for="statusModeSelect">Header status</label>
-    <select id="statusModeSelect">
-      <option value="online">online</option>
-      <option value="lastSeen">last seen ...</option>
-      <option value="typing">typing... (forced)</option>
-    </select>
-    <div id="lastSeenField" class="themeSubField">
-      <label for="lastSeenInput">Last seen text</label>
-      <input type="text" id="lastSeenInput" placeholder="today at 11:47 PM">
-    </div>
-
-    <h2>Platform &amp; Theme</h2>
-    <label>Platform</label>
-    <div class="seg">
-      <button class="segbtn" id="platformAndroidBtn">Android</button>
-      <button class="segbtn" id="platformIosBtn">iOS</button>
-    </div>
-
-    <label>Chrome mode</label>
-    <div class="seg">
-      <button class="segbtn" id="chromeLightBtn">Light</button>
-      <button class="segbtn" id="chromeDarkBtn">Dark</button>
-    </div>
-
-    <label for="wallpaperTypeSelect">Wallpaper</label>
-    <select id="wallpaperTypeSelect">
-      <option value="default">Default doodle</option>
-      <option value="custom">Custom image</option>
-      <option value="solid">Solid color</option>
-      <option value="gradient">Gradient</option>
-    </select>
-    <div id="wallpaperCustomField" class="themeSubField">
-      <label for="wallpaperFileInput">Wallpaper image</label>
-      <input type="file" id="wallpaperFileInput" accept="image/*">
-    </div>
-    <div id="wallpaperSolidField" class="themeSubField">
-      <label for="wallpaperSolidInput">Solid color</label>
-      <input type="color" id="wallpaperSolidInput" value="#e5ddd5">
-    </div>
-    <div id="wallpaperGradientField" class="themeSubField">
-      <label>Gradient (top → bottom)</label>
-      <div class="row">
-        <div><input type="color" id="wallpaperGradFromInput" value="#075e54"></div>
-        <div><input type="color" id="wallpaperGradToInput" value="#128c7e"></div>
+  <header id="studioHeader">
+    <div class="headerBrand">
+      <span class="brandMark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      </span>
+      <div class="brandText">
+        <span class="brandName">Chat Story Recorder</span>
+        <span class="brandTag">Live preview · manual send · no auto-play</span>
       </div>
     </div>
+  </header>
 
-    <label>Bubble colors</label>
-    <div class="row">
-      <div>
-        <label for="bubbleMeInput">Me</label>
-        <input type="color" id="bubbleMeInput" value="#d9fdd3">
-      </div>
-      <div>
-        <label for="bubbleContactInput">Contact</label>
-        <input type="color" id="bubbleContactInput" value="#ffffff">
-      </div>
-    </div>
+  <div id="workspace">
 
-    <h2>Messages</h2>
-    <div id="messageList"></div>
-    <button id="addMessageBtn">+ Add message</button>
-  </div>
+    <nav class="tabsBar" role="tablist" aria-label="Editor sections">
+      <button class="tabBtn active" data-tab="content" role="tab" aria-selected="true">Content</button>
+      <button class="tabBtn" data-tab="appearance" role="tab" aria-selected="false">Appearance</button>
+      <button class="tabBtn" data-tab="export" role="tab" aria-selected="false">Export</button>
+    </nav>
 
-  <div id="resizeHandle"></div>
+    <div id="leftPanel">
+      <section id="panelContent">
+        <h2 class="panelTitle">Chat identity</h2>
+        <label for="contactNameInput">Contact name</label>
+        <input type="text" id="contactNameInput">
 
-  <div id="rightPanel">
-    <div id="playbackControls">
-      <button id="resetBtn">⟲ Reset chat</button>
-    </div>
-
-    <div class="canvas-wrap">
-      <div class="recorder-panel">
-        <span class="label">Recorder</span>
-        <div class="rec-row">
-          <span class="rec-dot" id="fullRecDot" style="visibility:hidden"></span>
-          <span id="fullRecTimer">00:00</span>
+        <label>Avatar</label>
+        <div class="avatarRow">
+          <img id="avatarPreview" alt="Contact avatar preview">
+          <input type="file" id="avatarInput" accept="image/*" aria-label="Upload contact avatar">
+          <button class="small" id="removeAvatarBtn" aria-label="Reset avatar to default" title="Reset avatar to default">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
         </div>
-        <div class="rec-buttons">
-          <button id="fullStartBtn" class="small">Start</button>
-          <button id="fullPauseBtn" class="small" style="display:none">Pause</button>
-          <button id="fullResumeBtn" class="small" style="display:none">Resume</button>
-          <button id="fullStopBtn" class="small" style="display:none">Stop</button>
-        </div>
-        <span class="backend-status" id="fullBackendStatus">MP4 backend: checking…</span>
-        <span class="backend-note" id="fullBackendNote" style="display:none"></span>
-      </div>
 
+        <label for="statusModeSelect">Header status</label>
+        <select id="statusModeSelect">
+          <option value="online">online</option>
+          <option value="lastSeen">last seen ...</option>
+          <option value="typing">typing... (forced)</option>
+        </select>
+        <div id="lastSeenField" class="themeSubField">
+          <label for="lastSeenInput">Last seen text</label>
+          <input type="text" id="lastSeenInput" placeholder="today at 11:47 PM">
+        </div>
+      </section>
+
+      <details class="appearanceDetails" id="panelAppearance" open>
+        <summary class="panelTitle">Appearance</summary>
+
+        <label>Platform</label>
+        <div class="seg">
+          <button class="segbtn" id="platformAndroidBtn">Android</button>
+          <button class="segbtn" id="platformIosBtn">iOS</button>
+        </div>
+
+        <label>Chrome mode</label>
+        <div class="seg">
+          <button class="segbtn" id="chromeLightBtn">Light</button>
+          <button class="segbtn" id="chromeDarkBtn">Dark</button>
+        </div>
+
+        <label for="wallpaperTypeSelect">Wallpaper</label>
+        <select id="wallpaperTypeSelect">
+          <option value="default">Default doodle</option>
+          <option value="custom">Custom image</option>
+          <option value="solid">Solid color</option>
+          <option value="gradient">Gradient</option>
+        </select>
+        <div id="wallpaperCustomField" class="themeSubField">
+          <label for="wallpaperFileInput">Wallpaper image</label>
+          <input type="file" id="wallpaperFileInput" accept="image/*" aria-label="Upload wallpaper image">
+        </div>
+        <div id="wallpaperSolidField" class="themeSubField">
+          <label for="wallpaperSolidInput">Solid color</label>
+          <input type="color" id="wallpaperSolidInput" value="#e5ddd5">
+        </div>
+        <div id="wallpaperGradientField" class="themeSubField">
+          <label>Gradient (top → bottom)</label>
+          <div class="row">
+            <div><input type="color" id="wallpaperGradFromInput" value="#075e54" aria-label="Gradient top color"></div>
+            <div><input type="color" id="wallpaperGradToInput" value="#128c7e" aria-label="Gradient bottom color"></div>
+          </div>
+        </div>
+
+        <label>Bubble colors</label>
+        <div class="row">
+          <div>
+            <label for="bubbleMeInput">Me</label>
+            <input type="color" id="bubbleMeInput" value="#d9fdd3">
+          </div>
+          <div>
+            <label for="bubbleContactInput">Contact</label>
+            <input type="color" id="bubbleContactInput" value="#ffffff">
+          </div>
+        </div>
+      </details>
+
+      <section id="panelMessages">
+        <h2 class="panelTitle">Messages</h2>
+        <div id="messageList"></div>
+        <button id="addMessageBtn" class="btnBlock">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add message
+        </button>
+      </section>
+    </div>
+
+    <div id="resizeHandle" role="separator" aria-orientation="vertical" aria-label="Resize editor panel" tabindex="0"></div>
+
+    <main id="phoneStage">
       <div class="phone-frame">
         <canvas id="previewCanvas" width="1080" height="1920"></canvas>
       </div>
-    </div>
+    </main>
 
-    <div id="recNote">Recording never uses screen/tab capture — the preview is drawn frame-by-frame
-      onto a canvas and captured directly via <code>canvas.captureStream()</code>, so the OS mouse
-      cursor can never appear in the exported video.</div>
+    <aside id="exportPanel">
+      <h2 class="panelTitle">Playback</h2>
+      <button id="resetBtn" class="btnBlock">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        Restart preview
+      </button>
+      <p class="helperText">Clears revealed messages back to the start. Your written messages are never changed.</p>
+
+      <h2 class="panelTitle">Export &amp; recording</h2>
+      <div class="recorder-panel">
+        <div class="recStateRow">
+          <span class="rec-dot" id="fullRecDot" hidden></span>
+          <span class="recStateLabel" id="fullRecState">Ready</span>
+          <span class="recTimer" id="fullRecTimer">00:00</span>
+        </div>
+        <p class="recHelper" id="fullRecHelper">Exports MP4 when the local backend is connected, otherwise WebM.</p>
+        <div class="rec-buttons">
+          <button id="fullStartBtn" class="btnPrimary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="9"/></svg>
+            Start recording
+          </button>
+          <button id="fullPauseBtn" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            Pause
+          </button>
+          <button id="fullResumeBtn" class="btnPrimary" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Resume
+          </button>
+          <button id="fullStopBtn" class="btnDanger" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+            Stop
+          </button>
+          <button id="fullDownloadAgainBtn" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download again
+          </button>
+          <button id="fullRetryBtn" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Retry
+          </button>
+        </div>
+        <p class="backend-status" id="fullBackendStatus">MP4 backend: checking…</p>
+        <p class="backend-note" id="fullBackendNote" hidden></p>
+        <div class="visually-hidden" id="fullLiveStatus" aria-live="polite"></div>
+      </div>
+
+      <p id="recNote">Recording never uses screen/tab capture — the preview is drawn frame-by-frame
+        onto a canvas and captured directly via <code>canvas.captureStream()</code>, so the OS mouse
+        cursor can never appear in the exported video.</p>
+    </aside>
+
   </div>
 
 </div>
+
+<div id="toastRegion" aria-live="polite"></div>
 
 <script>
 'use strict';
@@ -316,7 +501,8 @@ function revealUpTo(msgId){
 }
 
 function anyRecorderActive(){
-  return fullRecorder.state !== 'idle';
+  const s = fullRecorder.state;
+  return s === 'recording' || s === 'paused' || s === 'processing';
 }
 
 /* ---------------------------------------------------------------------
@@ -875,6 +1061,7 @@ function updateBackendIndicators(){
   const el = $('fullBackendStatus');
   el.textContent = text;
   el.classList.toggle('connected', mp4BackendAvailable);
+  if (fullRecorder && fullRecorder.state === 'idle') fullRecorder.refreshReadyHelper();
 }
 
 function downloadBlob(blob, filename){
@@ -911,53 +1098,110 @@ function pickMimeType(){
 
 function setNote(kind, msg){
   const el = $(kind + 'BackendNote');
-  if (!msg){ el.style.display = 'none'; el.textContent = ''; return; }
-  el.style.display = 'block';
+  if (!msg){ el.hidden = true; el.textContent = ''; return; }
+  el.hidden = false;
   el.textContent = msg;
 }
 
+function formatBytes(bytes){
+  if (!bytes) return '0 KB';
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function formatDuration(ms){
+  const secs = Math.max(0, Math.round(ms / 1000));
+  return String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+}
+
+/* States: idle (Ready) | recording | paused | processing | complete | error */
 function makeRecorder(kind, canvas){
   const ctrl = {
     kind, canvas,
-    state: 'idle', // idle | recording | paused
+    state: 'idle',
     mediaRecorder: null,
     chunks: [],
     mimeType: '',
-    recStartWall: 0, recPausedAccum: 0, recPauseStart: 0,
+    recStartWall: 0, recPausedAccum: 0, recPauseStart: 0, recEndWall: 0,
+    lastBlob: null, lastFilename: '', lastErrorText: '',
+  };
+
+  function announce(text){ $(kind + 'LiveStatus').textContent = text; }
+
+  ctrl.refreshReadyHelper = function(){
+    if (ctrl.state !== 'idle') return;
+    $(kind + 'RecHelper').textContent = mp4BackendAvailable
+      ? 'Exports MP4 (H.264) via the local backend.'
+      : "Backend not running — exports the browser's native recording (WebM).";
   };
 
   function setButtons(){
-    $(kind + 'StartBtn').style.display = ctrl.state === 'idle' ? 'inline-block' : 'none';
-    $(kind + 'PauseBtn').style.display = ctrl.state === 'recording' ? 'inline-block' : 'none';
-    $(kind + 'ResumeBtn').style.display = ctrl.state === 'paused' ? 'inline-block' : 'none';
-    $(kind + 'StopBtn').style.display = ctrl.state !== 'idle' ? 'inline-block' : 'none';
+    const s = ctrl.state;
+    $(kind + 'StartBtn').hidden = !(s === 'idle' || s === 'complete');
+    $(kind + 'PauseBtn').hidden = s !== 'recording';
+    $(kind + 'ResumeBtn').hidden = s !== 'paused';
+    $(kind + 'StopBtn').hidden = !(s === 'recording' || s === 'paused');
+    $(kind + 'DownloadAgainBtn').hidden = !(s === 'complete' && ctrl.lastBlob);
+    $(kind + 'RetryBtn').hidden = s !== 'error';
+
     const dot = $(kind + 'RecDot');
-    dot.style.visibility = ctrl.state !== 'idle' ? 'visible' : 'hidden';
-    dot.classList.toggle('blink', ctrl.state === 'recording');
+    dot.hidden = (s === 'idle' || s === 'complete' || s === 'error');
+    dot.classList.toggle('blink', s === 'recording');
+    dot.classList.toggle('paused', s === 'paused');
+
+    const stateLabels = { idle: 'Ready', recording: 'Recording', paused: 'Paused', processing: 'Processing', complete: 'Complete', error: 'Error' };
+    $(kind + 'RecState').textContent = stateLabels[s];
+
+    const helper = $(kind + 'RecHelper');
+    if (s === 'idle') ctrl.refreshReadyHelper();
+    else if (s === 'recording') helper.textContent = 'Recording preview.';
+    else if (s === 'paused') helper.textContent = 'Recording paused.';
+    else if (s === 'processing') helper.textContent = mp4BackendAvailable ? 'Converting to MP4…' : 'Preparing download…';
+    else if (s === 'complete') helper.textContent = 'Recording ready — ' + formatBytes(ctrl.lastBlob ? ctrl.lastBlob.size : 0) + ' · ' + formatDuration(ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum) + '.';
+    else if (s === 'error') helper.textContent = ctrl.lastErrorText || 'Recording failed. Try again.';
   }
 
+  function setState(next){ ctrl.state = next; setButtons(); }
+
   ctrl.start = function(){
-    if (ctrl.state !== 'idle') return;
-    const stream = canvas.captureStream(30);
-    ctrl.mimeType = pickMimeType();
+    if (ctrl.state === 'recording' || ctrl.state === 'paused' || ctrl.state === 'processing') return;
+    setNote(kind, '');
+    ctrl.lastBlob = null;
+    let stream;
     try {
-      ctrl.mediaRecorder = ctrl.mimeType
-        ? new MediaRecorder(stream, { mimeType: ctrl.mimeType })
-        : new MediaRecorder(stream);
+      stream = canvas.captureStream(30);
+      ctrl.mimeType = pickMimeType();
+      try {
+        ctrl.mediaRecorder = ctrl.mimeType
+          ? new MediaRecorder(stream, { mimeType: ctrl.mimeType })
+          : new MediaRecorder(stream);
+      } catch (e) {
+        ctrl.mediaRecorder = new MediaRecorder(stream);
+        ctrl.mimeType = '';
+      }
     } catch (e) {
-      ctrl.mediaRecorder = new MediaRecorder(stream);
-      ctrl.mimeType = '';
+      ctrl.lastErrorText = "This browser can't record canvas video.";
+      setState('error');
+      announce('Recording failed to start.');
+      return;
     }
     ctrl.chunks = [];
     ctrl.mediaRecorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) ctrl.chunks.push(ev.data); };
     ctrl.mediaRecorder.onstop = async () => {
+      ctrl.recEndWall = performance.now();
+      setState('processing');
+      announce('Processing recording.');
       const blob = new Blob(ctrl.chunks, { type: ctrl.mimeType || 'video/webm' });
       await mp4BackendCheckPromise;
       if (mp4BackendAvailable){
         try {
           const mp4Blob = await convertViaMp4Backend(blob);
-          downloadBlob(mp4Blob, `whatsapp-chat-${kind}-${Date.now()}.mp4`);
+          ctrl.lastBlob = mp4Blob;
+          ctrl.lastFilename = `whatsapp-chat-${kind}-${Date.now()}.mp4`;
+          downloadBlob(mp4Blob, ctrl.lastFilename);
           setNote(kind, '');
+          setState('complete');
+          announce('Recording ready. Downloaded as MP4.');
           return;
         } catch (err) {
           setNote(kind, 'MP4 backend conversion failed — downloaded the original recording instead.');
@@ -966,36 +1210,43 @@ function makeRecorder(kind, canvas){
         setNote(kind, 'MP4 backend not running — downloaded the original recording directly. See server/README.md to enable automatic MP4 conversion.');
       }
       const ext = (ctrl.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
-      downloadBlob(blob, `whatsapp-chat-${kind}-${Date.now()}.${ext}`);
+      ctrl.lastBlob = blob;
+      ctrl.lastFilename = `whatsapp-chat-${kind}-${Date.now()}.${ext}`;
+      downloadBlob(blob, ctrl.lastFilename);
+      setState('complete');
+      announce('Recording ready. Downloaded as ' + ext.toUpperCase() + '.');
     };
-    ctrl.mediaRecorder.start();
-    ctrl.state = 'recording';
+    ctrl.mediaRecorder.start(1000);
     ctrl.recStartWall = performance.now();
     ctrl.recPausedAccum = 0;
-    setButtons();
+    setState('recording');
+    announce('Recording started.');
   };
 
   ctrl.pause = function(){
     if (ctrl.state !== 'recording') return;
     if (ctrl.mediaRecorder.state === 'recording') ctrl.mediaRecorder.pause();
     ctrl.recPauseStart = performance.now();
-    ctrl.state = 'paused';
-    setButtons();
+    setState('paused');
+    announce('Recording paused.');
   };
 
   ctrl.resume = function(){
     if (ctrl.state !== 'paused') return;
     if (ctrl.mediaRecorder.state === 'paused') ctrl.mediaRecorder.resume();
     ctrl.recPausedAccum += performance.now() - ctrl.recPauseStart;
-    ctrl.state = 'recording';
-    setButtons();
+    setState('recording');
+    announce('Recording resumed.');
   };
 
   ctrl.stop = function(){
-    if (ctrl.state === 'idle') return;
+    if (!(ctrl.state === 'recording' || ctrl.state === 'paused')) return;
     try { ctrl.mediaRecorder.stop(); } catch (e) {}
-    ctrl.state = 'idle';
-    setButtons();
+  };
+
+  ctrl.downloadAgain = function(){
+    if (!ctrl.lastBlob) return;
+    downloadBlob(ctrl.lastBlob, ctrl.lastFilename);
   };
 
   setButtons();
@@ -1007,12 +1258,12 @@ const fullRecorder = makeRecorder('full', previewCanvas);
 function updateRecTimers(now){
   const ctrl = fullRecorder;
   const el = $(ctrl.kind + 'RecTimer');
-  if (ctrl.state === 'idle'){ el.textContent = '00:00'; return; }
+  if (ctrl.state === 'idle' || ctrl.state === 'error'){ el.textContent = '00:00'; return; }
   let ms;
   if (ctrl.state === 'recording') ms = now - ctrl.recStartWall - ctrl.recPausedAccum;
-  else ms = ctrl.recPauseStart - ctrl.recStartWall - ctrl.recPausedAccum;
-  const secs = Math.max(0, Math.floor(ms / 1000));
-  el.textContent = String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+  else if (ctrl.state === 'paused') ms = ctrl.recPauseStart - ctrl.recStartWall - ctrl.recPausedAccum;
+  else ms = ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum;
+  el.textContent = formatDuration(ms);
 }
 
 function updateResetButtonState(){
@@ -1046,6 +1297,92 @@ function wireResizeHandle(){
     handle.classList.remove('dragging');
     document.body.classList.remove('resizing');
   });
+
+  handle.addEventListener('keydown', (e) => {
+    const current = leftPanel.getBoundingClientRect().width;
+    if (e.key === 'ArrowLeft'){
+      leftPanel.style.width = Math.max(MIN_W, current - 20) + 'px';
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight'){
+      leftPanel.style.width = Math.min(MAX_W, current + 20) + 'px';
+      e.preventDefault();
+    }
+  });
+}
+
+/* ---------------------------------------------------------------------
+ * Small SVG icon set (Lucide-style, hand-inlined — no external asset load)
+ * ------------------------------------------------------------------- */
+const ICONS = {
+  chevronUp: '<path d="M18 15l-6-6-6 6"/>',
+  chevronDown: '<path d="M6 9l6 6 6-6"/>',
+  trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+  send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+};
+function iconSvg(name, size){
+  size = size || 15;
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+}
+
+/* ---------------------------------------------------------------------
+ * Toasts — undo affordance for single-message delete
+ * ------------------------------------------------------------------- */
+function showToast(message, actionLabel, onAction, duration){
+  duration = duration || 6000;
+  const region = $('toastRegion');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  const text = document.createElement('span');
+  text.textContent = message;
+  toast.appendChild(text);
+  let timer;
+  if (actionLabel && onAction){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = actionLabel;
+    btn.addEventListener('click', () => {
+      clearTimeout(timer);
+      toast.remove();
+      onAction();
+    });
+    toast.appendChild(btn);
+  }
+  region.appendChild(toast);
+  timer = setTimeout(() => toast.remove(), duration);
+}
+
+/* ---------------------------------------------------------------------
+ * Editor tabs (Content / Appearance / Export) — tablet & mobile only.
+ * At 1200px+ all three sections are shown at once in their studio columns;
+ * below that only the active tab's section is visible.
+ * ------------------------------------------------------------------- */
+let activeTab = 'content';
+const desktopMQ = window.matchMedia('(min-width:1200px)');
+
+function applyTabVisibility(){
+  const isDesktop = desktopMQ.matches;
+  $('panelContent').hidden = !isDesktop && activeTab !== 'content';
+  $('panelMessages').hidden = !isDesktop && activeTab !== 'content';
+  $('panelAppearance').hidden = !isDesktop && activeTab !== 'appearance';
+  $('leftPanel').hidden = !isDesktop && activeTab === 'export';
+  $('exportPanel').hidden = !isDesktop && activeTab !== 'export';
+}
+
+function wireTabs(){
+  const btns = Array.from(document.querySelectorAll('.tabBtn'));
+  btns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeTab = btn.dataset.tab;
+      btns.forEach((b) => {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+      });
+      applyTabVisibility();
+    });
+  });
+  desktopMQ.addEventListener('change', applyTabVisibility);
+  applyTabVisibility();
 }
 
 /* ---------------------------------------------------------------------
@@ -1164,9 +1501,15 @@ function addMessage(){
 }
 
 function removeMessage(id){
-  state.messages = state.messages.filter((m) => m.id !== id);
+  const idx = state.messages.findIndex((m) => m.id === id);
+  if (idx < 0) return;
+  const [removed] = state.messages.splice(idx, 1);
   previewState.revealedCount = Math.min(previewState.revealedCount, state.messages.length);
   renderMessageList();
+  showToast('Message removed.', 'Undo', () => {
+    state.messages.splice(idx, 0, removed);
+    renderMessageList();
+  });
 }
 
 function moveMessage(id, dir){
@@ -1233,15 +1576,18 @@ function renderMessageList(){
     head.appendChild(seg);
 
     const upBtn = document.createElement('button');
-    upBtn.className = 'small'; upBtn.textContent = '↑'; upBtn.type = 'button';
+    upBtn.className = 'small'; upBtn.innerHTML = iconSvg('chevronUp'); upBtn.type = 'button';
+    upBtn.setAttribute('aria-label', 'Move message up'); upBtn.title = 'Move up';
     upBtn.disabled = idx === 0;
     upBtn.addEventListener('click', () => moveMessage(m.id, -1));
     const downBtn = document.createElement('button');
-    downBtn.className = 'small'; downBtn.textContent = '↓'; downBtn.type = 'button';
+    downBtn.className = 'small'; downBtn.innerHTML = iconSvg('chevronDown'); downBtn.type = 'button';
+    downBtn.setAttribute('aria-label', 'Move message down'); downBtn.title = 'Move down';
     downBtn.disabled = idx === state.messages.length - 1;
     downBtn.addEventListener('click', () => moveMessage(m.id, 1));
     const delBtn = document.createElement('button');
-    delBtn.className = 'small danger'; delBtn.textContent = '✕'; delBtn.type = 'button';
+    delBtn.className = 'small danger'; delBtn.innerHTML = iconSvg('trash'); delBtn.type = 'button';
+    delBtn.setAttribute('aria-label', 'Delete message'); delBtn.title = 'Delete message';
     delBtn.addEventListener('click', () => removeMessage(m.id));
     head.appendChild(upBtn); head.appendChild(downBtn); head.appendChild(delBtn);
     card.appendChild(head);
@@ -1266,7 +1612,7 @@ function renderMessageList(){
     const sendBtn = document.createElement('button');
     sendBtn.type = 'button';
     sendBtn.className = 'sendBtn';
-    sendBtn.textContent = 'Send ➤';
+    sendBtn.innerHTML = iconSvg('send') + ' Send';
     sendBtn.title = 'Finalize this message and start typing the next one';
     sendBtn.disabled = !m.text.trim();
     sendBtn.addEventListener('click', () => sendMessage(m));
@@ -1313,9 +1659,10 @@ function renderMessageList(){
     const delRow = document.createElement('div');
     delRow.className = 'delRow';
     const delCheck = document.createElement('input');
-    delCheck.type = 'checkbox'; delCheck.checked = !!m.deleted;
+    delCheck.type = 'checkbox'; delCheck.id = 'delChk-' + m.id; delCheck.checked = !!m.deleted;
     delCheck.addEventListener('change', (e) => { m.deleted = e.target.checked; });
     const delLabel = document.createElement('label');
+    delLabel.htmlFor = delCheck.id;
     delLabel.style.margin = '0'; delLabel.textContent = 'Mark as deleted';
     delRow.appendChild(delCheck); delRow.appendChild(delLabel);
     card.appendChild(delRow);
@@ -1330,6 +1677,7 @@ function renderMessageList(){
 function init(){
   wireGlobalControls();
   wireResizeHandle();
+  wireTabs();
   renderMessageList();
 
   $('addMessageBtn').addEventListener('click', addMessage);
@@ -1340,6 +1688,8 @@ function init(){
   $('fullPauseBtn').addEventListener('click', () => fullRecorder.pause());
   $('fullResumeBtn').addEventListener('click', () => fullRecorder.resume());
   $('fullStopBtn').addEventListener('click', () => fullRecorder.stop());
+  $('fullDownloadAgainBtn').addEventListener('click', () => fullRecorder.downloadAgain());
+  $('fullRetryBtn').addEventListener('click', () => fullRecorder.start());
 
   requestAnimationFrame(loop);
   checkMp4Backend();
