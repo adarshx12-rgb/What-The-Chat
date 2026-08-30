@@ -225,9 +225,24 @@
     .tabsBar .tabBtn{flex:1;border:none;border-radius:0;background:transparent;
       height:var(--touch-h);color:var(--studio-text-secondary);border-bottom:2px solid transparent;}
     .tabsBar .tabBtn.active{color:var(--studio-text);border-bottom-color:var(--studio-accent);font-weight:600;}
-    #phoneStage{order:-1;flex:none;padding:var(--space-4);}
+    #phoneStage{order:-1;flex:none;padding:var(--space-4);transition:padding .2s ease;}
     #previewCanvas{width:min(70vw,380px);}
     #leftPanel,#exportPanel{width:100%;border:none;}
+
+    /* Docked mini preview: once the phone preview scrolls out of view, it shrinks
+       into a small fixed corner window so it stays visible while editing messages
+       further down the page. Purely a CSS/visual reposition of the same canvas —
+       the recorded output (canvas.captureStream) is unaffected either way. */
+    #phoneStage.docked{padding:0;min-height:0;}
+    #phoneStage.docked .phone-frame{
+      position:fixed;top:calc(52px + var(--touch-h) + var(--space-3));right:var(--space-3);
+      z-index:20;width:104px;padding:6px;border-radius:16px;
+    }
+    #phoneStage.docked #previewCanvas{width:100%;border-radius:11px;}
+    @media (prefers-reduced-motion:no-preference){
+      #phoneStage.docked .phone-frame{animation:dockIn .2s ease-out;}
+    }
+    @keyframes dockIn{from{opacity:.4;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
   }
 
   @media (max-width:767.98px){
@@ -1390,6 +1405,26 @@ function wireTabs(){
 }
 
 /* ---------------------------------------------------------------------
+ * Docked mini preview (tablet & mobile only) — once the phone preview
+ * scrolls out of view inside #workspace, shrink it into a small fixed
+ * corner window so it stays visible while editing messages below.
+ * This only ever changes on-screen CSS size/position of the existing
+ * canvas — the recording itself always captures the full 1080x1920
+ * drawing buffer regardless of how it's displayed on screen.
+ * ------------------------------------------------------------------- */
+function wireDockingPreview(){
+  if (!('IntersectionObserver' in window)) return;
+  const stage = $('phoneStage');
+  const workspace = $('workspace');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      stage.classList.toggle('docked', !entry.isIntersecting);
+    });
+  }, { root: workspace, threshold: 0.12 });
+  io.observe(stage);
+}
+
+/* ---------------------------------------------------------------------
  * Left panel: static wiring
  * ------------------------------------------------------------------- */
 function wireGlobalControls(){
@@ -1682,6 +1717,7 @@ function init(){
   wireGlobalControls();
   wireResizeHandle();
   wireTabs();
+  wireDockingPreview();
   renderMessageList();
 
   $('addMessageBtn').addEventListener('click', addMessage);
