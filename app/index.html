@@ -1602,16 +1602,18 @@ function addTimeMinutes(hhmm, mins){
 
 function addMessage(){
   const last = state.messages[state.messages.length - 1];
-  state.messages.push({
+  const newMsg = {
     id: uid(),
     sender: last ? (last.sender === 'me' ? 'contact' : 'me') : 'contact',
-    text: 'New message',
+    text: '',
     date: last ? last.date : today(),
     time: last ? addTimeMinutes(last.time, 1) : '21:30',
     status: 'read',
     deleted: false,
-  });
+  };
+  state.messages.push(newMsg);
   renderMessageList();
+  focusMessageTextarea(newMsg.id);
 }
 
 function removeMessage(id){
@@ -1641,18 +1643,6 @@ function sendMessage(msg){
   const idx = state.messages.findIndex((m) => m.id === msg.id);
   if (idx < 0) return;
   revealUpTo(msg.id);
-  const newMsg = {
-    id: uid(),
-    sender: msg.sender === 'me' ? 'contact' : 'me',
-    text: '',
-    date: msg.date,
-    time: addTimeMinutes(msg.time, 1),
-    status: 'read',
-    deleted: false,
-  };
-  state.messages.splice(idx + 1, 0, newMsg);
-  renderMessageList();
-  focusMessageTextarea(newMsg.id);
 }
 
 function focusMessageTextarea(id){
@@ -1711,6 +1701,7 @@ function renderMessageList(){
 
     const textarea = document.createElement('textarea');
     textarea.value = m.text;
+    textarea.placeholder = 'Type a message…';
     textarea.addEventListener('input', (e) => {
       m.text = e.target.value;
       sendBtn.disabled = !e.target.value.trim();
@@ -1727,7 +1718,7 @@ function renderMessageList(){
     sendBtn.type = 'button';
     sendBtn.className = 'sendBtn';
     sendBtn.innerHTML = iconSvg('send') + ' Send';
-    sendBtn.title = 'Finalize this message and start typing the next one';
+    sendBtn.title = 'Reveal this message in the live preview';
     sendBtn.disabled = !m.text.trim();
     sendBtn.addEventListener('click', () => sendMessage(m));
     composeRow.appendChild(sendBtn);
