@@ -425,6 +425,13 @@
       <p id="recNote">Recording never uses screen/tab capture — the preview is drawn frame-by-frame
         onto a canvas and captured directly via <code>canvas.captureStream()</code>, so the OS mouse
         cursor can never appear in the exported video.</p>
+
+      <h2 class="panelTitle">Screenshot</h2>
+      <button id="screenshotBtn" class="btnBlock">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Save screenshot
+      </button>
+      <p class="helperText">Saves the current preview frame as a PNG — exactly what's on screen right now, at full 1080&times;1920 resolution.</p>
     </aside>
 
   </div>
@@ -1095,6 +1102,19 @@ function downloadBlob(blob, filename){
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* Screenshot: same "preview = source of truth" idea as recording (#9 in
+ * CLAUDE.md) — just grabs the current canvas frame as a PNG instead of a
+ * video stream. No draw calls of its own, so it can never drift from what's
+ * actually on screen. */
+function saveScreenshot(){
+  previewCanvas.toBlob((blob) => {
+    if (!blob){ showToast('Screenshot failed — try again.'); return; }
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadBlob(blob, `whatsapp-chat-${state.platform}-${stamp}.png`);
+    showToast('Screenshot saved');
+  }, 'image/png');
 }
 
 async function convertViaMp4Backend(blob){
@@ -1785,6 +1805,8 @@ function init(){
   $('fullStopBtn').addEventListener('click', () => fullRecorder.stop());
   $('fullDownloadAgainBtn').addEventListener('click', () => fullRecorder.downloadAgain());
   $('fullRetryBtn').addEventListener('click', () => fullRecorder.start());
+
+  $('screenshotBtn').addEventListener('click', () => saveScreenshot());
 
   requestAnimationFrame(loop);
   checkMp4Backend();
