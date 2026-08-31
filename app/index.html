@@ -232,13 +232,17 @@
     /* Docked mini preview: once the phone preview scrolls out of view, it shrinks
        into a small fixed corner window so it stays visible while editing messages
        further down the page. Purely a CSS/visual reposition of the same canvas —
-       the recorded output (canvas.captureStream) is unaffected either way. */
+       the recorded output (canvas.captureStream) is unaffected either way.
+       It's also user-draggable while docked (see wireDockedDrag() in the JS) —
+       drag resets to the default top-right corner each time it re-docks. */
     #phoneStage.docked{padding:0;min-height:0;}
     #phoneStage.docked .phone-frame{
       position:fixed;top:calc(52px + var(--touch-h) + var(--space-3));right:var(--space-3);
-      z-index:20;width:104px;padding:6px;border-radius:16px;
+      z-index:20;width:120px;padding:7px;border-radius:18px;
+      cursor:grab;touch-action:none;
     }
-    #phoneStage.docked #previewCanvas{width:100%;border-radius:11px;}
+    #phoneStage.docked .phone-frame.dragging{cursor:grabbing;box-shadow:var(--shadow-float),0 0 0 2px var(--studio-accent);}
+    #phoneStage.docked #previewCanvas{width:100%;border-radius:12px;}
     @media (prefers-reduced-motion:no-preference){
       #phoneStage.docked .phone-frame{animation:dockIn .2s ease-out;}
     }
@@ -1416,12 +1420,63 @@ function wireDockingPreview(){
   if (!('IntersectionObserver' in window)) return;
   const stage = $('phoneStage');
   const workspace = $('workspace');
+  const frame = stage.querySelector('.phone-frame');
   const io = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
-      stage.classList.toggle('docked', !entry.isIntersecting);
+      const nowDocked = !entry.isIntersecting;
+      stage.classList.toggle('docked', nowDocked);
+      // Reset any dragged position when undocking, so it re-docks fresh
+      // in the default top-right corner next time.
+      if (!nowDocked) frame.style.left = frame.style.top = frame.style.right = '';
     });
   }, { root: workspace, threshold: 0.12 });
   io.observe(stage);
+  wireDockedDrag(stage, frame);
+}
+
+/* ---------------------------------------------------------------------
+ * Docked mini preview: pointer-drag repositioning. Only active while
+ * #phoneStage has the .docked class (tablet/mobile, scrolled past the
+ * phone). Purely repositions the fixed-position .phone-frame on screen —
+ * the canvas being dragged is the same one being recorded, so this has
+ * zero effect on recording output.
+ * ------------------------------------------------------------------- */
+function wireDockedDrag(stage, frame){
+  const margin = 8;
+  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+  frame.addEventListener('pointerdown', (e) => {
+    if (!stage.classList.contains('docked')) return;
+    dragging = true;
+    const rect = frame.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    startLeft = rect.left; startTop = rect.top;
+    frame.style.right = 'auto';
+    frame.style.left = startLeft + 'px';
+    frame.style.top = startTop + 'px';
+    frame.classList.add('dragging');
+    frame.setPointerCapture(e.pointerId);
+  });
+
+  frame.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const w = frame.offsetWidth, h = frame.offsetHeight;
+    let left = startLeft + (e.clientX - startX);
+    let top = startTop + (e.clientY - startY);
+    left = Math.min(Math.max(left, margin), window.innerWidth - w - margin);
+    top = Math.min(Math.max(top, margin), window.innerHeight - h - margin);
+    frame.style.left = left + 'px';
+    frame.style.top = top + 'px';
+  });
+
+  const endDrag = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    frame.classList.remove('dragging');
+    try { frame.releasePointerCapture(e.pointerId); } catch (err) {}
+  };
+  frame.addEventListener('pointerup', endDrag);
+  frame.addEventListener('pointercancel', endDrag);
 }
 
 /* ---------------------------------------------------------------------
