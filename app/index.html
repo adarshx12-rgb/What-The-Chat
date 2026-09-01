@@ -459,7 +459,7 @@ const WHATSAPP_GREEN = '#00a884';
 
 const PLATFORM = {
   android: {
-    statusBarH: 64, headerH: 172,
+    statusBarH: 64, headerH: 172, navBarH: 56,
     bubbleRadius: 10, tailRadius: 3,
     font: "'Segoe UI',Roboto,Arial,sans-serif",
     headerBgLight: '#008069', headerBgDark: '#1f2c34',
@@ -468,7 +468,7 @@ const PLATFORM = {
     backIcon: 'arrow', notch: false,
   },
   ios: {
-    statusBarH: 100, headerH: 190,
+    statusBarH: 100, headerH: 190, navBarH: 64,
     bubbleRadius: 24, tailRadius: 4,
     font: "-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif",
     headerBgLight: '#f6f6f6', headerBgDark: '#101c26',
@@ -699,6 +699,7 @@ function drawDefaultAvatar(ctx, cx, cy, r){
 }
 
 function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
+  const isIOS = state.platform === 'ios';
   const color = chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight;
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
@@ -707,21 +708,60 @@ function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
   ctx.font = '600 30px ' + tokens.font;
   ctx.fillText('9:41', 40, statusBarH / 2);
 
-  // signal bars
-  const bx = w - 190, by = statusBarH / 2 + 8;
-  for (let i = 0; i < 4; i++){
-    const bh = 8 + i * 6;
-    ctx.fillRect(bx + i * 12, by - bh, 8, bh);
+  const midY = statusBarH / 2;
+
+  if (isIOS){
+    // iOS cluster, right-aligned: signal dots, wifi arc, pill battery with a nub, no % label
+    const battW = 46, battH = 22;
+    const battX = w - 40 - battW;
+    ctx.lineWidth = 2.5;
+    roundRectPath(ctx, battX, midY - battH / 2, battW, battH, { tl: 6, tr: 6, br: 6, bl: 6 });
+    ctx.stroke();
+    ctx.fillRect(battX + battW + 3, midY - 5, 3, 10);
+    const pad = 3;
+    roundRectPath(ctx, battX + pad, midY - battH / 2 + pad, (battW - pad * 2) * 0.8, battH - pad * 2, { tl: 2, tr: 2, br: 2, bl: 2 });
+    ctx.fill();
+
+    const wifiCx = battX - 44;
+    ctx.beginPath();
+    ctx.arc(wifiCx, midY + 6, 14, Math.PI * 1.2, Math.PI * 1.8);
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    const sigX = wifiCx - 96;
+    for (let i = 0; i < 4; i++){
+      const bh = 8 + i * 5;
+      roundRectPath(ctx, sigX + i * 11, midY + 10 - bh, 6, bh, { tl: 1, tr: 1, br: 1, bl: 1 });
+      ctx.fill();
+    }
+  } else {
+    // Android cluster: signal bars, wifi arc, battery %, outlined battery — Material-style, left-to-right
+    const battW = 42, battH = 20;
+    const battX = w - 108 - battW;
+    ctx.lineWidth = 2.5;
+    roundRectPath(ctx, battX, midY - battH / 2, battW, battH, { tl: 3, tr: 3, br: 3, bl: 3 });
+    ctx.stroke();
+    ctx.fillRect(battX + battW, midY - 4, 4, 8);
+    const pad = 3;
+    ctx.fillRect(battX + pad, midY - battH / 2 + pad, (battW - pad * 2) * 0.82, battH - pad * 2);
+
+    ctx.font = '500 24px ' + tokens.font;
+    ctx.textAlign = 'right';
+    ctx.fillText('82%', battX - 20, midY + 1);
+    ctx.textAlign = 'left';
+
+    const wifiCx = battX - 108;
+    ctx.beginPath();
+    ctx.arc(wifiCx, midY + 6, 14, Math.PI * 1.2, Math.PI * 1.8);
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    const sigX = wifiCx - 96;
+    for (let i = 0; i < 4; i++){
+      const bh = 8 + i * 6;
+      ctx.fillRect(sigX + i * 12, midY + 8 - bh, 8, bh);
+    }
   }
-  // wifi arc
-  ctx.beginPath();
-  ctx.arc(w - 120, statusBarH / 2 + 6, 14, Math.PI * 1.2, Math.PI * 1.8);
-  ctx.lineWidth = 4;
-  ctx.stroke();
-  // battery
-  ctx.strokeRect(w - 90, statusBarH / 2 - 10, 40, 20);
-  ctx.fillRect(w - 48, statusBarH / 2 - 5, 5, 10);
-  ctx.fillRect(w - 86, statusBarH / 2 - 6, 32, 12);
 
   if (tokens.notch){
     ctx.fillStyle = '#000';
@@ -751,32 +791,48 @@ function drawBackIcon(ctx, tokens, chrome, x, y){
   ctx.stroke();
 }
 
-function drawHeaderActionIcons(ctx, tokens, chrome, w, cy){
-  const color = chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight;
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 4;
-  // video camera
-  let x = w - 260;
-  roundRectPath(ctx, x, cy - 18, 46, 36, { tl: 6, tr: 6, br: 6, bl: 6 });
-  ctx.stroke();
+function drawVideoCallIcon(ctx, x, cy, color){
+  ctx.fillStyle = color;
+  roundRectPath(ctx, x, cy - 16, 41, 32, { tl: 7, tr: 7, br: 7, bl: 7 });
+  ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(x + 46, cy - 6);
-  ctx.lineTo(x + 68, cy - 18);
-  ctx.lineTo(x + 68, cy + 18);
-  ctx.lineTo(x + 46, cy + 6);
+  ctx.moveTo(x + 41, cy - 5);
+  ctx.lineTo(x + 61, cy - 16);
+  ctx.lineTo(x + 61, cy + 16);
+  ctx.lineTo(x + 41, cy + 5);
   ctx.closePath();
   ctx.fill();
-  // phone
-  x = w - 170;
-  ctx.beginPath();
-  ctx.arc(x + 12, cy, 16, 0.3, Math.PI * 1.7);
-  ctx.stroke();
-  // menu / more
-  x = w - 70;
+}
+
+/* Exact Material Design "call" glyph (24x24 viewBox), Apache-2.0 licensed, from
+ * google/material-design-icons — used verbatim rather than hand-traced. */
+const PHONE_CALL_ICON_PATH = new Path2D('M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z');
+
+function drawPhoneCallIcon(ctx, cx, cy, scale, color){
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  ctx.translate(-12, -12);
+  ctx.fillStyle = color;
+  ctx.fill(PHONE_CALL_ICON_PATH);
+  ctx.restore();
+}
+
+function drawMenuDotsIcon(ctx, x, cy, color){
+  ctx.fillStyle = color;
   for (let i = 0; i < 3; i++){
     ctx.beginPath();
     ctx.arc(x, cy - 16 + i * 16, 4, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+function drawHeaderActionIcons(ctx, tokens, chrome, w, cy){
+  const color = chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight;
+  // Same icon set on both platforms: video call, voice call, overflow menu.
+  drawVideoCallIcon(ctx, w - 354, cy, color);
+  drawPhoneCallIcon(ctx, w - 184, cy, 2.7, color);
+  drawMenuDotsIcon(ctx, w - 70, cy, color);
 }
 
 /* ---------------------------------------------------------------------
@@ -838,7 +894,8 @@ function drawChatArea(ctx, originY, height, now){
   const chromeMode = state.theme.chromeMode;
   drawWallpaper(ctx, 0, originY, CANVAS_W, height);
 
-  const messagesH = height - FOOTER_H;
+  const navH = tokens.navBarH;
+  const messagesH = height - FOOTER_H - navH;
   const { visibleCount, typingActive } = computeVisibleState();
   const { blocks, totalHeight } = buildBlocks(ctx, tokens, visibleCount, typingActive, MAX_TEXT_W);
 
@@ -933,6 +990,7 @@ function drawChatArea(ctx, originY, height, now){
   ctx.restore();
 
   drawFooterBar(ctx, tokens, chromeMode, 0, originY + messagesH, CANVAS_W, FOOTER_H);
+  drawNavBar(ctx, tokens, chromeMode, 0, originY + messagesH + FOOTER_H, CANVAS_W, navH);
 }
 
 function drawSmileyIcon(ctx, cx, cy, r, color){
@@ -959,7 +1017,32 @@ function drawMicIconSmall(ctx, cx, cy, r, color){
   ctx.beginPath(); ctx.moveTo(cx - r * 0.3, cy + r * 0.85); ctx.lineTo(cx + r * 0.3, cy + r * 0.85); ctx.stroke();
 }
 
+function drawAttachIconSmall(ctx, cx, cy, r, color){
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-Math.PI / 4);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  roundRectPath(ctx, -r * 0.32, -r, r * 0.64, r * 1.35, { tl: r * 0.32, tr: r * 0.32, br: r * 0.32, bl: r * 0.32 });
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -r * 0.55);
+  ctx.lineTo(0, r * 0.5);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawFooterBar(ctx, tokens, chromeMode, x, y, w, h){
+  const bg = chromeMode === 'dark' ? '#131c21' : '#f0f2f5';
+  ctx.fillStyle = bg;
+  ctx.fillRect(x, y, w, h);
+
+  if (state.platform === 'ios') drawFooterBarIOS(ctx, tokens, chromeMode, x, y, w, h);
+  else drawFooterBarAndroid(ctx, tokens, chromeMode, x, y, w, h);
+}
+
+function drawFooterBarAndroid(ctx, tokens, chromeMode, x, y, w, h){
   const pillH = 74;
   const pillY = y + (h - pillH) / 2;
   const btnR = 42;
@@ -982,6 +1065,7 @@ function drawFooterBar(ctx, tokens, chromeMode, x, y, w, h){
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText('Message', pillLeft + 88, pillY + pillH / 2 + 2);
 
+  drawAttachIconSmall(ctx, pillRight - 88, pillY + pillH / 2, 18, iconColor);
   drawCameraIconSmall(ctx, pillRight - 42, pillY + pillH / 2, 20, iconColor);
 
   const fabCx = x + w - 24 - btnR;
@@ -991,6 +1075,71 @@ function drawFooterBar(ctx, tokens, chromeMode, x, y, w, h){
   ctx.fillStyle = WHATSAPP_GREEN;
   ctx.fill();
   drawMicIconSmall(ctx, fabCx, fabCy, 24, '#ffffff');
+}
+
+function drawFooterBarIOS(ctx, tokens, chromeMode, x, y, w, h){
+  const fieldH = 72;
+  const fieldY = y + (h - fieldH) / 2;
+  const plusR = 22;
+  const plusCx = x + 24 + plusR;
+  const fieldLeft = x + 24 + plusR * 2 + 14;
+  const fieldRight = x + w - 24 - 60;
+  const fieldW = fieldRight - fieldLeft;
+
+  const fieldBg = chromeMode === 'dark' ? '#1c2b33' : '#ffffff';
+  const iconColor = chromeMode === 'dark' ? 'rgba(233,237,239,.55)' : 'rgba(0,0,0,.42)';
+  const textColor = chromeMode === 'dark' ? 'rgba(233,237,239,.4)' : 'rgba(0,0,0,.35)';
+
+  // "+" attachment button — sits outside the field, iOS puts it here rather than inline
+  ctx.strokeStyle = iconColor; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(plusCx, y + h / 2, plusR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(plusCx - 9, y + h / 2); ctx.lineTo(plusCx + 9, y + h / 2);
+  ctx.moveTo(plusCx, y + h / 2 - 9); ctx.lineTo(plusCx, y + h / 2 + 9);
+  ctx.stroke();
+
+  // rounded-rect input field — less pill-shaped than Android's
+  roundRectPath(ctx, fieldLeft, fieldY, fieldW, fieldH, { tl: 22, tr: 22, br: 22, bl: 22 });
+  ctx.fillStyle = fieldBg;
+  ctx.fill();
+  if (chromeMode === 'light'){
+    ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  ctx.font = '30px ' + tokens.font;
+  ctx.fillStyle = textColor;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('Message', fieldLeft + 26, fieldY + fieldH / 2 + 2);
+
+  drawCameraIconSmall(ctx, fieldLeft + fieldW - 34, fieldY + fieldH / 2, 18, iconColor);
+
+  // standalone mic, no colored FAB — iOS only swaps this for a send arrow once text is entered
+  drawMicIconSmall(ctx, x + w - 24 - 26, y + h / 2, 22, iconColor);
+}
+
+function drawNavBar(ctx, tokens, chromeMode, x, y, w, h){
+  const isIOS = state.platform === 'ios';
+  const bg = chromeMode === 'dark' ? (isIOS ? '#101c26' : '#131c21') : (isIOS ? '#ffffff' : '#f0f2f5');
+  ctx.fillStyle = bg;
+  ctx.fillRect(x, y, w, h);
+
+  const indicatorColor = chromeMode === 'dark' ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.55)';
+
+  if (isIOS){
+    // iOS home indicator: wider bar, hugs the very bottom edge
+    const barW = w * 0.36, barH = 10;
+    roundRectPath(ctx, x + (w - barW) / 2, y + h - barH - 14, barW, barH, { tl: barH / 2, tr: barH / 2, br: barH / 2, bl: barH / 2 });
+    ctx.fillStyle = indicatorColor;
+    ctx.fill();
+  } else {
+    // Android gesture pill: narrower, vertically centered in the nav strip
+    const barW = w * 0.30, barH = 8;
+    roundRectPath(ctx, x + (w - barW) / 2, y + (h - barH) / 2, barW, barH, { tl: barH / 2, tr: barH / 2, br: barH / 2, bl: barH / 2 });
+    ctx.fillStyle = indicatorColor;
+    ctx.fill();
+  }
 }
 
 function drawTopChrome(ctx, typingIsContact){
