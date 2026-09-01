@@ -99,6 +99,9 @@
     font-weight:600;transition:top .15s ease;}
   .skip-link:focus{top:1rem;}
 
+  .doodle-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.18;color:var(--color-muted);}
+  .doodle-bg svg{display:block;width:100%;height:100%;}
+
   @layer components {
     .btn{
       display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
@@ -218,8 +221,38 @@
     <symbol id="i-film" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="4" x2="7" y2="20"/><line x1="17" y1="4" x2="17" y2="20"/><line x1="3" y1="9" x2="7" y2="9"/><line x1="3" y1="15" x2="7" y2="15"/><line x1="17" y1="9" x2="21" y2="9"/><line x1="17" y1="15" x2="21" y2="15"/></symbol>
     <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><line x1="8.2" y1="10.7" x2="15.8" y2="6.3"/><line x1="8.2" y1="13.3" x2="15.8" y2="17.7"/></symbol>
     <symbol id="i-presentation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 15l-2 5"/><path d="M15 15l2 5"/><path d="M10 8.5l2.5 2.5 3-3.5"/></symbol>
+    <symbol id="i-envelope" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 6.5l8 6 8-6"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-6.7-4.1-9-8C1 9 3 5.5 6.5 5.5c2 0 3.7 1.1 5.5 3.3 1.8-2.2 3.5-3.3 5.5-3.3C21 5.5 23 9 21 12.5c-2.3 3.9-9 8-9 8Z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 14.6 9 21.5 9.5 16 14 17.8 21 12 17.2 6.2 21 8 14 2.5 9.5 9.4 9Z"/></symbol>
+    <symbol id="i-paper-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7.5 3M21 3 13.5 21l-3-7.5M21 3l-10.5 10.5"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></symbol>
   </defs>
 </svg>
+
+<!-- decorative doodle texture: same icon language used across the page, very low opacity -->
+<div class="doodle-bg" aria-hidden="true">
+  <svg width="100%" height="100%">
+    <defs>
+      <pattern id="doodlePattern" width="640" height="640" patternUnits="userSpaceOnUse" patternTransform="rotate(-3)">
+        <use href="#i-message" width="24" height="24" transform="translate(52,58) rotate(-8) scale(1.3)"/>
+        <use href="#i-smartphone" width="24" height="24" transform="translate(252,32) rotate(6) scale(1.1)"/>
+        <use href="#i-video" width="24" height="24" transform="translate(452,82) rotate(-10) scale(1.2)"/>
+        <use href="#i-envelope" width="24" height="24" transform="translate(572,212) rotate(8) scale(1.15)"/>
+        <use href="#i-heart" width="24" height="24" transform="translate(52,252) rotate(-6) scale(1)"/>
+        <use href="#i-star" width="24" height="24" transform="translate(222,212) rotate(15) scale(0.9)"/>
+        <use href="#i-paper-plane" width="24" height="24" transform="translate(392,252) rotate(-18) scale(1.25)"/>
+        <use href="#i-dots" width="24" height="24" transform="translate(552,372) scale(1.4)"/>
+        <use href="#i-arrow-right" width="24" height="24" transform="translate(112,392) rotate(10) scale(1.1)"/>
+        <use href="#i-download" width="24" height="24" transform="translate(292,412) rotate(-8) scale(1)"/>
+        <use href="#i-film" width="24" height="24" transform="translate(32,532) rotate(5) scale(1.1)"/>
+        <use href="#i-cursor-click" width="24" height="24" transform="translate(212,552) rotate(-12) scale(1)"/>
+        <use href="#i-sliders" width="24" height="24" transform="translate(412,532) rotate(8) scale(1.15)"/>
+        <use href="#i-check" width="24" height="24" transform="translate(572,552) rotate(-6) scale(0.9)"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#doodlePattern)"/>
+  </svg>
+</div>
 
 <!-- ============================= NAV ============================= -->
 <header id="siteNav" class="sticky top-0 z-40 border-b border-transparent bg-base transition-colors duration-200">

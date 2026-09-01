@@ -621,36 +621,31 @@ function drawTicks(ctx, x, y, status, chromeMode){
 
 /* offscreen wallpaper doodle pattern, built once per (chromeMode) */
 const wallpaperPatternCache = {};
+const defaultWallpaperImg = new Image();
+defaultWallpaperImg.src = '../assets/wallpaper-doodle.png';
 function getDefaultWallpaperPattern(ctx, chromeMode){
   if (wallpaperPatternCache[chromeMode]) return wallpaperPatternCache[chromeMode];
+  const ready = defaultWallpaperImg.complete && defaultWallpaperImg.naturalWidth > 0;
+  const w = ready ? defaultWallpaperImg.naturalWidth : 220;
+  const h = ready ? defaultWallpaperImg.naturalHeight : 220;
   const tile = document.createElement('canvas');
-  tile.width = 220; tile.height = 220;
+  tile.width = w; tile.height = h;
   const tctx = tile.getContext('2d');
   const bg = chromeMode === 'dark' ? '#0b141a' : '#e5ddd5';
-  const doodle = chromeMode === 'dark' ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.045)';
   tctx.fillStyle = bg;
-  tctx.fillRect(0, 0, 220, 220);
-  tctx.strokeStyle = doodle;
-  tctx.fillStyle = doodle;
-  tctx.lineWidth = 3;
-  // a few stylized leaf/circle doodles, approximating the WhatsApp wallpaper motif
-  function leaf(cx, cy, s, rot){
+  tctx.fillRect(0, 0, w, h);
+  // hand-drawn doodle sticker sheet (whale, cat, house, mug, etc.), tiled at low
+  // opacity; inverted to light-on-dark for dark chrome since the source art is
+  // black line work on a white ground
+  if (ready){
     tctx.save();
-    tctx.translate(cx, cy);
-    tctx.rotate(rot);
-    tctx.beginPath();
-    tctx.ellipse(0, 0, s, s * 0.55, 0, 0, Math.PI * 2);
-    tctx.fill();
+    tctx.globalAlpha = chromeMode === 'dark' ? 0.11 : 0.075;
+    if (chromeMode === 'dark') tctx.filter = 'invert(1)';
+    tctx.drawImage(defaultWallpaperImg, 0, 0, w, h);
     tctx.restore();
   }
-  leaf(40, 40, 14, 0.4);
-  leaf(150, 70, 10, -0.6);
-  leaf(90, 150, 12, 1.1);
-  leaf(180, 190, 9, 0.2);
-  tctx.beginPath(); tctx.arc(30, 130, 6, 0, Math.PI * 2); tctx.fill();
-  tctx.beginPath(); tctx.arc(190, 30, 5, 0, Math.PI * 2); tctx.fill();
   const pattern = ctx.createPattern(tile, 'repeat');
-  wallpaperPatternCache[chromeMode] = pattern;
+  if (ready) wallpaperPatternCache[chromeMode] = pattern;
   return pattern;
 }
 
