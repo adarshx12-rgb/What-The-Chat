@@ -484,6 +484,7 @@ const BUBBLE_DEFAULTS = {
 };
 const QUOTE_PAD_X = 14, QUOTE_PAD_Y = 10, QUOTE_BAR_W = 4, QUOTE_GAP_BELOW = 10;
 const QUOTE_FONT_SIZE = 26, QUOTE_LINE_HEIGHT = 32, QUOTE_MAX_LINES = 2;
+const REPLY_CANDIDATE_LIMIT = 5;
 
 const PLATFORM = {
   android: {
@@ -2214,7 +2215,15 @@ function renderMessageList(){
 
     card.appendChild(composeRow);
 
-    const replyCandidates = state.messages.slice(0, idx).filter((cand) => cand.deleted || cand.text.trim());
+    const earlierCandidates = state.messages.slice(0, idx).filter((cand) => cand.deleted || cand.text.trim());
+    const replyCandidates = earlierCandidates.slice(-REPLY_CANDIDATE_LIMIT);
+    if (m.replyTo && !replyCandidates.some((cand) => cand.id === m.replyTo)){
+      // currently-selected target fell outside the last-5 window (more messages
+      // were added after it was picked) — keep it visible so the dropdown never
+      // silently shows "No reply" while a reply is actually still set.
+      const currentTarget = earlierCandidates.find((cand) => cand.id === m.replyTo);
+      if (currentTarget) replyCandidates.unshift(currentTarget);
+    }
     if (replyCandidates.length){
       const replyWrap = document.createElement('div');
       replyWrap.className = 'replyRow';
