@@ -148,9 +148,15 @@
   .avatarRow{display:flex;align-items:center;gap:var(--space-3);}
 
   #messageList{display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-3);}
-  .msgCard{background:var(--studio-surface-raised);border:1px solid var(--studio-border);
-    border-radius:var(--radius-md);padding:var(--space-3);transition:border-color .12s ease;}
+  .msgCard{background:var(--card-bg,var(--studio-surface-raised));border:1px solid var(--studio-border);
+    border-radius:var(--radius-lg);padding:var(--space-3);max-width:90%;
+    transition:border-color .12s ease,background .15s ease;}
   .msgCard:focus-within{border-color:var(--studio-border-strong);}
+  .msgCard--contact{margin-right:auto;border-top-left-radius:4px;}
+  .msgCard--me{--card-bg:color-mix(in srgb,var(--studio-accent) 14%,var(--studio-surface-raised));
+    margin-left:auto;border-top-right-radius:4px;
+    border-color:color-mix(in srgb,var(--studio-accent) 35%,var(--studio-border));}
+  .msgCard--me:focus-within{border-color:color-mix(in srgb,var(--studio-accent) 55%,var(--studio-border-strong));}
   .msgCardHead{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);}
   .msgCardHead .seg{flex:1;}
   .composeRow{display:flex;gap:var(--space-2);align-items:stretch;}
@@ -1994,7 +2000,7 @@ function renderMessageList(){
   container.innerHTML = '';
   state.messages.forEach((m, idx) => {
     const card = document.createElement('div');
-    card.className = 'msgCard';
+    card.className = 'msgCard ' + (m.sender === 'me' ? 'msgCard--me' : 'msgCard--contact');
     card.dataset.msgId = m.id;
 
     const head = document.createElement('div');
