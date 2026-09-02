@@ -259,11 +259,11 @@
     #phoneStage.docked{padding:0;min-height:0;}
     #phoneStage.docked .phone-frame{
       position:fixed;top:calc(52px + var(--touch-h) + var(--space-3));right:var(--space-3);
-      z-index:20;width:120px;padding:7px;border-radius:18px;
+      z-index:20;width:144px;padding:8px;border-radius:22px;
       cursor:grab;touch-action:none;
     }
     #phoneStage.docked .phone-frame.dragging{cursor:grabbing;box-shadow:var(--shadow-float),0 0 0 2px var(--studio-accent);}
-    #phoneStage.docked #previewCanvas{width:100%;border-radius:12px;}
+    #phoneStage.docked #previewCanvas{width:100%;border-radius:14px;}
     @media (prefers-reduced-motion:no-preference){
       #phoneStage.docked .phone-frame{animation:dockIn .2s ease-out;}
     }
