@@ -161,6 +161,8 @@
   .msgCardHead .seg{flex:1;}
   .composeRow{display:flex;gap:var(--space-2);align-items:stretch;}
   .composeRow textarea{flex:1;min-width:0;min-height:44px;}
+  .replyRow{margin-top:var(--space-2);}
+  .replyRow label{margin:0 0 3px;}
   .sendBtn{background:var(--studio-accent);color:var(--studio-accent-text);
     border-color:var(--studio-accent-hover);font-weight:600;white-space:nowrap;padding:0 var(--space-3);}
   .sendBtn:hover{background:var(--studio-accent-hover);}
@@ -480,6 +482,8 @@ const BUBBLE_DEFAULTS = {
   light: { me: '#d9fdd3', contact: '#ffffff' },
   dark:  { me: '#005c4b', contact: '#202c33' },
 };
+const QUOTE_PAD_X = 14, QUOTE_PAD_Y = 10, QUOTE_BAR_W = 4, QUOTE_GAP_BELOW = 10;
+const QUOTE_FONT_SIZE = 26, QUOTE_LINE_HEIGHT = 32, QUOTE_MAX_LINES = 2;
 
 const PLATFORM = {
   android: {
@@ -509,6 +513,8 @@ let uidCounter = 1;
 function uid(){ return 'm' + (uidCounter++); }
 function today(){ return new Date().toISOString().slice(0,10); }
 
+const seedId1 = uid(), seedId2 = uid(), seedId3 = uid(), seedId4 = uid();
+
 const state = {
   contact: { name: 'Alex', avatarImg: null, statusMode: 'online', lastSeenText: 'today at 11:47 PM' },
   platform: 'android',
@@ -525,10 +531,10 @@ const state = {
     bubbleContactCustomized: false,
   },
   messages: [
-    { id: uid(), sender: 'contact', text: 'hey are you still awake', date: today(), time: '23:47', status: 'read', deleted: false },
-    { id: uid(), sender: 'me', text: 'yeah whats up', date: today(), time: '23:48', status: 'read', deleted: false },
-    { id: uid(), sender: 'contact', text: 'i keep hearing something tapping on my window', date: today(), time: '23:49', status: 'read', deleted: false },
-    { id: uid(), sender: 'contact', text: 'its probably nothing', date: today(), time: '23:50', status: 'read', deleted: false },
+    { id: seedId1, sender: 'contact', text: 'hey are you still awake', date: today(), time: '23:47', status: 'read', deleted: false, replyTo: null },
+    { id: seedId2, sender: 'me', text: 'yeah whats up', date: today(), time: '23:48', status: 'read', deleted: false, replyTo: null },
+    { id: seedId3, sender: 'contact', text: 'i keep hearing something tapping on my window', date: today(), time: '23:49', status: 'read', deleted: false, replyTo: null },
+    { id: seedId4, sender: 'contact', text: 'its probably nothing', date: today(), time: '23:50', status: 'read', deleted: false, replyTo: seedId3 },
   ],
 };
 
@@ -631,11 +637,47 @@ function getWrappedLines(ctx, msg, font, maxWidth){
   return lines;
 }
 
+/* Word-wraps quoted-reply snippet text and clamps it to maxLines, ellipsizing
+ * the last line if there's more content than fits. Separate from
+ * getWrappedLines() above since quote previews collapse to a single
+ * paragraph and are always short-lived (not cached per message). */
+function wrapClampedLines(ctx, text, font, maxWidth, maxLines){
+  ctx.font = font;
+  const words = String(text || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  if (!words.length) return [''];
+  const allLines = [];
+  let cur = words[0];
+  for (let i = 1; i < words.length; i++){
+    const test = cur + ' ' + words[i];
+    if (ctx.measureText(test).width > maxWidth){
+      allLines.push(cur);
+      cur = words[i];
+    } else {
+      cur = test;
+    }
+  }
+  allLines.push(cur);
+  if (allLines.length <= maxLines) return allLines;
+
+  const clamped = allLines.slice(0, maxLines);
+  let last = clamped[maxLines - 1];
+  while (last.length > 1 && ctx.measureText(last + '…').width > maxWidth){
+    last = last.slice(0, -1);
+  }
+  clamped[maxLines - 1] = last.replace(/\s+$/, '') + '…';
+  return clamped;
+}
+
 function to12h(hhmm){
   const [h, m] = hhmm.split(':').map(Number);
   const period = h >= 12 ? 'PM' : 'AM';
   let h12 = h % 12; if (h12 === 0) h12 = 12;
   return h12 + ':' + String(m).padStart(2, '0') + ' ' + period;
+}
+
+function truncateLabel(text, maxChars){
+  const s = String(text || '').replace(/\s+/g, ' ').trim();
+  return s.length > maxChars ? s.slice(0, maxChars - 1).trimEnd() + '…' : s;
 }
 
 function formatDateDivider(dateStr){
@@ -894,6 +936,32 @@ function computeVisibleState(){
   return { visibleCount, typingActive, typingIsContact: typingActive };
 }
 
+/* Measures the quoted-reply preview (sender label + snippet) shown inside a
+ * bubble when a message has replyTo set. Returns null when there's nothing
+ * to quote (no replyTo, target removed, or this message itself is deleted —
+ * matching real WhatsApp, a deleted message's placeholder drops its quote). */
+function buildQuoteInfo(ctx, tokens, m){
+  if (m.deleted || !m.replyTo) return null;
+  const target = state.messages.find((x) => x.id === m.replyTo);
+  if (!target) return null;
+  const isMeSource = target.sender === 'me';
+  const senderLabel = isMeSource ? 'You' : (state.contact.name || 'Contact');
+  const snippetText = target.deleted
+    ? (target.sender === 'me' ? 'You deleted this message' : 'This message was deleted')
+    : (target.text || '');
+  const nameFont = '600 ' + QUOTE_FONT_SIZE + 'px ' + tokens.font;
+  const snippetFont = (target.deleted ? 'italic ' : '') + QUOTE_FONT_SIZE + 'px ' + tokens.font;
+  const innerMaxW = MAX_TEXT_W - QUOTE_BAR_W - QUOTE_PAD_X * 2;
+  const snippetLines = wrapClampedLines(ctx, snippetText, snippetFont, innerMaxW, QUOTE_MAX_LINES);
+  ctx.font = nameFont;
+  let maxLineW = ctx.measureText(senderLabel).width;
+  ctx.font = snippetFont;
+  for (const l of snippetLines) maxLineW = Math.max(maxLineW, ctx.measureText(l).width);
+  const w = QUOTE_BAR_W + QUOTE_PAD_X * 2 + maxLineW;
+  const h = QUOTE_PAD_Y * 2 + QUOTE_LINE_HEIGHT + snippetLines.length * QUOTE_LINE_HEIGHT;
+  return { senderLabel, lines: snippetLines, isMeSource, deletedTarget: !!target.deleted, w, h };
+}
+
 function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
   const blocks = [];
   let y = 20;
@@ -907,7 +975,7 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
       lastDate = m.date;
     }
     const font = MSG_FONT_SIZE + 'px ' + tokens.font;
-    let lines, h, w;
+    let lines, h, w, quote = null;
     if (m.deleted){
       const delText = m.sender === 'me' ? 'You deleted this message' : 'This message was deleted';
       lines = [delText];
@@ -920,10 +988,13 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
       ctx.font = font;
       let maxLineW = 0;
       for (const l of lines) maxLineW = Math.max(maxLineW, ctx.measureText(l).width);
-      w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, maxLineW + BUBBLE_PAD_X * 2));
+      quote = buildQuoteInfo(ctx, tokens, m);
+      const contentW = quote ? Math.max(maxLineW, quote.w) : maxLineW;
+      w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, contentW + BUBBLE_PAD_X * 2));
       h = BUBBLE_PAD_TOP + lines.length * LINE_HEIGHT + TS_ROW_H + BUBBLE_PAD_BOTTOM;
+      if (quote) h += quote.h + QUOTE_GAP_BELOW;
     }
-    blocks.push({ type: 'bubble', msg: m, y, h, w, lines });
+    blocks.push({ type: 'bubble', msg: m, y, h, w, lines, quote });
     const nextSameSender = state.messages[i + 1] && state.messages[i + 1].sender === m.sender && i + 1 < visibleCount;
     y += h + (nextSameSender ? BUBBLE_GAP : BUBBLE_GAP + GROUP_GAP_EXTRA);
   }
@@ -1002,15 +1073,21 @@ function drawChatArea(ctx, originY, height, now){
     roundRectPath(ctx, bx, y, bw, bh, radii);
     ctx.fill();
 
+    let textStartY = y + BUBBLE_PAD_TOP + 26;
+    if (b.quote){
+      drawQuoteBlock(ctx, tokens, chromeMode, bx + BUBBLE_PAD_X, y + BUBBLE_PAD_TOP, bw - BUBBLE_PAD_X * 2, b.quote);
+      textStartY += b.quote.h + QUOTE_GAP_BELOW;
+    }
+
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     if (m.deleted){
       ctx.font = 'italic ' + MSG_FONT_SIZE + 'px ' + tokens.font;
       ctx.fillStyle = chromeMode === 'dark' ? '#8696a0' : '#8a8a8a';
-      ctx.fillText(b.lines[0], bx + BUBBLE_PAD_X, y + BUBBLE_PAD_TOP + 26);
+      ctx.fillText(b.lines[0], bx + BUBBLE_PAD_X, textStartY);
     } else {
       ctx.font = MSG_FONT_SIZE + 'px ' + tokens.font;
       ctx.fillStyle = chromeMode === 'dark' ? '#e9edef' : '#111b21';
-      let ly = y + BUBBLE_PAD_TOP + 26;
+      let ly = textStartY;
       for (const line of b.lines){
         ctx.fillText(line, bx + BUBBLE_PAD_X, ly);
         ly += LINE_HEIGHT;
@@ -1036,6 +1113,41 @@ function drawChatArea(ctx, originY, height, now){
 
   drawFooterBar(ctx, tokens, chromeMode, 0, originY + messagesH, CANVAS_W, FOOTER_H, now);
   drawNavBar(ctx, tokens, chromeMode, 0, originY + messagesH + FOOTER_H, CANVAS_W, navH);
+}
+
+/* Draws the quoted-reply preview inside a bubble: a tinted rounded panel with
+ * a colored left bar (green if quoting your own earlier message, blue if
+ * quoting the contact's — same blue already used for read ticks), a bold
+ * sender line, and up to QUOTE_MAX_LINES of the original text. (x,y,w) is
+ * the panel's own box — the caller has already inset it from the bubble's
+ * own padding. */
+function drawQuoteBlock(ctx, tokens, chromeMode, x, y, w, quote){
+  const h = quote.h;
+  const overlay = chromeMode === 'dark' ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)';
+  roundRectPath(ctx, x, y, w, h, { tl: 6, tr: 6, br: 6, bl: 6 });
+  ctx.fillStyle = overlay;
+  ctx.fill();
+
+  const barColor = quote.isMeSource ? WHATSAPP_GREEN : '#53bdeb';
+  ctx.fillStyle = barColor;
+  roundRectPath(ctx, x, y, QUOTE_BAR_W, h, { tl: 6, tr: 0, br: 0, bl: 6 });
+  ctx.fill();
+
+  const textX = x + QUOTE_BAR_W + QUOTE_PAD_X;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+  ctx.font = '600 ' + QUOTE_FONT_SIZE + 'px ' + tokens.font;
+  ctx.fillStyle = barColor;
+  let ly = y + QUOTE_PAD_Y + QUOTE_LINE_HEIGHT - 8;
+  ctx.fillText(quote.senderLabel, textX, ly);
+  ly += QUOTE_LINE_HEIGHT;
+
+  ctx.font = (quote.deletedTarget ? 'italic ' : '') + QUOTE_FONT_SIZE + 'px ' + tokens.font;
+  ctx.fillStyle = chromeMode === 'dark' ? 'rgba(233,237,239,.65)' : 'rgba(17,27,33,.6)';
+  for (const line of quote.lines){
+    ctx.fillText(line, textX, ly);
+    ly += QUOTE_LINE_HEIGHT;
+  }
 }
 
 function drawSmileyIcon(ctx, cx, cy, r, color){
@@ -1942,6 +2054,7 @@ function addMessage(){
     time: last ? addTimeMinutes(last.time, 1) : '21:30',
     status: 'read',
     deleted: false,
+    replyTo: null,
   };
   state.messages.push(newMsg);
   renderMessageList();
@@ -1957,6 +2070,20 @@ function removeMessage(id){
   showToast('Message removed.', 'Undo', () => {
     state.messages.splice(idx, 0, removed);
     renderMessageList();
+  });
+}
+
+/* A reply is only ever valid pointing at a message that still exists and
+ * still sits earlier in the array — mirrors real WhatsApp (you can't quote
+ * something that hasn't been sent yet) and keeps the editor's "Reply to"
+ * dropdown in sync with what the canvas will actually render. Called at the
+ * top of renderMessageList() so it self-heals right after any add/remove/
+ * reorder, before the next animation frame paints the canvas. */
+function pruneInvalidReplies(){
+  state.messages.forEach((m, idx) => {
+    if (!m.replyTo) return;
+    const targetIdx = state.messages.findIndex((x) => x.id === m.replyTo);
+    if (targetIdx < 0 || targetIdx >= idx) m.replyTo = null;
   });
 }
 
@@ -1996,6 +2123,7 @@ function sendComposerMessage(){
     time: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
     status: 'sent',
     deleted: false,
+    replyTo: null,
   };
   state.messages.splice(insertIdx, 0, msg);
   previewState.revealedCount = insertIdx + 1;
@@ -2015,6 +2143,7 @@ function focusMessageTextarea(id){
 }
 
 function renderMessageList(){
+  pruneInvalidReplies();
   const container = $('messageList');
   container.innerHTML = '';
   state.messages.forEach((m, idx) => {
@@ -2084,6 +2213,30 @@ function renderMessageList(){
     composeRow.appendChild(sendBtn);
 
     card.appendChild(composeRow);
+
+    const replyCandidates = state.messages.slice(0, idx).filter((cand) => cand.deleted || cand.text.trim());
+    if (replyCandidates.length){
+      const replyWrap = document.createElement('div');
+      replyWrap.className = 'replyRow';
+      replyWrap.innerHTML = '<label>Reply to</label>';
+      const replySelect = document.createElement('select');
+      const noneOpt = document.createElement('option');
+      noneOpt.value = '';
+      noneOpt.textContent = 'No reply';
+      replySelect.appendChild(noneOpt);
+      replyCandidates.forEach((cand) => {
+        const opt = document.createElement('option');
+        opt.value = cand.id;
+        const who = cand.sender === 'me' ? 'You' : (state.contact.name || 'Contact');
+        const snippet = cand.deleted ? '(deleted message)' : truncateLabel(cand.text, 42);
+        opt.textContent = who + ': ' + snippet;
+        if (m.replyTo === cand.id) opt.selected = true;
+        replySelect.appendChild(opt);
+      });
+      replySelect.addEventListener('change', (e) => { m.replyTo = e.target.value || null; });
+      replyWrap.appendChild(replySelect);
+      card.appendChild(replyWrap);
+    }
 
     const fieldsRow = document.createElement('div');
     fieldsRow.className = 'fieldsRow';
