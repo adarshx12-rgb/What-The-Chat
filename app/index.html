@@ -476,6 +476,10 @@ const MAX_BUBBLE_W = Math.round(CANVAS_W * 0.72);
 const MAX_TEXT_W = MAX_BUBBLE_W - BUBBLE_PAD_X * 2;
 const FOOTER_H = 150;
 const WHATSAPP_GREEN = '#00a884';
+const BUBBLE_DEFAULTS = {
+  light: { me: '#d9fdd3', contact: '#ffffff' },
+  dark:  { me: '#005c4b', contact: '#202c33' },
+};
 
 const PLATFORM = {
   android: {
@@ -517,6 +521,8 @@ const state = {
     wallpaperGradTo: '#128c7e',
     bubbleColorMe: '#d9fdd3',
     bubbleColorContact: '#ffffff',
+    bubbleMeCustomized: false,
+    bubbleContactCustomized: false,
   },
   messages: [
     { id: uid(), sender: 'contact', text: 'hey are you still awake', date: today(), time: '23:47', status: 'read', deleted: false },
@@ -1859,8 +1865,15 @@ function wireGlobalControls(){
     $('chromeLightBtn').classList.toggle('active', state.theme.chromeMode === 'light');
     $('chromeDarkBtn').classList.toggle('active', state.theme.chromeMode === 'dark');
   }
-  $('chromeLightBtn').addEventListener('click', () => { state.theme.chromeMode = 'light'; setChromeButtons(); });
-  $('chromeDarkBtn').addEventListener('click', () => { state.theme.chromeMode = 'dark'; setChromeButtons(); });
+  function applyBubbleDefaultsForMode(){
+    const defaults = BUBBLE_DEFAULTS[state.theme.chromeMode];
+    if (!state.theme.bubbleMeCustomized) state.theme.bubbleColorMe = defaults.me;
+    if (!state.theme.bubbleContactCustomized) state.theme.bubbleColorContact = defaults.contact;
+    $('bubbleMeInput').value = state.theme.bubbleColorMe;
+    $('bubbleContactInput').value = state.theme.bubbleColorContact;
+  }
+  $('chromeLightBtn').addEventListener('click', () => { state.theme.chromeMode = 'light'; setChromeButtons(); applyBubbleDefaultsForMode(); });
+  $('chromeDarkBtn').addEventListener('click', () => { state.theme.chromeMode = 'dark'; setChromeButtons(); applyBubbleDefaultsForMode(); });
   setChromeButtons();
 
   function updateWallpaperFields(){
@@ -1896,9 +1909,15 @@ function wireGlobalControls(){
   $('wallpaperGradToInput').addEventListener('input', (e) => { state.theme.wallpaperGradTo = e.target.value; });
 
   $('bubbleMeInput').value = state.theme.bubbleColorMe;
-  $('bubbleMeInput').addEventListener('input', (e) => { state.theme.bubbleColorMe = e.target.value; });
+  $('bubbleMeInput').addEventListener('input', (e) => {
+    state.theme.bubbleColorMe = e.target.value;
+    state.theme.bubbleMeCustomized = true;
+  });
   $('bubbleContactInput').value = state.theme.bubbleColorContact;
-  $('bubbleContactInput').addEventListener('input', (e) => { state.theme.bubbleColorContact = e.target.value; });
+  $('bubbleContactInput').addEventListener('input', (e) => {
+    state.theme.bubbleColorContact = e.target.value;
+    state.theme.bubbleContactCustomized = true;
+  });
 }
 
 /* ---------------------------------------------------------------------
