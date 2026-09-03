@@ -485,6 +485,7 @@ const BUBBLE_DEFAULTS = {
 const QUOTE_PAD_X = 14, QUOTE_PAD_Y = 10, QUOTE_BAR_W = 4, QUOTE_GAP_BELOW = 10;
 const QUOTE_FONT_SIZE = 26, QUOTE_LINE_HEIGHT = 32, QUOTE_MAX_LINES = 2;
 const REPLY_CANDIDATE_LIMIT = 5;
+const DEL_ICON_R = 13, DEL_ICON_GAP = 10;
 
 const PLATFORM = {
   android: {
@@ -982,7 +983,8 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
       lines = [delText];
       ctx.font = 'italic ' + font;
       const tw = ctx.measureText(delText).width;
-      w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, tw + BUBBLE_PAD_X * 2));
+      const contentW = DEL_ICON_R * 2 + DEL_ICON_GAP + tw;
+      w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, contentW + BUBBLE_PAD_X * 2));
       h = BUBBLE_PAD_TOP + LINE_HEIGHT + TS_ROW_H + BUBBLE_PAD_BOTTOM;
     } else {
       lines = getWrappedLines(ctx, m, font, MAX_TEXT_W);
@@ -1083,8 +1085,12 @@ function drawChatArea(ctx, originY, height, now){
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     if (m.deleted){
       ctx.font = 'italic ' + MSG_FONT_SIZE + 'px ' + tokens.font;
-      ctx.fillStyle = chromeMode === 'dark' ? '#8696a0' : '#8a8a8a';
-      ctx.fillText(b.lines[0], bx + BUBBLE_PAD_X, textStartY);
+      const delColor = chromeMode === 'dark' ? '#8696a0' : '#8a8a8a';
+      ctx.fillStyle = delColor;
+      const iconCx = bx + BUBBLE_PAD_X + DEL_ICON_R;
+      const iconCy = textStartY - MSG_FONT_SIZE * 0.35;
+      drawNoEntryIcon(ctx, iconCx, iconCy, DEL_ICON_R, delColor);
+      ctx.fillText(b.lines[0], bx + BUBBLE_PAD_X + DEL_ICON_R * 2 + DEL_ICON_GAP, textStartY);
     } else {
       ctx.font = MSG_FONT_SIZE + 'px ' + tokens.font;
       ctx.fillStyle = chromeMode === 'dark' ? '#e9edef' : '#111b21';
@@ -1149,6 +1155,22 @@ function drawQuoteBlock(ctx, tokens, chromeMode, x, y, w, quote){
     ctx.fillText(line, textX, ly);
     ly += QUOTE_LINE_HEIGHT;
   }
+}
+
+/* "No entry" / prohibition-circle icon shown before deleted-message text,
+ * matching WhatsApp's own deleted-message indicator. */
+function drawNoEntryIcon(ctx, cx, cy, r, color){
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1.6, r * 0.18);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  const d = r * Math.SQRT1_2 * 0.86;
+  ctx.beginPath();
+  ctx.moveTo(cx + d, cy - d);
+  ctx.lineTo(cx - d, cy + d);
+  ctx.stroke();
 }
 
 function drawSmileyIcon(ctx, cx, cy, r, color){
@@ -2047,12 +2069,16 @@ function addTimeMinutes(hhmm, mins){
 
 function addMessage(){
   const last = state.messages[state.messages.length - 1];
+  // Time bumps by 1 minute only every 3rd message, so messages cluster in
+  // groups of 3 sharing a timestamp before the clock advances.
+  const newIndex = state.messages.length;
+  const time = !last ? '21:30' : (newIndex % 3 === 0 ? addTimeMinutes(last.time, 1) : last.time);
   const newMsg = {
     id: uid(),
     sender: last ? (last.sender === 'me' ? 'contact' : 'me') : 'contact',
     text: '',
     date: last ? last.date : today(),
-    time: last ? addTimeMinutes(last.time, 1) : '21:30',
+    time,
     status: 'read',
     deleted: false,
     replyTo: null,
@@ -2122,7 +2148,7 @@ function sendComposerMessage(){
     text,
     date: today(),
     time: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
-    status: 'sent',
+    status: 'delivered',
     deleted: false,
     replyTo: null,
   };
