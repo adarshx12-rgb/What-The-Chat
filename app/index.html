@@ -218,7 +218,9 @@
     margin-top:auto;padding-top:var(--space-3);border-top:1px solid var(--studio-border);}
 
   /* ---- toasts ---- */
-  #toastRegion{position:fixed;bottom:var(--space-5);left:50%;transform:translateX(-50%);
+  /* Anchored bottom-left (over the editor sidebar's column, not viewport-
+     centered) so it never sits on top of the phone preview / chat interface. */
+  #toastRegion{position:fixed;bottom:var(--space-5);left:var(--space-5);
     display:flex;flex-direction:column;gap:var(--space-2);z-index:1000;}
   .toast{background:var(--studio-surface-raised);border:1px solid var(--studio-border-strong);
     color:var(--studio-text);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);
@@ -709,6 +711,7 @@ function truncateLabel(text, maxChars){
 
 function formatDateDivider(dateStr){
   if (!dateStr) return '';
+  if (dateStr === today()) return 'TODAY';
   const d = new Date(dateStr + 'T00:00:00');
   if (isNaN(d.getTime())) return dateStr;
   const days = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
