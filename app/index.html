@@ -69,7 +69,7 @@
   #resizeHandle:hover::after,#resizeHandle.dragging::after{background:var(--studio-accent);}
 
   #phoneStage{flex:1;display:flex;align-items:flex-start;justify-content:center;
-    padding:var(--space-6);overflow-y:auto;background:#0b0b0d;min-width:0;}
+    padding:var(--space-6);overflow-y:auto;background:#0b0b0d;min-width:0;position:relative;}
 
   #exportPanel{width:var(--export-w);flex-shrink:0;background:var(--studio-surface);
     border-left:1px solid var(--studio-border);overflow-y:auto;padding:var(--space-5);
@@ -218,10 +218,21 @@
     margin-top:auto;padding-top:var(--space-3);border-top:1px solid var(--studio-border);}
 
   /* ---- toasts ---- */
-  /* Anchored bottom-left (over the editor sidebar's column, not viewport-
-     centered) so it never sits on top of the phone preview / chat interface. */
+  /* Lives inside #phoneStage (a child, not the phone-frame itself), which is
+     the flexible gutter between the editor sidebar and the export panel — the
+     phone mockup is centered within it, so phoneStage's own left edge is
+     exactly the empty space between the message editor and the chat
+     interface. Anchoring the toast there (rather than centering it, or fixing
+     it to the viewport) means it never sits on top of the phone preview, and
+     it tracks the resizable editor panel automatically since it's ordinary
+     flex layout — no JS repositioning needed. Below 1200px the three columns
+     stack instead (see the tablet/mobile media query below), so there's no
+     side gap to sit in there — it falls back to viewport-fixed bottom-left. */
   #toastRegion{position:fixed;bottom:var(--space-5);left:var(--space-5);
     display:flex;flex-direction:column;gap:var(--space-2);z-index:1000;}
+  @media (min-width:1200px){
+    #toastRegion{position:absolute;}
+  }
   .toast{background:var(--studio-surface-raised);border:1px solid var(--studio-border-strong);
     color:var(--studio-text);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);
     display:flex;align-items:center;gap:var(--space-3);box-shadow:var(--shadow-float);
@@ -399,6 +410,7 @@
           autocapitalize="sentences" spellcheck="true" maxlength="500"
           aria-label="Type a live message to send as yourself">
       </div>
+      <div id="toastRegion" aria-live="polite"></div>
     </main>
 
     <aside id="exportPanel">
@@ -461,8 +473,6 @@
   </div>
 
 </div>
-
-<div id="toastRegion" aria-live="polite"></div>
 
 <script>
 'use strict';
