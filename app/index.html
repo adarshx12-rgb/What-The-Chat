@@ -486,6 +486,7 @@ const QUOTE_PAD_X = 14, QUOTE_PAD_Y = 10, QUOTE_BAR_W = 4, QUOTE_GAP_BELOW = 10;
 const QUOTE_FONT_SIZE = 26, QUOTE_LINE_HEIGHT = 32, QUOTE_MAX_LINES = 2;
 const REPLY_CANDIDATE_LIMIT = 5;
 const DEL_ICON_R = 13, DEL_ICON_GAP = 10;
+const REPLY_BANNER_H = 104, REPLY_BANNER_PAD_X = 24, REPLY_BANNER_PAD_Y = 14, REPLY_BANNER_BAR_W = 4;
 
 const PLATFORM = {
   android: {
@@ -565,6 +566,27 @@ function revealUpTo(msgId){
   previewState.revealedCount = Math.max(previewState.revealedCount, idx + 1);
 }
 
+/* The scripted "me" message that's next in line to be revealed, if any. When
+ * it exists, the phone's composer mirrors this message's text/reply-target
+ * live instead of acting as a free-typing field — so choosing a reply target
+ * for it in the sidebar and typing its text there shows up in the phone UI
+ * exactly like a real in-progress reply, and Send from either side commits
+ * the same message (see syncComposerMirrorMode / handleComposerSendAction). */
+function getPendingComposerMessage(){
+  const m = state.messages[previewState.revealedCount];
+  return (m && m.sender === 'me' && !m.deleted) ? m : null;
+}
+
+/* Extra footer height needed for the pre-send reply banner (see
+ * drawComposerReplyBanner) above the composer, when the pending message has
+ * a reply target — 0 otherwise. Shared by drawChatArea's layout math and
+ * layoutComposerInput so the drawn footer and the real overlaid <input>
+ * never drift apart. */
+function getComposerFooterExtraH(){
+  const pendingMsg = getPendingComposerMessage();
+  return (pendingMsg && resolveReplyTarget(pendingMsg)) ? REPLY_BANNER_H : 0;
+}
+
 function anyRecorderActive(){
   const s = fullRecorder.state;
   return s === 'recording' || s === 'paused' || s === 'processing';
@@ -585,6 +607,9 @@ window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',
 });
 let composerHadText = false;
 let composerSendHit = null; // {cx,cy,r} in canvas coords while the send icon is tappable, else null
+let replyBannerCancelHit = null; // {x,y,w,h} in canvas coords while the reply-banner cancel (X) is tappable, else null
+let liveMirrorSourceId = null; // id of the sidebar "me" message textarea currently focused, for the mirrored caret
+let composerMirroring = false; // whether the phone composer is currently mirroring a sidebar message (see syncComposerMirrorMode)
 
 function triggerSendPop(){ composerAnim.popStart = performance.now(); }
 
@@ -938,12 +963,12 @@ function computeVisibleState(){
   return { visibleCount, typingActive, typingIsContact: typingActive };
 }
 
-/* Measures the quoted-reply preview (sender label + snippet) shown inside a
- * bubble when a message has replyTo set. Returns null when there's nothing
- * to quote (no replyTo, target removed, or this message itself is deleted —
- * matching real WhatsApp, a deleted message's placeholder drops its quote). */
-function buildQuoteInfo(ctx, tokens, m){
-  if (m.deleted || !m.replyTo) return null;
+/* Resolves a message's replyTo into the target message plus everything the
+ * canvas needs to render a quote of it — shared by the in-bubble quote block
+ * (buildQuoteInfo) and the pre-send reply banner above the phone's composer
+ * (drawComposerReplyBanner), so the two never disagree. */
+function resolveReplyTarget(m){
+  if (!m.replyTo) return null;
   const target = state.messages.find((x) => x.id === m.replyTo);
   if (!target) return null;
   const isMeSource = target.sender === 'me';
@@ -951,8 +976,20 @@ function buildQuoteInfo(ctx, tokens, m){
   const snippetText = target.deleted
     ? (target.sender === 'me' ? 'You deleted this message' : 'This message was deleted')
     : (target.text || '');
+  return { target, senderLabel, snippetText, isMeSource, deletedTarget: !!target.deleted };
+}
+
+/* Measures the quoted-reply preview (sender label + snippet) shown inside a
+ * bubble when a message has replyTo set. Returns null when there's nothing
+ * to quote (no replyTo, target removed, or this message itself is deleted —
+ * matching real WhatsApp, a deleted message's placeholder drops its quote). */
+function buildQuoteInfo(ctx, tokens, m){
+  if (m.deleted) return null;
+  const resolved = resolveReplyTarget(m);
+  if (!resolved) return null;
+  const { senderLabel, snippetText, isMeSource, deletedTarget } = resolved;
   const nameFont = '600 ' + QUOTE_FONT_SIZE + 'px ' + tokens.font;
-  const snippetFont = (target.deleted ? 'italic ' : '') + QUOTE_FONT_SIZE + 'px ' + tokens.font;
+  const snippetFont = (deletedTarget ? 'italic ' : '') + QUOTE_FONT_SIZE + 'px ' + tokens.font;
   const innerMaxW = MAX_TEXT_W - QUOTE_BAR_W - QUOTE_PAD_X * 2;
   const snippetLines = wrapClampedLines(ctx, snippetText, snippetFont, innerMaxW, QUOTE_MAX_LINES);
   ctx.font = nameFont;
@@ -961,7 +998,7 @@ function buildQuoteInfo(ctx, tokens, m){
   for (const l of snippetLines) maxLineW = Math.max(maxLineW, ctx.measureText(l).width);
   const w = QUOTE_BAR_W + QUOTE_PAD_X * 2 + maxLineW;
   const h = QUOTE_PAD_Y * 2 + QUOTE_LINE_HEIGHT + snippetLines.length * QUOTE_LINE_HEIGHT;
-  return { senderLabel, lines: snippetLines, isMeSource, deletedTarget: !!target.deleted, w, h };
+  return { senderLabel, lines: snippetLines, isMeSource, deletedTarget, w, h };
 }
 
 function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
@@ -1014,7 +1051,8 @@ function drawChatArea(ctx, originY, height, now){
   drawWallpaper(ctx, 0, originY, CANVAS_W, height);
 
   const navH = tokens.navBarH;
-  const messagesH = height - FOOTER_H - navH;
+  const footerH = FOOTER_H + getComposerFooterExtraH();
+  const messagesH = height - footerH - navH;
   const { visibleCount, typingActive } = computeVisibleState();
   const { blocks, totalHeight } = buildBlocks(ctx, tokens, visibleCount, typingActive, MAX_TEXT_W);
 
@@ -1118,8 +1156,8 @@ function drawChatArea(ctx, originY, height, now){
 
   ctx.restore();
 
-  drawFooterBar(ctx, tokens, chromeMode, 0, originY + messagesH, CANVAS_W, FOOTER_H, now);
-  drawNavBar(ctx, tokens, chromeMode, 0, originY + messagesH + FOOTER_H, CANVAS_W, navH);
+  drawFooterBar(ctx, tokens, chromeMode, 0, originY + messagesH, CANVAS_W, footerH, now);
+  drawNavBar(ctx, tokens, chromeMode, 0, originY + messagesH + footerH, CANVAS_W, navH);
 }
 
 /* Draws the quoted-reply preview inside a bubble: a tinted rounded panel with
@@ -1197,6 +1235,14 @@ function drawMicIconSmall(ctx, cx, cy, r, color){
   ctx.beginPath(); ctx.moveTo(cx - r * 0.3, cy + r * 0.85); ctx.lineTo(cx + r * 0.3, cy + r * 0.85); ctx.stroke();
 }
 
+function drawCloseIconSmall(ctx, cx, cy, r, color){
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r);
+  ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r);
+  ctx.stroke();
+}
+
 function drawSendIconSmall(ctx, cx, cy, r, color){
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -1235,12 +1281,22 @@ function getComposerLayout(footerX, footerY, footerW, footerH){
   };
 }
 
+/* Text currently shown in the phone's composer field: the pending scripted
+ * "me" message's own text while one exists (mirrored live from its sidebar
+ * textarea — see getPendingComposerMessage), otherwise whatever's been typed
+ * directly into the real (invisible) composer <input>. */
+function getComposerDisplayText(){
+  const pendingMsg = getPendingComposerMessage();
+  return pendingMsg ? pendingMsg.text : composerInputEl.value;
+}
+
 /* Draws the composer's live text/placeholder/caret. Only a blinking caret
  * (focused + empty) is drawn — no mid-text caret tracking, since that's the
  * only caret behavior actually needed here. */
 function drawComposerTextField(ctx, tokens, fieldX, fieldCy, maxTextW, textX, textColor, placeholderColor, now){
-  const val = composerInputEl.value;
-  const focused = document.activeElement === composerInputEl;
+  const pendingMsg = getPendingComposerMessage();
+  const val = getComposerDisplayText();
+  const focused = pendingMsg ? (liveMirrorSourceId === pendingMsg.id) : (document.activeElement === composerInputEl);
   ctx.save();
   ctx.beginPath();
   ctx.rect(fieldX, fieldCy - 40, maxTextW + (textX - fieldX) + 8, 80);
@@ -1274,7 +1330,7 @@ function drawComposerTextField(ctx, tokens, fieldX, fieldCy, maxTextW, textX, te
  * the send icon via drawActive(scale, alpha), and records the tappable
  * region in composerSendHit for the canvas pointerdown handler. */
 function drawComposerAction(cx, cy, r, now, drawIdle, drawActive){
-  const hasText = !!composerInputEl.value.trim();
+  const hasText = !!getComposerDisplayText().trim();
   const elapsed = now - composerAnim.popStart;
   const popActive = elapsed >= 0 && elapsed < SEND_POP_MS;
   const showSend = hasText || popActive;
@@ -1315,8 +1371,61 @@ function drawFooterBar(ctx, tokens, chromeMode, x, y, w, h, now){
   ctx.fillStyle = bg;
   ctx.fillRect(x, y, w, h);
 
-  if (state.platform === 'ios') drawFooterBarIOS(ctx, tokens, chromeMode, x, y, w, h, now);
-  else drawFooterBarAndroid(ctx, tokens, chromeMode, x, y, w, h, now);
+  const pendingMsg = getPendingComposerMessage();
+  const replyInfo = pendingMsg ? resolveReplyTarget(pendingMsg) : null;
+  let composerY = y, composerH = h;
+  if (replyInfo){
+    drawComposerReplyBanner(ctx, tokens, chromeMode, x, y, w, REPLY_BANNER_H, replyInfo);
+    composerY += REPLY_BANNER_H;
+    composerH -= REPLY_BANNER_H;
+  } else {
+    replyBannerCancelHit = null;
+  }
+
+  if (state.platform === 'ios') drawFooterBarIOS(ctx, tokens, chromeMode, x, composerY, w, composerH, now);
+  else drawFooterBarAndroid(ctx, tokens, chromeMode, x, composerY, w, composerH, now);
+}
+
+/* Pre-send "replying to" preview docked above the composer pill/field, shown
+ * only while the pending scripted "me" message (see getPendingComposerMessage)
+ * has a reply target — matches real WhatsApp's banner that appears the moment
+ * you pick a message to reply to, before you've typed or sent anything. Tap
+ * target for the cancel (X) is recorded in replyBannerCancelHit for the
+ * canvas pointerdown handler; clearing it sets the message's replyTo back to
+ * null (mirrors the sidebar "Reply to" select back to "No reply"). */
+function drawComposerReplyBanner(ctx, tokens, chromeMode, x, y, w, h, info){
+  const bg = chromeMode === 'dark' ? '#1f2c34' : '#ffffff';
+  ctx.fillStyle = bg;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = chromeMode === 'dark' ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x, y + h - 0.5); ctx.lineTo(x + w, y + h - 0.5); ctx.stroke();
+
+  const barColor = info.isMeSource ? WHATSAPP_GREEN : '#53bdeb';
+  const barX = x + REPLY_BANNER_PAD_X;
+  ctx.fillStyle = barColor;
+  ctx.fillRect(barX, y + REPLY_BANNER_PAD_Y, REPLY_BANNER_BAR_W, h - REPLY_BANNER_PAD_Y * 2);
+
+  const cancelR = 16;
+  const cancelCx = x + w - REPLY_BANNER_PAD_X - cancelR;
+  const cancelCy = y + h / 2;
+  const textX = barX + REPLY_BANNER_BAR_W + 14;
+  const maxTextW = cancelCx - cancelR - 14 - textX;
+
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = '600 ' + QUOTE_FONT_SIZE + 'px ' + tokens.font;
+  ctx.fillStyle = barColor;
+  const nameY = y + REPLY_BANNER_PAD_Y + QUOTE_LINE_HEIGHT - 8;
+  ctx.fillText(info.senderLabel, textX, nameY);
+
+  ctx.font = (info.deletedTarget ? 'italic ' : '') + QUOTE_FONT_SIZE + 'px ' + tokens.font;
+  ctx.fillStyle = chromeMode === 'dark' ? 'rgba(233,237,239,.65)' : 'rgba(17,27,33,.6)';
+  const [snippetLine] = wrapClampedLines(ctx, info.snippetText, ctx.font, maxTextW, 1);
+  ctx.fillText(snippetLine, textX, nameY + QUOTE_LINE_HEIGHT);
+
+  const iconColor = chromeMode === 'dark' ? 'rgba(233,237,239,.55)' : 'rgba(0,0,0,.42)';
+  drawCloseIconSmall(ctx, cancelCx, cancelCy, 11, iconColor);
+  replyBannerCancelHit = { x: cancelCx - 24, y: cancelCy - 24, w: 48, h: 48 };
 }
 
 function drawFooterBarAndroid(ctx, tokens, chromeMode, x, y, w, h, now){
@@ -1491,11 +1600,26 @@ function draw(ctx, now){
  * Animation loop
  * ------------------------------------------------------------------- */
 function loop(now){
+  syncComposerMirrorMode();
   draw(previewCtx, now);
   layoutComposerInput();
   updateRecTimers(now);
   updateResetButtonState();
   requestAnimationFrame(loop);
+}
+
+/* Keeps the real (invisible) composer <input>'s enabled state in sync with
+ * whether the phone composer is currently mirroring a pending scripted "me"
+ * message (see getPendingComposerMessage). Disabled while mirroring, so it
+ * can't be typed into directly — text only flows one way, from the sidebar
+ * textarea into the phone preview (per the one-way mirror design) — and its
+ * stale value is cleared right as mirroring begins, so leftover live-composer
+ * text doesn't reappear once mirroring ends. */
+function syncComposerMirrorMode(){
+  const mirroring = !!getPendingComposerMessage();
+  if (mirroring && !composerMirroring) composerInputEl.value = '';
+  composerInputEl.disabled = mirroring;
+  composerMirroring = mirroring;
 }
 
 /* Keeps the real (invisible) composer <input> positioned exactly over the
@@ -1504,8 +1628,10 @@ function loop(now){
  * needing a dedicated resize listener for each of those. */
 function layoutComposerInput(){
   const tokens = PLATFORM[state.platform];
-  const footerY = CANVAS_H - FOOTER_H - tokens.navBarH;
-  const { field } = getComposerLayout(0, footerY, CANVAS_W, FOOTER_H);
+  const footerH = FOOTER_H + getComposerFooterExtraH();
+  const footerY = CANVAS_H - footerH - tokens.navBarH;
+  const composerY = footerY + (footerH - FOOTER_H);
+  const { field } = getComposerLayout(0, composerY, CANVAS_W, FOOTER_H);
   const canvasRect = previewCanvas.getBoundingClientRect();
   const frameRect = previewCanvas.parentElement.getBoundingClientRect();
   const scaleX = canvasRect.width / CANVAS_W;
@@ -2160,6 +2286,18 @@ function sendComposerMessage(){
   triggerSendPop();
 }
 
+/* The phone composer's Send action (tapping its send icon, or Enter while
+ * directly focused) has two meanings depending on mode: while mirroring a
+ * pending scripted "me" message (see getPendingComposerMessage), it commits
+ * that same message — the same thing the sidebar's own Send button does for
+ * it — so either side can finish sending it. Otherwise it's the plain live
+ * composer, creating a brand-new message as before. */
+function handleComposerSendAction(){
+  const pendingMsg = getPendingComposerMessage();
+  if (pendingMsg) sendMessage(pendingMsg);
+  else sendComposerMessage();
+}
+
 function focusMessageTextarea(id){
   const card = document.querySelector('.msgCard[data-msg-id="' + id + '"]');
   if (!card) return;
@@ -2221,6 +2359,13 @@ function renderMessageList(){
     textarea.addEventListener('input', (e) => {
       m.text = e.target.value;
       sendBtn.disabled = !e.target.value.trim();
+      // Mirrors the mic<->send pop animation for the phone's composer action
+      // button when this row is the one being live-mirrored into it.
+      if (getPendingComposerMessage() === m){
+        const hasText = !!e.target.value.trim();
+        if (hasText && !composerHadText) triggerSendPop();
+        composerHadText = hasText;
+      }
     });
     textarea.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey){
@@ -2228,6 +2373,10 @@ function renderMessageList(){
         if (!sendBtn.disabled) sendMessage(m);
       }
     });
+    // Drives the mirrored composer's blinking caret (see drawComposerTextField)
+    // while this row is the one being live-mirrored into the phone preview.
+    textarea.addEventListener('focus', () => { liveMirrorSourceId = m.id; });
+    textarea.addEventListener('blur', () => { if (liveMirrorSourceId === m.id) liveMirrorSourceId = null; });
     composeRow.appendChild(textarea);
 
     const sendBtn = document.createElement('button');
@@ -2350,7 +2499,7 @@ function init(){
   composerInputEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter'){
       e.preventDefault();
-      sendComposerMessage();
+      handleComposerSendAction();
     }
   });
   composerInputEl.addEventListener('input', () => {
@@ -2359,15 +2508,25 @@ function init(){
     composerHadText = hasText;
   });
   previewCanvas.addEventListener('pointerdown', (e) => {
-    if (!composerSendHit) return;
+    if (!composerSendHit && !replyBannerCancelHit) return;
     e.preventDefault(); // keep composer focus — canvas has no tabindex, so a
                          // default mousedown here would otherwise blur it
     const rect = previewCanvas.getBoundingClientRect();
     const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
     const cx = (e.clientX - rect.left) * scaleX;
     const cy = (e.clientY - rect.top) * scaleY;
+
+    if (replyBannerCancelHit){
+      const hit = replyBannerCancelHit;
+      if (cx >= hit.x && cx <= hit.x + hit.w && cy >= hit.y && cy <= hit.y + hit.h){
+        const pendingMsg = getPendingComposerMessage();
+        if (pendingMsg){ pendingMsg.replyTo = null; renderMessageList(); }
+        return;
+      }
+    }
+    if (!composerSendHit) return;
     const dx = cx - composerSendHit.cx, dy = cy - composerSendHit.cy;
-    if (dx * dx + dy * dy <= composerSendHit.r * composerSendHit.r) sendComposerMessage();
+    if (dx * dx + dy * dy <= composerSendHit.r * composerSendHit.r) handleComposerSendAction();
   });
 
   requestAnimationFrame(loop);
