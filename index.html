@@ -186,6 +186,17 @@
 
     .compare-x{color:var(--color-danger);}
     .compare-check{color:var(--color-accent);}
+
+    /* -------- projects drawer (project open/create/delete lives here on
+       the homepage, not the working app page — see the script below) -------- */
+    .projects-backdrop{position:fixed;inset:0;z-index:40;background:rgb(0 0 0 / 60%);
+      opacity:0;pointer-events:none;transition:opacity .2s ease;}
+    .projects-backdrop.open{opacity:1;pointer-events:auto;}
+    .projects-drawer{position:fixed;top:0;bottom:0;left:0;z-index:50;
+      width:min(380px,90vw);display:flex;flex-direction:column;
+      background:var(--color-surface);border-right:1px solid var(--color-border);
+      transform:translateX(-100%);transition:transform .28s ease;box-shadow:var(--shadow-soft);}
+    .projects-drawer.open{transform:translateX(0);}
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -226,6 +237,11 @@
     <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 14.6 9 21.5 9.5 16 14 17.8 21 12 17.2 6.2 21 8 14 2.5 9.5 9.4 9Z"/></symbol>
     <symbol id="i-paper-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l7.5 3M21 3 13.5 21l-3-7.5M21 3l-10.5 10.5"/></symbol>
     <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
   </defs>
 </svg>
 
@@ -269,6 +285,11 @@
     </div>
 
     <div class="flex items-center gap-2">
+      <button id="openProjectsBtn" type="button" class="btn btn-secondary hidden md:inline-flex"
+        aria-haspopup="true" aria-controls="projectsDrawer" aria-expanded="false">
+        <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-folder"/></svg>
+        Projects
+      </button>
       <a href="app/index.html" class="btn btn-primary hidden md:inline-flex">
         Launch App
         <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-arrow-right"/></svg>
@@ -286,6 +307,11 @@
       <a class="nav-link rounded-md px-2 py-3" href="#features">Features</a>
       <a class="nav-link rounded-md px-2 py-3" href="#how-it-works">How It Works</a>
       <a class="nav-link rounded-md px-2 py-3" href="#faq">FAQ</a>
+      <button id="openProjectsBtnMobile" type="button" class="btn btn-secondary mt-2 w-full"
+        aria-haspopup="true" aria-controls="projectsDrawer" aria-expanded="false">
+        <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-folder"/></svg>
+        Projects
+      </button>
       <a href="app/index.html" class="btn btn-primary mt-2 w-full">
         Launch App
         <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-arrow-right"/></svg>
@@ -293,6 +319,32 @@
     </div>
   </div>
 </header>
+
+<div id="projectsBackdrop" class="projects-backdrop" aria-hidden="true"></div>
+
+<aside id="projectsDrawer" class="projects-drawer" aria-label="Projects" aria-hidden="true">
+  <div class="flex items-center justify-between border-b border-border px-5 py-4">
+    <h2 class="font-display text-base font-semibold text-ink">Projects</h2>
+    <button id="closeProjectsDrawerBtn" type="button" class="btn btn-ghost h-9 w-9 px-0" aria-label="Close projects panel">
+      <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-close"/></svg>
+    </button>
+  </div>
+
+  <div class="flex flex-col gap-2 border-b border-border px-5 py-4">
+    <button id="newProjectBtn" type="button" class="btn btn-primary w-full">
+      <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-plus"/></svg>
+      New project
+    </button>
+    <button id="importProjectBtn" type="button" class="btn btn-secondary w-full">
+      <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-upload"/></svg>
+      Import backup…
+    </button>
+    <input type="file" id="importProjectInput" accept="application/json,.json" class="hidden">
+    <p class="text-xs leading-relaxed text-subtle">Backups are self-contained JSON files, including any photos you've added — safe to move to another computer.</p>
+  </div>
+
+  <div id="projectsList" class="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4"></div>
+</aside>
 
 <main id="main">
 
@@ -752,6 +804,290 @@
       });
     }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
     targets.forEach(function(el){ io.observe(el); });
+  }
+})();
+</script>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------------------------------------------------------------
+   * Project management (New / Open / Rename / Duplicate / Delete / Import)
+   * lives here on the homepage now, in a left-sliding Projects drawer —
+   * not on the working page (app/index.html), which now only shows the
+   * current project's name (rename-in-place) and an Export-backup button.
+   *
+   * This shares the SAME IndexedDB database as app/index.html even though
+   * they're two separate single-file HTML documents opened directly as
+   * plain files: Chromium gives every file:// page the identical origin
+   * ("file://", no host or path in it), confirmed by testing — a value
+   * written from one page is immediately readable from the other, no
+   * server required. So "New"/"Open"/"Import" here just navigate into
+   * app/index.html?project=<id>; Rename/Duplicate/Delete operate on the
+   * database directly and re-render this list without leaving the page.
+   * ------------------------------------------------------------------- */
+  const DB_NAME = 'wa-chat-recorder';
+  const DB_VERSION = 1;
+  let dbPromise = null;
+  function dbOpen(){
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+  function dbPut(storeName, value){
+    return dbOpen().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).put(value);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+  function dbGet(storeName, key){
+    return dbOpen().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+  function dbGetAll(storeName){
+    return dbOpen().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+  function dbDelete(storeName, key){
+    return dbOpen().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  function uidProject(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  // Same shape app/index.html's own blankProjectData() builds — kept as a
+  // separate copy here for the same "two single-file pages, no shared
+  // module" reason as the DB helpers above.
+  function blankProjectData(){
+    return {
+      contact: { name: 'Alex', avatarImg: null, statusMode: 'online', lastSeenText: 'today at 11:47 PM' },
+      platform: 'android',
+      generation: 'current',
+      theme: {
+        chromeMode: 'light', wallpaperType: 'default', wallpaperImg: null,
+        wallpaperSolid: '#e5ddd5', wallpaperGradFrom: '#075e54', wallpaperGradTo: '#128c7e',
+        bubbleColorMe: '#d9fdd3', bubbleColorContact: '#ffffff',
+        bubbleMeCustomized: false, bubbleContactCustomized: false,
+      },
+      messages: [],
+      timeline: {},
+    };
+  }
+
+  function makeProjectRecord(name, dataOverride){
+    const now = Date.now();
+    return {
+      id: uidProject(),
+      name: name || 'Untitled story',
+      schemaVersion: 1,
+      createdAt: now,
+      updatedAt: now,
+      data: dataOverride || blankProjectData(),
+    };
+  }
+
+  function formatRelativeTime(ms){
+    const diff = Date.now() - ms;
+    const mins = Math.round(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    return Math.round(hrs / 24) + 'd ago';
+  }
+
+  function goToProject(id){
+    location.href = 'app/index.html?project=' + encodeURIComponent(id);
+  }
+
+  function newProject(){
+    const record = makeProjectRecord('Untitled story');
+    dbPut('projects', record).then(() => goToProject(record.id));
+  }
+
+  function renameProjectRow(id, name){
+    return dbGet('projects', id).then((record) => {
+      if (!record) return;
+      record.name = name.trim() || record.name;
+      record.updatedAt = Date.now();
+      return dbPut('projects', record);
+    }).then(renderProjectsList);
+  }
+
+  function duplicateProjectRow(id){
+    return dbGet('projects', id).then((record) => {
+      if (!record) return;
+      return dbPut('projects', makeProjectRecord(record.name + ' copy', record.data));
+    }).then(renderProjectsList);
+  }
+
+  function deleteProjectRow(id){
+    return dbDelete('projects', id).then(renderProjectsList);
+  }
+
+  function importBackupFile(file){
+    return file.text().then((text) => {
+      let parsed;
+      try { parsed = JSON.parse(text); } catch (err){ alert("That file isn't a valid project backup."); return null; }
+      if (!parsed || !parsed.data || !Array.isArray(parsed.data.messages)){
+        alert("That file isn't a valid project backup.");
+        return null;
+      }
+      return makeProjectRecord((parsed.name || 'Imported project') + ' (imported)', parsed.data);
+    }).catch(() => { alert("Couldn't read that file."); return null; })
+      .then((record) => {
+        if (!record) return;
+        return dbPut('projects', record).then(() => goToProject(record.id));
+      });
+  }
+
+  function renderProjectsList(){
+    const list = document.getElementById('projectsList');
+    return Promise.all([
+      dbGet('meta', 'lastOpenedProjectId').catch(() => null),
+      dbGetAll('projects').catch(() => []),
+    ]).then(function(results){
+      const lastOpenedRow = results[0];
+      const all = results[1];
+      const lastOpenedId = lastOpenedRow ? lastOpenedRow.value : null;
+      all.sort((a, b) => b.updatedAt - a.updatedAt);
+      list.innerHTML = '';
+      if (!all.length){
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-subtle';
+        empty.textContent = 'No saved projects yet — create one to get started.';
+        list.appendChild(empty);
+        return;
+      }
+      all.forEach((record) => {
+        const isLast = record.id === lastOpenedId;
+        const row = document.createElement('div');
+        row.className = 'card p-3' + (isLast ? ' border-accent-hover' : '');
+
+        const top = document.createElement('div');
+        top.className = 'flex items-center justify-between gap-2';
+        const nameEl = document.createElement('span');
+        nameEl.className = 'truncate text-sm font-semibold text-ink';
+        nameEl.textContent = record.name;
+        const metaEl = document.createElement('span');
+        metaEl.className = 'shrink-0 text-xs text-subtle';
+        metaEl.textContent = (isLast ? 'Last opened · ' : '') + formatRelativeTime(record.updatedAt);
+        top.appendChild(nameEl);
+        top.appendChild(metaEl);
+        row.appendChild(top);
+
+        const actions = document.createElement('div');
+        actions.className = 'mt-2.5 flex flex-wrap gap-2';
+
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'btn btn-secondary h-8 px-3 text-xs';
+        openBtn.textContent = 'Open';
+        openBtn.addEventListener('click', () => goToProject(record.id));
+        actions.appendChild(openBtn);
+
+        const renameBtn = document.createElement('button');
+        renameBtn.type = 'button';
+        renameBtn.className = 'btn btn-ghost h-8 px-3 text-xs';
+        renameBtn.textContent = 'Rename';
+        renameBtn.addEventListener('click', () => {
+          const next = prompt('Rename project', record.name);
+          if (next != null && next.trim()) renameProjectRow(record.id, next.trim());
+        });
+        actions.appendChild(renameBtn);
+
+        const dupBtn = document.createElement('button');
+        dupBtn.type = 'button';
+        dupBtn.className = 'btn btn-ghost h-8 px-3 text-xs';
+        dupBtn.textContent = 'Duplicate';
+        dupBtn.addEventListener('click', () => duplicateProjectRow(record.id));
+        actions.appendChild(dupBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-ghost h-8 px-3 text-xs text-danger';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', () => {
+          if (confirm('Delete "' + record.name + '"? This can\'t be undone.')) deleteProjectRow(record.id);
+        });
+        actions.appendChild(delBtn);
+
+        row.appendChild(actions);
+        list.appendChild(row);
+      });
+    });
+  }
+
+  const drawer = document.getElementById('projectsDrawer');
+  const backdrop = document.getElementById('projectsBackdrop');
+  const openBtns = [document.getElementById('openProjectsBtn'), document.getElementById('openProjectsBtnMobile')].filter(Boolean);
+  let lastFocused = null;
+
+  function openDrawer(){
+    lastFocused = document.activeElement;
+    renderProjectsList();
+    drawer.classList.add('open');
+    backdrop.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    backdrop.removeAttribute('aria-hidden');
+    openBtns.forEach((b) => b.setAttribute('aria-expanded', 'true'));
+    document.getElementById('closeProjectsDrawerBtn').focus();
+    document.body.style.overflow = 'hidden';
+  }
+  function closeDrawer(){
+    drawer.classList.remove('open');
+    backdrop.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    backdrop.setAttribute('aria-hidden', 'true');
+    openBtns.forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    document.body.style.overflow = '';
+    if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
+  }
+
+  openBtns.forEach((b) => b.addEventListener('click', openDrawer));
+  document.getElementById('closeProjectsDrawerBtn').addEventListener('click', closeDrawer);
+  backdrop.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+  });
+
+  document.getElementById('newProjectBtn').addEventListener('click', newProject);
+  document.getElementById('importProjectBtn').addEventListener('click', () => document.getElementById('importProjectInput').click());
+  document.getElementById('importProjectInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    importBackupFile(file).then(() => { e.target.value = ''; });
+  });
+
+  // Arriving from the working page's own "Projects" button (?projects=open)
+  // auto-opens the drawer, then cleans the URL.
+  if (new URLSearchParams(location.search).get('projects') === 'open'){
+    openDrawer();
+    history.replaceState(null, '', location.pathname);
   }
 })();
 </script>

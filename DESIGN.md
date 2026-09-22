@@ -282,3 +282,16 @@ When a request is ambiguous, prioritize in this order:
 5. Visual polish
 
 Before introducing a new pattern, reuse an existing token or component. If a proposed change conflicts with this document, explain the tradeoff before implementing it.
+
+
+## Chat generations: reference fidelity
+
+Generation selection belongs in the Editor as a native dropdown under Phone platform; do not add a separate tab or gallery. Generations are project presets, not official WhatsApp generation numbers. Label the newest preset as a 2026 rollout, since availability differs by installation.
+
+Android references:
+- [May 2024 release imagery](https://wabetainfo.com/whatsapp-announced-new-design-updates-for-ios-and-android/) and [Meta design announcement](https://www.meta.com/design-at-meta/blog/whatsapp-user-interface-update/): neutral header, compact bubbles, top-corner tails, outlined composer controls.
+- [Android 2.26.10.2 screenshot](https://wabetainfo.com/whatsapp-beta-for-android-2-26-10-2-whats-new/): rounded text/media bubbles, borderless media, upright clip, camera housing, sticker-face button and microphone. The reference depicts a staged rollout, not a universal stable release.
+- [WhatsApp default doodle asset](https://static.whatsapp.net/rsrc.php/v3/yl/r/gi_DckOUM5a.png): embedded for offline/canvas safety, tinted for light/dark mode. Do not replace with unrelated generated doodles.
+- Roboto variable font from [Google Fonts](https://github.com/google/fonts/tree/main/ofl/roboto), SIL Open Font License 1.1. Embedded so Android does not silently use Arial on Windows or depend on a font CDN during recording.
+
+Composer measurements are scaled from the screenshot: ~124 canvas-pixel input height, 132-pixel mic-button diameter, 56-pixel icon viewboxes, and 132-pixel spacing between the attachment and camera centers at a 1080-pixel canvas width. Use one normalized coordinate system for glyphs. Android send points right; iOS retains its separate renderer.

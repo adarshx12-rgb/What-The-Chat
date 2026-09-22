@@ -7,3 +7,6 @@ growing-giant/
 # Claude Code tooling cache for this directory (auto-managed, not project source)
 .agents/
 skills-lock.json
+
+# Local browser verification scripts, screenshots, and downloaded design references
+/output/
