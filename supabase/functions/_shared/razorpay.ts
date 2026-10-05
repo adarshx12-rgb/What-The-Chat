@@ -38,3 +38,10 @@ export function profileUpdateForEvent(event: any, nowMs: number): { userId: stri
 export function planIdFor(currency: string, env: { usd: string; inr: string }): string {
   return currency === 'INR' ? env.inr : env.usd;
 }
+
+// A subscription the user opened but never paid ('created') on the same plan
+// can be handed to Checkout again instead of creating another one.
+// deno-lint-ignore no-explicit-any
+export function reusableSubscriptionId(sub: any, planId: string): string | null {
+  return sub && sub.status === 'created' && sub.plan_id === planId && typeof sub.id === 'string' ? sub.id : null;
+}

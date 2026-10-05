@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
-import { planIdFor } from '../_shared/razorpay.ts';
+import { planIdFor, reusableSubscriptionId } from '../_shared/razorpay.ts';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -41,6 +41,12 @@ Deno.serve(async (req) => {
     const planId = planIdFor(body.currency, {
       usd: Deno.env.get('RAZORPAY_PLAN_USD')!, inr: Deno.env.get('RAZORPAY_PLAN_INR')!,
     });
+    const existing = profile?.razorpay_subscription_id;
+    if (existing) {
+      const prev = await fetch(`https://api.razorpay.com/v1/subscriptions/${existing}`, { headers: { authorization: razorpayAuth() } });
+      const reuse = reusableSubscriptionId(prev.ok ? await prev.json() : null, planId);
+      if (reuse) return json({ subscription_id: reuse, key_id: Deno.env.get('RAZORPAY_KEY_ID') });
+    }
     const res = await fetch('https://api.razorpay.com/v1/subscriptions', {
       method: 'POST',
       headers: { authorization: razorpayAuth(), 'content-type': 'application/json' },

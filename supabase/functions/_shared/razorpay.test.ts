@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1';
-import { planIdFor, profileUpdateForEvent, verifySignature } from './razorpay.ts';
+import { planIdFor, profileUpdateForEvent, reusableSubscriptionId, verifySignature } from './razorpay.ts';
 
 const BODY = '{"event":"subscription.activated"}';
 // node -e "require('crypto').createHmac('sha256','whsec_test').update(BODY).digest('hex')"
@@ -52,4 +52,14 @@ Deno.test('planIdFor picks by currency', () => {
   assertEquals(planIdFor('USD', env), 'plan_usd');
   assertEquals(planIdFor('INR', env), 'plan_inr');
   assertEquals(planIdFor('EUR', env), 'plan_usd');
+});
+
+Deno.test('an unpaid subscription on the same plan is reused; anything else is not', () => {
+  assertEquals(reusableSubscriptionId({ id: 'sub_1', status: 'created', plan_id: 'plan_usd' }, 'plan_usd'), 'sub_1');
+  assertEquals(reusableSubscriptionId({ id: 'sub_1', status: 'created', plan_id: 'plan_inr' }, 'plan_usd'), null);
+  for (const status of ['active', 'authenticated', 'cancelled', 'completed', 'expired', 'halted', 'pending']) {
+    assertEquals(reusableSubscriptionId({ id: 'sub_1', status, plan_id: 'plan_usd' }, 'plan_usd'), null, status);
+  }
+  assertEquals(reusableSubscriptionId(null, 'plan_usd'), null);
+  assertEquals(reusableSubscriptionId({ error: { code: 'BAD_REQUEST_ERROR' } }, 'plan_usd'), null);
 });
