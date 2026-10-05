@@ -7,6 +7,7 @@
   const cfg = window.WTC_CONFIG || {};
   const OFFLINE = Object.freeze({ credits: 0, pro: false, admin: false, proUntil: null, isAnonymous: true, email: null, offline: true });
   const LINK_FLAG = 'wtc-google-link';
+  const PENDING_VIDEO = 'wtc-pending-video-ms'; // charges that failed to reach the server
   const listeners = new Set();
   let sb = null;
   let entitlement = null;
@@ -90,11 +91,23 @@
           setTimeout(() => { syncGrants().catch(() => {}); }, 0);
         }
       });
-      return await syncGrants();
+      const ent = await syncGrants();
+      await settlePendingCharge();
+      return entitlement || ent;
     } catch (e) {
       console.warn('[credits] offline mode:', e && e.message);
       return setEntitlement(OFFLINE);
     }
+  }
+
+  async function settlePendingCharge(){
+    let ms = 0;
+    try { ms = +localStorage.getItem(PENDING_VIDEO) || 0; } catch (e) { return; }
+    if (!ms) return;
+    try {
+      await spend('video', core.recordingSeconds(ms));
+      localStorage.removeItem(PENDING_VIDEO);
+    } catch (e) { /* still offline; try again next visit */ }
   }
 
   function ready(){ return readyPromise || (readyPromise = boot()); }
@@ -102,7 +115,9 @@
   async function refresh(){
     await ready();
     if (!sb || entitlement.offline) return entitlement;
-    try { return await syncGrants(); } catch (e) { return entitlement; }
+    // Fail closed: if the balance can't be confirmed now, treat it as 0 so a
+    // recording started with the network cut is watermarked.
+    try { return await syncGrants(); } catch (e) { return setEntitlement(OFFLINE); }
   }
 
   async function spend(kind, amount){
@@ -126,7 +141,11 @@
   async function chargeVideo(ms){
     await ready();
     if (!sb || entitlement.offline) return entitlement;
-    try { await spend('video', core.recordingSeconds(ms)); } catch (e) { console.warn('[credits] charge failed:', e && e.message); }
+    try { await spend('video', core.recordingSeconds(ms)); }
+    catch (e) {
+      console.warn('[credits] charge failed, will retry:', e && e.message);
+      try { localStorage.setItem(PENDING_VIDEO, String((+localStorage.getItem(PENDING_VIDEO) || 0) + ms)); } catch (err) {}
+    }
     return entitlement;
   }
 

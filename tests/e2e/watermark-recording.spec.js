@@ -59,3 +59,27 @@ test('zero credits watermarks from the first frame', async ({ page }) => {
   expect(await watermarkNow(page)).toBe(true);
   await stopAndDownload(page);
 });
+
+test('if the balance check fails at Start, the recording is watermarked from the first frame', async ({ page }) => {
+  await openStudio(page);
+  await page.route('**/rest/v1/rpc/ensure_grants', (r) => r.abort());
+  await page.click('#fullStartBtn');
+  await expect(page.locator('#fullRecState')).toHaveText('Recording');
+  expect(await watermarkNow(page)).toBe(true);
+  await stopAndDownload(page);
+});
+
+test('a charge that fails at Stop is retried on the next visit', async ({ page }) => {
+  await openStudio(page);
+  await page.click('#fullStartBtn');
+  await expect(page.locator('#fullRecState')).toHaveText('Recording');
+  await page.waitForTimeout(4000);
+  await page.route('**/rest/v1/rpc/spend_credits', (r) => r.abort());
+  await stopAndDownload(page);
+  await page.waitForTimeout(1000);
+  expect((await getProfile(page)).credits).toBe(20);
+  await page.unroute('**/rest/v1/rpc/spend_credits');
+  await page.reload();
+  await page.evaluate(() => WTCCredits.ready());
+  await expect.poll(async () => (await getProfile(page)).credits).toBe(18);
+});
