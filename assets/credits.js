@@ -180,12 +180,65 @@
     catch (e) { return setEntitlement(OFFLINE); }
   }
 
+  let checkoutScript = null;
+  function loadCheckout(){
+    if (window.Razorpay) return Promise.resolve();
+    return checkoutScript || (checkoutScript = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      s.onload = resolve;
+      s.onerror = () => { checkoutScript = null; reject(new Error('Could not load Razorpay. Check your connection.')); };
+      document.head.appendChild(s);
+    }));
+  }
+
+  async function waitForPro(){
+    for (let i = 0; i < 20; i++){
+      const ent = await refresh();
+      if (ent.pro) return ent;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return entitlement;
+  }
+
+  async function startCheckout(currency){
+    await ready();
+    if (!sb) throw new Error('Payments need an internet connection.');
+    const { data, error } = await sb.functions.invoke('billing', { body: { action: 'create', currency } });
+    if (error){
+      let code = '';
+      try { code = (await error.context.json()).error; } catch (e) {}
+      throw new Error(code === 'already_pro' ? 'You already have Pro.' : 'Could not start checkout. Try again.');
+    }
+    await loadCheckout();
+    return new Promise((resolve) => {
+      const rzp = new window.Razorpay({
+        key: data.key_id,
+        subscription_id: data.subscription_id,
+        name: 'What The Chat',
+        description: 'Pro, monthly',
+        prefill: { email: (entitlement && entitlement.email) || '' },
+        theme: { color: '#20BC59' },
+        handler: async () => { await waitForPro(); resolve('paid'); },
+        modal: { ondismiss: () => resolve('dismissed') },
+      });
+      rzp.open();
+    });
+  }
+
+  async function cancelPlan(){
+    await ready();
+    const { error } = await sb.functions.invoke('billing', { body: { action: 'cancel' } });
+    if (error) throw new Error('Could not cancel. Try again or contact us.');
+  }
+
   function onChange(fn){ listeners.add(fn); return () => listeners.delete(fn); }
 
   window.WTCCredits = {
     ready, refresh, get: () => entitlement, onChange,
     spendScreenshot, chargeVideo,
     canSignIn, userId, signInWithGoogle, sendMagicLink, signOut,
+    startCheckout, cancelPlan,
     client: () => sb,
   };
 })();

@@ -813,6 +813,10 @@
   #magicLinkForm input{min-height:var(--touch-h);padding:0 10px;background:var(--studio-input);color:var(--studio-text);
     border:1px solid var(--studio-border-strong);}
   .accountEmail{margin:0;font-weight:600;overflow-wrap:anywhere;}
+  .planCard{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--studio-border-strong);background:var(--studio-surface-raised);}
+  .planCard h3{margin:0;font-size:14px;}
+  .planPrice{margin:0;font:600 18px/1.2 var(--studio-mono);}
+  .planPrice small{font-size:12px;font-weight:400;color:var(--studio-text-secondary);}
   /* Phones: the logo mark alone links home, freeing room for the credits chip. */
   @media (max-width:479.98px){ .brandName{display:none;} .creditsChip{padding:0 8px;} }
 </style>
@@ -870,7 +874,23 @@
 
     <section id="accountSection" class="accountBlock" hidden>
       <p class="accountEmail" id="accountEmail"></p>
-      <div id="planSlot"></div>
+      <div id="planSlot">
+        <div class="planCard" id="planCard">
+          <h3>Pro</h3>
+          <p class="helperText">Unlimited videos and screenshots. No watermark.</p>
+          <div class="seg" role="group" aria-label="Currency" id="currencyToggle">
+            <button type="button" class="segbtn" data-currency="INR">₹ INR</button>
+            <button type="button" class="segbtn" data-currency="USD">$ USD</button>
+          </div>
+          <p class="planPrice" id="planPrice"></p>
+          <button type="button" class="btnPrimary btnBlock" id="upgradeBtn">Upgrade to Pro</button>
+        </div>
+        <div id="proSection" hidden>
+          <p id="proUntilText"></p>
+          <button type="button" class="btnBlock" id="cancelPlanBtn">Cancel plan</button>
+        </div>
+        <p class="helperText" id="billingStatus" aria-live="polite"></p>
+      </div>
       <button type="button" class="btnBlock" id="signOutBtn">Sign out</button>
     </section>
   </dialog>
@@ -4259,9 +4279,32 @@ function openAccountDialog(){
   if (document.body.classList.contains('exportSheetOpen')) closeExportSheet();
 }
 
+function defaultCurrency(){
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  return (tz === 'Asia/Kolkata' || tz === 'Asia/Calcutta') ? 'INR' : 'USD';
+}
+let billingCurrency = defaultCurrency();
+
+function renderPlan(ent){
+  const prices = (window.WTC_CONFIG && window.WTC_CONFIG.prices) || { INR: '₹499', USD: '$8' };
+  const signedIn = !!ent && !ent.offline && !ent.isAnonymous;
+  $('planCard').hidden = !signedIn || ent.pro;
+  $('proSection').hidden = !signedIn || !ent.pro || ent.admin;
+  $('currencyToggle').querySelectorAll('.segbtn').forEach((b) => {
+    const on = b.dataset.currency === billingCurrency;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  $('planPrice').innerHTML = prices[billingCurrency] + ' <small>/ month</small>';
+  if (ent && ent.pro) $('proUntilText').textContent = ent.proUntil
+    ? 'Pro is active until ' + new Date(ent.proUntil).toLocaleDateString() + '.'
+    : 'Pro is active.';
+}
+
 function renderAccount(ent){
   $('creditsChipText').textContent = WTCCreditsCore.chipLabel(ent);
   $('creditsChip').dataset.empty = String(!!ent && !ent.pro && ent.credits === 0);
+  renderPlan(ent);
   if (!ent) return;
   $('accountBalance').textContent = ent.admin
     ? 'Admin. Unlimited exports, no payment.'
@@ -4306,6 +4349,48 @@ function wireAccountUI(){
   $('signOutBtn').addEventListener('click', async () => {
     await WTCCredits.signOut();
     showToast('Signed out');
+  });
+
+  $('currencyToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-currency]');
+    if (!btn) return;
+    billingCurrency = btn.dataset.currency;
+    renderPlan(WTCCredits.get());
+  });
+
+  $('upgradeBtn').addEventListener('click', async () => {
+    const btn = $('upgradeBtn');
+    btn.disabled = true;
+    $('billingStatus').textContent = 'Opening checkout…';
+    try {
+      const result = await WTCCredits.startCheckout(billingCurrency);
+      $('billingStatus').textContent = result === 'paid'
+        ? (WTCCredits.get().pro ? 'Welcome to Pro.' : 'Payment received. Pro turns on within a minute.')
+        : '';
+    } catch (err) {
+      $('billingStatus').textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  let cancelArmed = false;
+  $('cancelPlanBtn').addEventListener('click', async () => {
+    const btn = $('cancelPlanBtn');
+    if (!cancelArmed){ cancelArmed = true; btn.textContent = 'Confirm cancel'; return; }
+    btn.disabled = true;
+    try {
+      await WTCCredits.cancelPlan();
+      const ent = WTCCredits.get();
+      $('billingStatus').textContent = 'Cancelled. Pro stays active until '
+        + (ent.proUntil ? new Date(ent.proUntil).toLocaleDateString() : 'the end of this billing period') + '.';
+    } catch (err) {
+      $('billingStatus').textContent = err.message;
+    } finally {
+      cancelArmed = false;
+      btn.textContent = 'Cancel plan';
+      btn.disabled = false;
+    }
   });
 
   WTCCredits.onChange(renderAccount);
