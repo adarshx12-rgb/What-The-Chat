@@ -477,9 +477,6 @@
     }
     #phoneStage.docked .phone-frame.dragging{cursor:grabbing;box-shadow:var(--shadow-float),0 0 0 2px var(--studio-accent);}
     #phoneStage.docked #previewCanvas{width:100%;border-radius:14px;}
-    @media (prefers-reduced-motion:no-preference){
-      #phoneStage.docked .phone-frame{animation:dockIn .2s ease-out;}
-    }
     @keyframes dockIn{from{opacity:.4;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
   }
 
@@ -706,8 +703,8 @@
      blobs (masked dot field) like the homepage */
   #phoneStage{background-color:var(--studio-page);
     background-image:radial-gradient(circle, rgb(9 23 46 / 7%) 0 .8px, transparent 1.2px);
-    background-size:6px 6px;isolation:isolate;}
-  #phoneStage::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background-size:6px 6px;}
+  #phoneStage::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
     background-image:radial-gradient(circle, var(--halftone-ink, #09172e) 0 1.2px, transparent 1.8px);
     background-size:7px 7px;
     -webkit-mask-image:radial-gradient(circle at 12% 24%, #000 0, #000 3rem, rgb(0 0 0 / 45%) 7rem, transparent 11rem),
@@ -727,6 +724,48 @@
     .tabsBar .tabBtn:hover,.tabsBar .tabBtn.active{color:var(--studio-page-ink);}
     #phoneStage{background-color:var(--studio-page);}
     #phoneStage.docked::before{display:none;}
+  }
+
+  /* ---- tablet/mobile helpers: floating Export badge that opens the export
+     panel as a bottom sheet, and a resizable docked preview. The stage must
+     NOT be a stacking context (no isolation/z-index on #phoneStage), or the
+     fixed docked preview gets trapped under the editor. ---- */
+  .phone-frame{z-index:1;}
+  .sheetHead,#exportFab,#exportSheetBackdrop,.dockResize{display:none;}
+  @media (max-width:1199.98px){
+    button#exportFab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:40;
+      display:inline-flex;height:44px;padding:0 16px;gap:8px;font-weight:600;font-size:13.5px;border-radius:3px;
+      background:var(--studio-accent);color:var(--studio-accent-text);border:1.5px solid #09172e;
+      box-shadow:3px 3px 0 #09172e;opacity:0;transform:translateY(14px);pointer-events:none;
+      transition:opacity .26s ease,transform .32s cubic-bezier(.2,.8,.2,1);}
+    button#exportFab:hover{background:var(--studio-accent-hover);}
+    button#exportFab.show{opacity:1;transform:none;pointer-events:auto;}
+    #exportFab .rec-dot{display:none;}
+    #exportFab.rec .rec-dot{display:inline-block;width:9px;height:9px;background:#c4170c;box-shadow:0 0 0 1.5px #09172e;animation:blink 1s infinite;}
+    body.exportSheetOpen #exportSheetBackdrop{display:block;position:fixed;inset:0;z-index:55;background:rgb(9 23 46 / 50%);}
+    body.exportSheetOpen #exportPanel{position:fixed;left:0;right:0;bottom:0;z-index:60;max-height:min(82vh,680px);
+      overflow-y:auto;border-top:1.5px solid var(--studio-page-ink);box-shadow:0 -6px 0 rgb(9 23 46 / 22%);
+      padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom,0px));
+      animation:sheetUp .26s cubic-bezier(.2,.8,.2,1);}
+    body.exportSheetOpen #exportSheetBackdrop{animation:fadeIn .25s ease-out;}
+    body.exportSheetOpen .sheetHead{display:flex;align-items:center;justify-content:space-between;
+      margin:calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) var(--space-4);padding:8px 8px 8px var(--space-5);
+      background:var(--studio-heading);color:#09172e;border-bottom:1.5px solid #09172e;}
+    .sheetHead h2{margin:0;font-family:var(--studio-mono);font-size:11.5px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;}
+    .sheetHead button{width:var(--touch-h);height:var(--touch-h);padding:0;background:transparent;border-color:transparent;color:#09172e;}
+    .sheetHead button:hover{background:rgb(9 23 46 / 8%);border-color:transparent;}
+    .sheetHead button:focus-visible{outline-color:#09172e;}
+    @keyframes sheetUp{from{transform:translateY(100%);}to{transform:none;}}
+    @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+    /* resize grip on the docked preview's free corner (bottom-left) */
+    #phoneStage.docked .dockResize{display:block;position:absolute;left:-8px;bottom:-8px;width:24px;height:24px;z-index:2;
+      background:var(--studio-accent);border:1.5px solid #09172e;cursor:nesw-resize;touch-action:none;
+      background-image:linear-gradient(45deg,transparent 40%,#09172e 40% 48%,transparent 48% 58%,#09172e 58% 66%,transparent 66%);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    button#exportFab{transition:none;}
+    body.exportSheetOpen #exportPanel,body.exportSheetOpen #exportSheetBackdrop{animation:none;}
+    #exportFab.rec .rec-dot{animation:none;}
   }
 </style>
 </head>
@@ -934,6 +973,7 @@
     <main id="phoneStage">
       <div class="phone-frame">
         <canvas id="previewCanvas" width="1080" height="1920"></canvas>
+        <span class="dockResize" aria-hidden="true" title="Drag to resize"></span>
         <input type="text" id="composerInput" class="composerInput" autocomplete="off"
           autocapitalize="sentences" spellcheck="true" maxlength="500"
           aria-label="Type a live message to send as yourself">
@@ -944,6 +984,10 @@
     </main>
 
     <aside id="exportPanel">
+      <div class="sheetHead"><h2 id="exportSheetTitle">Export</h2>
+        <button type="button" id="exportSheetClose" aria-label="Close export panel">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+        </button></div>
       <h2 class="panelTitle">Project backup</h2>
       <button type="button" id="exportProjectBtn" class="btnBlock">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1035,6 +1079,13 @@
     </aside>
 
   </div>
+
+  <button type="button" id="exportFab" aria-label="Open export and recording">
+    <span class="rec-dot" aria-hidden="true"></span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export
+  </button>
+  <div id="exportSheetBackdrop" aria-hidden="true"></div>
 
 </div>
 
@@ -2795,29 +2846,31 @@ function addEasedFade(grad, h, y0, y1, from, rgb){
   }
 }
 
+const GLASS_SCALE = 4; // blur at 1/4 resolution: ~1/16 the work, looks the same once blurred
 function drawTopGlassEdge(ctx, totalTopH, mode, statusBarH){
   // Fade ends ~40px below the header, still above the first chat item (44px).
   const h = Math.round(totalTopH + 40), pad = 48;
+  const S = GLASS_SCALE, w = CANVAS_W / S, hs = Math.ceil(h / S), ps = pad / S;
   for (const c of [glassEdgeSrc, glassEdgeBlur]){
-    if (c.width !== CANVAS_W || c.height !== h){ c.width = CANVAS_W; c.height = h; }
+    if (c.width !== w || c.height !== hs){ c.width = w; c.height = hs; }
   }
   const sctx = glassEdgeSrc.getContext('2d');
-  sctx.clearRect(0, 0, CANVAS_W, h);
-  sctx.drawImage(ctx.canvas, 0, 0, CANVAS_W, h, 0, 0, CANVAS_W, h);
+  sctx.clearRect(0, 0, w, hs);
+  sctx.drawImage(ctx.canvas, 0, 0, CANVAS_W, hs * S, 0, 0, w, hs);
 
   const bctx = glassEdgeBlur.getContext('2d');
-  bctx.clearRect(0, 0, CANVAS_W, h);
-  bctx.filter = 'blur(22px)';
+  bctx.clearRect(0, 0, w, hs);
+  bctx.filter = 'blur(' + (22 / S) + 'px)';
   // Overscan top/sides so the blur doesn't pull in transparent edge pixels.
-  bctx.drawImage(glassEdgeSrc, -pad, -pad, CANVAS_W + pad * 2, h + pad);
+  bctx.drawImage(glassEdgeSrc, -ps, -ps, w + ps * 2, hs + ps);
   bctx.filter = 'none';
   bctx.globalCompositeOperation = 'destination-in';
-  const mask = bctx.createLinearGradient(0, 0, 0, h);
-  addEasedFade(mask, h, totalTopH * 0.55, h, 1, '0,0,0');
+  const mask = bctx.createLinearGradient(0, 0, 0, hs);
+  addEasedFade(mask, hs, totalTopH * 0.55 / S, h / S, 1, '0,0,0');
   bctx.fillStyle = mask;
-  bctx.fillRect(0, 0, CANVAS_W, h);
+  bctx.fillRect(0, 0, w, hs);
   bctx.globalCompositeOperation = 'source-over';
-  ctx.drawImage(glassEdgeBlur, 0, 0);
+  ctx.drawImage(glassEdgeBlur, 0, 0, w, hs, 0, 0, CANVAS_W, hs * S);
 
   // A light tint in the glass's own tone (picked from the content behind it):
   // mostly blur, like iOS, not a white fog over a dark photo.
@@ -2902,9 +2955,18 @@ const glassToneProbe = document.createElement('canvas');
 glassToneProbe.width = 24; glassToneProbe.height = 6;
 const glassToneCtx = glassToneProbe.getContext('2d', { willReadFrequently: true });
 let glassTone = null, glassToneSampledAt = -1e9;
+let glassToneKey = '';
 function glassToneBehindHeader(ctx, totalTopH){
   const now = performance.now();
-  if (glassTone && now - glassToneSampledAt < 200) return glassTone;
+  // The pixel readback below stalls the GPU, so only resample when what sits
+  // behind the header can have changed (scroll, reveals, wallpaper/theme),
+  // at most every 250ms, plus a 2s safety refresh.
+  const th = state.theme;
+  const key = [Math.round(scrollOffsetCurrent / 8), previewState.revealedCount, state.messages.length,
+    th.chromeMode, th.wallpaperType, th.wallpaperSolid, th.wallpaperGradFrom, th.wallpaperGradTo,
+    th.wallpaperBrightness, th.wallpaperImg ? th.wallpaperImg.src.length : 0].join('|');
+  if (glassTone && ((key === glassToneKey && now - glassToneSampledAt < 2000) || now - glassToneSampledAt < 250)) return glassTone;
+  glassToneKey = key;
   glassToneSampledAt = now;
   glassToneCtx.clearRect(0, 0, 24, 6);
   glassToneCtx.drawImage(ctx.canvas, 0, 0, CANVAS_W, totalTopH, 0, 0, 24, 6);
@@ -3037,15 +3099,25 @@ function draw(ctx, now){
 /* ---------------------------------------------------------------------
  * Animation loop
  * ------------------------------------------------------------------- */
+/* Phones/tablets: repaint the preview at ~30fps (the recording rate) instead
+ * of every display frame, which roughly halves main-thread canvas work and
+ * keeps scrolling and the dock/sheet animations smooth. While recording it
+ * repaints every frame so the captured video stays as smooth as before. */
+const liteRenderMQ = window.matchMedia('(max-width:1199.98px), (pointer:coarse)');
+let lastPreviewDrawAt = -1e9;
 function loop(now){
   syncComposerMirrorMode();
-  draw(previewCtx, now);
+  if (!liteRenderMQ.matches || anyRecorderActive() || now - lastPreviewDrawAt >= 30){
+    draw(previewCtx, now);
+    lastPreviewDrawAt = now;
+  }
   layoutComposerInput();
   updateRecTimers(now);
   tickReplay(now);
   updateReplayTimer(now);
   updateResetButtonState();
   syncSendButtonStates();
+  syncExportFab();
   requestAnimationFrame(loop);
 }
 
@@ -3574,7 +3646,7 @@ function applyTabVisibility(){
   $('panelMessages').hidden = !isDesktop && activeTab !== 'content';
   $('panelAppearance').hidden = !isDesktop && activeTab !== 'appearance';
   $('leftPanel').hidden = !isDesktop && activeTab === 'export';
-  $('exportPanel').hidden = !isDesktop && activeTab !== 'export';
+  $('exportPanel').hidden = !isDesktop && activeTab !== 'export' && !exportSheetOpen;
   document.querySelectorAll('.tabBtn').forEach(btn => {
     const selected = btn.dataset.tab === activeTab;
     btn.classList.toggle('active', selected);
@@ -3606,7 +3678,7 @@ function wireTabs(){
     syncGenerationControls();
   });
   syncGenerationControls();
-  desktopMQ.addEventListener('change', applyTabVisibility);
+  desktopMQ.addEventListener('change', () => { if (desktopMQ.matches) closeExportSheet(); applyTabVisibility(); });
   applyTabVisibility();
 }
 
@@ -3626,14 +3698,43 @@ function wireDockingPreview(){
   const io = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       const nowDocked = !entry.isIntersecting;
+      if (nowDocked === stage.classList.contains('docked')) return;
+      const first = frame.getBoundingClientRect();
+      // Keep the stage's height while docked, so the editor below never jumps
+      // up when the phone leaves the flow (and jumps back when it returns).
+      stage.style.minHeight = nowDocked ? stage.offsetHeight + 'px' : '';
       stage.classList.toggle('docked', nowDocked);
       // Reset any dragged position when undocking, so it re-docks fresh
-      // in the default top-right corner next time.
+      // in the default top-right corner next time. The chosen size is kept.
       if (!nowDocked) frame.style.left = frame.style.top = frame.style.right = '';
+      frame.style.width = (nowDocked && dockedWidth) ? dockedWidth + 'px' : '';
+      flipFrame(frame, first);
     });
   }, { root: workspace, threshold: 0.12 });
   io.observe(stage);
   wireDockedDrag(stage, frame);
+  wireDockedResize(stage, frame);
+}
+
+/* FLIP: animate the phone frame from where it was to where docking (or
+ * undocking) just put it, so it glides into / out of the corner instead of
+ * popping. Transform-only, so it is cheap and never affects the canvas. */
+// Low-end phones skip the glide (the preview just snaps into place).
+const LOW_END_DEVICE = (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4)
+  || (navigator.deviceMemory > 0 && navigator.deviceMemory <= 3);
+function flipFrame(frame, first){
+  if (prefersReducedMotion || LOW_END_DEVICE || !frame.animate) return;
+  const last = frame.getBoundingClientRect();
+  if (!first.width || !last.width) return;
+  const dx = first.left - last.left, dy = first.top - last.top, k = first.width / last.width;
+  // Transform only (compositor-friendly); promote just for the glide.
+  frame.style.willChange = 'transform';
+  const anim = frame.animate([
+    { transformOrigin: 'top left', transform: `translate(${dx}px, ${dy}px) scale(${k})` },
+    { transformOrigin: 'top left', transform: 'none' },
+  ], { duration: 260, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  const done = () => { frame.style.willChange = ''; };
+  anim.finished.then(done, done);
 }
 
 /* ---------------------------------------------------------------------
@@ -3679,6 +3780,114 @@ function wireDockedDrag(stage, frame){
   };
   frame.addEventListener('pointerup', endDrag);
   frame.addEventListener('pointercancel', endDrag);
+}
+
+/* Docked preview: drag the bottom-left grip to scale the mini window
+ * (its top-right corner stays put). Size is a per-browser convenience. */
+const DOCK_MIN_W = 110, DOCK_MAX_W = 300;
+let dockedWidth = (() => { try { return Number(localStorage.getItem('wtc-dock-w')) || 0; } catch (e) { return 0; } })();
+function wireDockedResize(stage, frame){
+  const grip = frame.querySelector('.dockResize');
+  if (!grip) return;
+  let resizing = false, startX = 0, startW = 0, rightEdge = 0;
+  grip.addEventListener('pointerdown', (e) => {
+    if (!stage.classList.contains('docked')) return;
+    e.stopPropagation(); e.preventDefault();
+    const rect = frame.getBoundingClientRect();
+    resizing = true; startX = e.clientX; startW = rect.width; rightEdge = rect.right;
+    frame.style.right = 'auto'; frame.style.left = rect.left + 'px'; frame.style.top = rect.top + 'px';
+    frame.classList.add('dragging');
+    grip.setPointerCapture(e.pointerId);
+  });
+  grip.addEventListener('pointermove', (e) => {
+    if (!resizing) return;
+    const maxW = Math.min(DOCK_MAX_W, rightEdge - 8, window.innerWidth - 16);
+    const w = Math.round(Math.min(Math.max(startW + (startX - e.clientX), DOCK_MIN_W), maxW));
+    frame.style.width = w + 'px';
+    frame.style.left = (rightEdge - w) + 'px';
+    dockedWidth = w;
+  });
+  const end = (e) => {
+    if (!resizing) return;
+    resizing = false;
+    frame.classList.remove('dragging');
+    try { grip.releasePointerCapture(e.pointerId); } catch (err) {}
+    try { localStorage.setItem('wtc-dock-w', String(dockedWidth)); } catch (err) {}
+  };
+  grip.addEventListener('pointerup', end);
+  grip.addEventListener('pointercancel', end);
+}
+
+/* Export bottom sheet (tablet/mobile): a floating Export badge appears once
+ * the creator has scrolled past the top (phone docked) and opens the same
+ * #exportPanel as a sheet over the editor, so the message list keeps its
+ * place. The Export tab still works exactly as before. */
+let exportSheetOpen = false, exportSheetReturnFocus = null;
+function openExportSheet(){
+  if (desktopMQ.matches || exportSheetOpen) return;
+  exportSheetOpen = true;
+  exportSheetReturnFocus = document.activeElement;
+  const panel = $('exportPanel');
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-modal', 'true');
+  panel.setAttribute('aria-labelledby', 'exportSheetTitle');
+  document.body.classList.add('exportSheetOpen');
+  applyTabVisibility();
+  panel.scrollTop = 0;
+  syncExportFab();
+  $('exportSheetClose').focus();
+}
+let exportSheetClosing = false;
+function closeExportSheet(){
+  if (!exportSheetOpen || exportSheetClosing) return;
+  const panel = $('exportPanel');
+  const backdrop = $('exportSheetBackdrop');
+  if (!prefersReducedMotion && panel.animate && !desktopMQ.matches){
+    // Slide the sheet down and fade the backdrop, then actually close.
+    exportSheetClosing = true;
+    const ease = { duration: 200, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards' };
+    const a = panel.animate([{ transform: 'none' }, { transform: 'translateY(100%)' }], ease);
+    const b = backdrop.animate([{ opacity: 1 }, { opacity: 0 }], ease);
+    a.finished.then(() => {
+      exportSheetClosing = false;
+      finishCloseExportSheet();
+      a.cancel(); b.cancel();
+    });
+    return;
+  }
+  finishCloseExportSheet();
+}
+function finishCloseExportSheet(){
+  exportSheetOpen = false;
+  const panel = $('exportPanel');
+  panel.removeAttribute('role'); panel.removeAttribute('aria-modal'); panel.removeAttribute('aria-labelledby');
+  document.body.classList.remove('exportSheetOpen');
+  applyTabVisibility();
+  syncExportFab();
+  const back = exportSheetReturnFocus && document.contains(exportSheetReturnFocus) ? exportSheetReturnFocus : $('exportFab');
+  if (back && back.focus) back.focus({ preventScroll: true });
+}
+function syncExportFab(){
+  const fab = $('exportFab');
+  const show = !desktopMQ.matches && !exportSheetOpen && activeTab !== 'export'
+    && $('phoneStage').classList.contains('docked');
+  if (fab.classList.contains('show') !== show){
+    fab.classList.toggle('show', show);
+    fab.tabIndex = show ? 0 : -1;
+    fab.setAttribute('aria-hidden', String(!show));
+  }
+  fab.classList.toggle('rec', anyRecorderActive());
+}
+function wireExportSheet(){
+  $('exportFab').addEventListener('click', openExportSheet);
+  $('exportSheetClose').addEventListener('click', closeExportSheet);
+  $('exportSheetBackdrop').addEventListener('click', closeExportSheet);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && exportSheetOpen && !document.querySelector('.bubblePopover:not([hidden])')) closeExportSheet();
+  });
+  const fab = $('exportFab');
+  fab.tabIndex = -1; fab.setAttribute('aria-hidden', 'true');
+  syncExportFab();
 }
 
 /* ---------------------------------------------------------------------
@@ -4754,6 +4963,7 @@ function init(){
   wireResizeHandle();
   wireTabs();
   wireDockingPreview();
+  wireExportSheet();
   renderMessageList();
 
   $('addMessageBtn').addEventListener('click', addMessage);
