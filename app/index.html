@@ -5160,27 +5160,22 @@ function serializeProjectData(){
     timeline: { ...state.timeline },
   };
 }
+/* Only embedded data: images are accepted from a backup. A remote URL would
+ * leak the opener's IP to that server and taint the canvas, silently breaking
+ * recording and screenshots; javascript:/other schemes are never images. */
+function imageFromData(src){
+  if (typeof src !== 'string' || !/^data:image\/(png|jpe?g|gif|webp|bmp);base64,/i.test(src)) return null;
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+
 function deserializeProjectData(data){
-  const contact = { ...data.contact, avatarImg: null };
-  if (data.contact.avatarImg){
-    const img = new Image();
-    img.src = data.contact.avatarImg;
-    contact.avatarImg = img;
-  }
-  const theme = { ...data.theme, wallpaperImg: null };
-  if (data.theme.wallpaperImg){
-    const img = new Image();
-    img.src = data.theme.wallpaperImg;
-    theme.wallpaperImg = img;
-  }
+  const contact = { ...data.contact, avatarImg: imageFromData(data.contact.avatarImg) };
+  const theme = { ...data.theme, wallpaperImg: imageFromData(data.theme.wallpaperImg) };
   const messages = data.messages.map((m) => {
-    let media = null;
-    if (m.media && m.media.img){
-      const img = new Image();
-      img.src = m.media.img;
-      media = { type: m.media.type, img, duration: m.media.duration };
-    }
-    return { ...m, media };
+    const img = m.media ? imageFromData(m.media.img) : null;
+    return { ...m, media: img ? { type: m.media.type, img, duration: m.media.duration } : null };
   });
   const step = Number.isInteger(data.timeStepEvery) && data.timeStepEvery >= 0 && data.timeStepEvery <= 10 ? data.timeStepEvery : 3;
   return { contact, platform: data.platform, generation: GENERATIONS.includes(data.generation) ? data.generation : 'classic', timeStepEvery: step, theme, messages, timeline: data.timeline ? { ...data.timeline } : {} };
