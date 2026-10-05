@@ -42,7 +42,7 @@ reset role;
 -- Visitor (anonymous) ------------------------------------------------------
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","is_anonymous":true}', true);
-select set_config('request.headers', '{"x-forwarded-for":"203.0.113.9, 10.0.0.1"}', true);
+select set_config('request.headers', '{"x-forwarded-for":"198.51.100.1, 203.0.113.9"}', true);
 
 select is((public.ensure_grants()->>'credits')::int, 20, 'visitor gets 20 credits');
 select is((public.ensure_grants()->>'credits')::int, 20, 'visitor grant is one-time');
@@ -82,11 +82,14 @@ select set_config('request.jwt.claims', '{"sub":"88888888-8888-8888-8888-8888888
 select is((public.ensure_grants()->>'admin')::boolean, false, 'unverified listed email is not admin');
 
 -- Per-IP visitor limit (3/day): user 1111 used one; 4444 and 5555 fit; 6666 does not.
-select set_config('request.headers', '{"x-forwarded-for":"203.0.113.9"}', true);
+-- The browser controls the FIRST x-forwarded-for entry; only the last one (added by the proxy) counts.
+select set_config('request.headers', '{"x-forwarded-for":"198.51.100.4, 203.0.113.9"}', true);
 select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated","is_anonymous":true}', true);
 select is((public.ensure_grants()->>'credits')::int, 20, 'second visitor from one IP gets credits');
+select set_config('request.headers', '{"x-forwarded-for":"198.51.100.5, 203.0.113.9"}', true);
 select set_config('request.jwt.claims', '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated","is_anonymous":true}', true);
 select is((public.ensure_grants()->>'credits')::int, 20, 'third visitor from one IP still gets credits');
+select set_config('request.headers', '{"x-forwarded-for":"198.51.100.6, 203.0.113.9"}', true);
 select set_config('request.jwt.claims', '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated","is_anonymous":true}', true);
 select is((public.ensure_grants()->>'credits')::int, 0, 'fourth visitor from one IP on one day gets none');
 

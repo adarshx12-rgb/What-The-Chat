@@ -119,6 +119,18 @@ begin
   insert into public.credit_ledger (user_id, delta, reason) values (p_user, p_amount, p_reason);
 end $$;
 
+-- Client IP for the visitor limit. The browser can send its own
+-- x-forwarded-for, so trust Cloudflare's cf-connecting-ip when present, else
+-- the LAST x-forwarded-for entry (appended by the proxy), never the first.
+create function private.client_ip() returns text
+language sql stable set search_path = '' as $$
+  select coalesce(
+    nullif(trim(current_setting('request.headers', true)::jsonb ->> 'cf-connecting-ip'), ''),
+    nullif(trim(reverse(split_part(reverse(
+      coalesce(current_setting('request.headers', true)::jsonb ->> 'x-forwarded-for', '')), ',', 1))), ''),
+    'unknown');
+$$;
+
 create function public.ensure_grants() returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -135,7 +147,7 @@ begin
   select * into p from public.profiles where user_id = uid for update;
 
   if is_anon and not p.visitor_grant_done then
-    ip := trim(split_part(coalesce(current_setting('request.headers', true)::jsonb ->> 'x-forwarded-for', ''), ',', 1));
+    ip := private.client_ip();
     select encode(extensions.digest(coalesce(nullif(ip, ''), 'unknown') || s.value, 'sha256'), 'hex')
       into ip_key from private.app_settings s where s.key = 'ip_salt';
     select value::integer into daily_limit from private.app_settings where key = 'visitor_ip_daily_limit';
@@ -201,5 +213,5 @@ end $$;
 
 revoke execute on function public.ensure_grants(), public.spend_credits(text, integer) from public, anon;
 grant execute on function public.ensure_grants(), public.spend_credits(text, integer) to authenticated;
-revoke execute on function private.is_admin(uuid), private.entitlement_json(public.profiles),
+revoke execute on function private.client_ip(), private.is_admin(uuid), private.entitlement_json(public.profiles),
   private.grant_credits(uuid, integer, text), private.handle_new_user() from public, anon, authenticated;
