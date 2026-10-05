@@ -28,6 +28,7 @@
 
   function chipLabel(ent){
     if (!ent) return 'Credits…';
+    if (ent.admin) return 'Admin';
     if (ent.pro) return 'Pro';
     if (ent.offline) return 'Offline';
     return ent.credits + (ent.credits === 1 ? ' credit' : ' credits');

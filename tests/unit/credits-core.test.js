@@ -40,4 +40,5 @@ test('chip label', () => {
   assert.equal(core.chipLabel({ credits: 1, pro: false }), '1 credit');
   assert.equal(core.chipLabel({ credits: 20, pro: false }), '20 credits');
   assert.equal(core.chipLabel({ credits: 0, pro: true }), 'Pro');
+  assert.equal(core.chipLabel({ credits: 0, pro: true, admin: true }), 'Admin');
 });
