@@ -1,0 +1,15 @@
+{
+  "name": "what-the-chat-tests",
+  "private": true,
+  "scripts": {
+    "unit": "node --test unit/*.test.js",
+    "integration": "node --test integration/*.test.js",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@supabase/supabase-js": "2.117.2",
+    "http-server": "14.1.1",
+    "pngjs": "7.0.0"
+  }
+}

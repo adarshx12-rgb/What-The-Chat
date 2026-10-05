@@ -10,3 +10,10 @@ skills-lock.json
 
 # Local browser verification scripts, screenshots, and downloaded design references
 /output/
+
+# Test tooling dependencies and reports
+tests/node_modules/
+tests/test-results/
+tests/playwright-report/
+# Superpowers execution scratch
+.superpowers/
