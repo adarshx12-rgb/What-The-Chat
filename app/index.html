@@ -3257,7 +3257,10 @@ const WATERMARK_BOX = { x: 140, y: 1130, w: 800, h: 200 };
 let screenshotWatermark = false;
 
 function exportWatermarkActive(now){
-  return screenshotWatermark;
+  if (screenshotWatermark) return true;
+  const s = fullRecorder.state;
+  if (s !== 'recording' && s !== 'paused') return false;
+  return WTCCreditsCore.watermarkActive(fullRecorder.coveredMs, fullRecElapsedMs(now));
 }
 
 function drawWatermark(ctx){
@@ -3491,6 +3494,7 @@ function makeRecorder(kind, canvas){
     mimeType: '',
     recStartWall: 0, recPausedAccum: 0, recPauseStart: 0, recEndWall: 0,
     lastBlob: null, lastFilename: '', lastErrorText: '',
+    coveredMs: Infinity, watermarkStarted: false,
   };
 
   function announce(text){ $(kind + 'LiveStatus').textContent = text; }
@@ -3521,7 +3525,9 @@ function makeRecorder(kind, canvas){
 
     const helper = $(kind + 'RecHelper');
     if (s === 'idle') ctrl.refreshReadyHelper();
-    else if (s === 'recording') helper.textContent = 'Recording preview.';
+    else if (s === 'recording') helper.textContent = ctrl.watermarkStarted
+      ? 'Out of credits. The rest gets a watermark.'
+      : (ctrl.coveredMs === Infinity ? 'Recording preview.' : 'Recording. Credits cover ' + formatDuration(ctrl.coveredMs) + '.');
     else if (s === 'paused') helper.textContent = 'Recording paused.';
     else if (s === 'processing') helper.textContent = mp4BackendAvailable ? 'Converting to MP4…' : 'Preparing download…';
     else if (s === 'complete') helper.textContent = 'Recording ready — ' + formatBytes(ctrl.lastBlob ? ctrl.lastBlob.size : 0) + ' · ' + formatDuration(ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum) + '.';
@@ -3537,6 +3543,10 @@ function makeRecorder(kind, canvas){
     if (notifCtx && notifCtx.state === 'suspended') notifCtx.resume();
     await window.chatEmojiReady;
     if (ctrl.state === 'recording' || ctrl.state === 'paused' || ctrl.state === 'processing') return;
+    const ent = await WTCCredits.refresh();
+    if (ctrl.state === 'recording' || ctrl.state === 'paused' || ctrl.state === 'processing') return;
+    ctrl.coveredMs = WTCCreditsCore.coveredMs(ent);
+    ctrl.watermarkStarted = false;
     draw(previewCtx, performance.now());
     setNote(kind, '');
     ctrl.lastBlob = null;
@@ -3570,6 +3580,9 @@ function makeRecorder(kind, canvas){
     ctrl.mediaRecorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) ctrl.chunks.push(ev.data); };
     ctrl.mediaRecorder.onstop = async () => {
       ctrl.recEndWall = performance.now();
+      const recordedMs = ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum;
+      WTCCredits.chargeVideo(Math.min(recordedMs, ctrl.coveredMs));
+      if (ctrl.watermarkStarted || ctrl.coveredMs === 0) promptAfterWatermark('video');
       setState('processing');
       announce('Processing recording.');
       const blob = new Blob(ctrl.chunks, { type: ctrl.mimeType || 'video/webm' });
@@ -3638,15 +3651,23 @@ function makeRecorder(kind, canvas){
 
 const fullRecorder = makeRecorder('full', previewCanvas);
 
+function fullRecElapsedMs(now){
+  const ctrl = fullRecorder;
+  if (ctrl.state === 'recording') return now - ctrl.recStartWall - ctrl.recPausedAccum;
+  if (ctrl.state === 'paused') return ctrl.recPauseStart - ctrl.recStartWall - ctrl.recPausedAccum;
+  return ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum;
+}
+
 function updateRecTimers(now){
   const ctrl = fullRecorder;
   const el = $(ctrl.kind + 'RecTimer');
   if (ctrl.state === 'idle' || ctrl.state === 'error'){ el.textContent = '00:00'; return; }
-  let ms;
-  if (ctrl.state === 'recording') ms = now - ctrl.recStartWall - ctrl.recPausedAccum;
-  else if (ctrl.state === 'paused') ms = ctrl.recPauseStart - ctrl.recStartWall - ctrl.recPausedAccum;
-  else ms = ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum;
-  el.textContent = formatDuration(ms);
+  el.textContent = formatDuration(fullRecElapsedMs(now));
+  if (ctrl.state === 'recording' && !ctrl.watermarkStarted
+      && WTCCreditsCore.watermarkActive(ctrl.coveredMs, fullRecElapsedMs(now))){
+    ctrl.watermarkStarted = true;
+    $(ctrl.kind + 'RecHelper').textContent = 'Out of credits. The rest gets a watermark.';
+  }
 }
 
 function updateResetButtonState(){
