@@ -796,6 +796,25 @@
     body.exportSheetOpen #exportPanel,body.exportSheetOpen #exportSheetBackdrop{animation:none;}
     #exportFab.rec .rec-dot{animation:none;}
   }
+  .creditsChip{height:32px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;
+    font:500 12px/1 var(--studio-mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .creditsDot{width:8px;height:8px;border-radius:50%;background:var(--studio-accent);}
+  .creditsChip[data-empty="true"] .creditsDot{background:#e5484d;}
+  #accountDialog{width:min(420px, calc(100vw - 32px));padding:20px;border:1.5px solid var(--studio-shadow);
+    background:var(--studio-bg);color:var(--studio-text);box-shadow:6px 6px 0 var(--studio-shadow);}
+  #accountDialog::backdrop{background:rgba(9,23,46,.45);}
+  .accountHead{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .accountHead h2{margin:0;font-size:16px;}
+  .accountBalance{margin:12px 0 0;font:600 20px/1.3 var(--studio-mono);font-variant-numeric:tabular-nums;}
+  .accountBlock{margin-top:16px;padding-top:16px;border-top:1px solid var(--studio-border);display:flex;flex-direction:column;gap:10px;}
+  .accountBlock h3{margin:0;font-size:14px;}
+  #magicLinkForm{display:flex;flex-direction:column;gap:6px;}
+  #magicLinkForm label{font-size:12px;color:var(--studio-text-secondary);}
+  #magicLinkForm input{min-height:var(--touch-h);padding:0 10px;background:var(--studio-input);color:var(--studio-text);
+    border:1px solid var(--studio-border-strong);}
+  .accountEmail{margin:0;font-weight:600;overflow-wrap:anywhere;}
+  /* Phones: the logo mark alone links home, freeing room for the credits chip. */
+  @media (max-width:479.98px){ .brandName{display:none;} .creditsChip{padding:0 8px;} }
 </style>
 </head>
 <body>
@@ -817,12 +836,44 @@
         <span id="projectNameText">Untitled story</span>
       </button>
       <input type="text" id="projectNameInput" class="projectNameInput" hidden maxlength="80" aria-label="Project name">
+      <button type="button" class="creditsChip" id="creditsChip" aria-haspopup="dialog" aria-controls="accountDialog">
+        <span class="creditsDot" aria-hidden="true"></span><span id="creditsChipText">Credits…</span>
+      </button>
       <button type="button" class="small" id="studioThemeBtn" aria-pressed="false"></button>
       <button type="button" class="small" id="openProjectsBtn" title="Projects">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       </button>
     </div>
   </header>
+
+  <dialog id="accountDialog" aria-labelledby="accountTitle">
+    <div class="accountHead">
+      <h2 id="accountTitle">Credits &amp; account</h2>
+      <button type="button" class="small" id="accountCloseBtn" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+      </button>
+    </div>
+    <p class="accountBalance" id="accountBalance"></p>
+    <p class="helperText">1 screenshot = 1 credit. 3 seconds of video = 1 credit. With no credits left, exports get a watermark.</p>
+
+    <section id="signInSection" class="accountBlock">
+      <h3>Sign in for 40 free credits a month</h3>
+      <p class="helperText" id="signInFileNote" hidden>Sign-in works on whatthechat.com, not when the studio is opened as a local file.</p>
+      <button type="button" class="btnBlock" id="googleSignInBtn">Continue with Google</button>
+      <form id="magicLinkForm" novalidate>
+        <label for="magicLinkEmail">Email</label>
+        <input type="email" id="magicLinkEmail" autocomplete="email" required placeholder="you@example.com">
+        <button type="submit" class="btnBlock">Email me a sign-in link</button>
+      </form>
+      <p class="helperText" id="signInStatus" aria-live="polite"></p>
+    </section>
+
+    <section id="accountSection" class="accountBlock" hidden>
+      <p class="accountEmail" id="accountEmail"></p>
+      <div id="planSlot"></div>
+      <button type="button" class="btnBlock" id="signOutBtn">Sign out</button>
+    </section>
+  </dialog>
 
   <div id="workspace">
 
@@ -3290,7 +3341,6 @@ function promptAfterWatermark(kind){
   else showToast(what, 'Upgrade', () => openAccountDialog());
 }
 
-function openAccountDialog(){}
 
 /* ---------------------------------------------------------------------
  * Animation loop
@@ -4200,6 +4250,68 @@ function wireSoundToggle(){
 
 /* Studio (shell) light/dark theme. Independent of the phone's own chrome
  * mode; never touches the canvas. Per-browser convenience, so localStorage. */
+/* ---------------------------------------------------------------------
+ * Credits chip + account dialog (sign in with Google or an email link).
+ * ------------------------------------------------------------------- */
+function openAccountDialog(){
+  const dialog = $('accountDialog');
+  if (!dialog.open) dialog.showModal();
+  if (document.body.classList.contains('exportSheetOpen')) closeExportSheet();
+}
+
+function renderAccount(ent){
+  $('creditsChipText').textContent = WTCCreditsCore.chipLabel(ent);
+  $('creditsChip').dataset.empty = String(!!ent && !ent.pro && ent.credits === 0);
+  if (!ent) return;
+  $('accountBalance').textContent = ent.admin
+    ? 'Admin. Unlimited exports, no payment.'
+    : ent.pro
+    ? 'Pro' + (ent.proUntil ? ' until ' + new Date(ent.proUntil).toLocaleDateString() : '')
+    : WTCCreditsCore.chipLabel(ent);
+  const signedIn = !ent.offline && !ent.isAnonymous;
+  $('signInSection').hidden = signedIn;
+  $('accountSection').hidden = !signedIn;
+  $('accountEmail').textContent = ent.email || '';
+  const canSignIn = WTCCredits.canSignIn();
+  $('signInFileNote').hidden = canSignIn;
+  $('googleSignInBtn').disabled = !canSignIn;
+  $('magicLinkForm').querySelector('button[type=submit]').disabled = !canSignIn;
+}
+
+function wireAccountUI(){
+  const dialog = $('accountDialog');
+  $('creditsChip').addEventListener('click', openAccountDialog);
+  $('accountCloseBtn').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+
+  $('googleSignInBtn').addEventListener('click', async () => {
+    $('signInStatus').textContent = 'Opening Google…';
+    try { await WTCCredits.signInWithGoogle(); }
+    catch (e) { $('signInStatus').textContent = e.message || 'Could not open Google sign-in.'; }
+  });
+
+  $('magicLinkForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('magicLinkEmail').value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ $('signInStatus').textContent = 'Enter a valid email.'; return; }
+    $('signInStatus').textContent = 'Sending…';
+    try {
+      await WTCCredits.sendMagicLink(email);
+      $('signInStatus').textContent = 'Check your email for the sign-in link.';
+    } catch (err) {
+      $('signInStatus').textContent = err.message || 'Could not send the link. Try again.';
+    }
+  });
+
+  $('signOutBtn').addEventListener('click', async () => {
+    await WTCCredits.signOut();
+    showToast('Signed out');
+  });
+
+  WTCCredits.onChange(renderAccount);
+  renderAccount(WTCCredits.get());
+}
+
 function wireStudioThemeToggle(){
   const btn = $('studioThemeBtn');
   const apply = () => {
@@ -5212,6 +5324,7 @@ function init(){
   wireChatScrolling();
   wireExportSheet();
   WTCCredits.ready();
+  wireAccountUI();
   renderMessageList();
 
   $('addMessageBtn').addEventListener('click', addMessage);
