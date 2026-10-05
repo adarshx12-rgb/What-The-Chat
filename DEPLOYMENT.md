@@ -15,10 +15,10 @@ Normal navigation uses relative paths so it also works when opening local files.
 
 ## Contact details
 
-`contact.html` uses `support@example.com` as an explicitly labeled placeholder,
-as requested. Replace both its visible address and `mailto:` target, then remove
-the placeholder notice when the real inbox is ready. Privacy and terms pages
-link to this contact page so the address has a single place to update.
+`contact.html` lists `support@whatthechat.com`, received through Cloudflare Email
+Routing (receive-only; sign-in emails are sent through Supabase custom SMTP).
+Privacy, terms and refund pages link to this contact page so the address has a
+single place to update.
 Confirm the operator's details and actual hosting/log retention practices when
 the host is selected, and update the privacy notice accordingly.
 
@@ -35,6 +35,10 @@ The host must permit `AllowOverride FileInfo`. See the official
 Other hosts need their equivalent error-document configuration; `.htaccess`
 does not configure Netlify, Vercel, Cloudflare Pages, or a CDN's own error pages.
 No hosting provider has been selected in this repository.
+
+Supabase Auth limits are configured locally in `supabase/config.toml`.
+Hosted Auth needs the separate settings and verification described in
+[the rate-limit deployment notes](supabase/security/rate-limits.md).
 
 Do not redirect missing URLs to the homepage or rewrite them with status 200.
 An actual missing request must remain 404, and a server failure must remain 500.
