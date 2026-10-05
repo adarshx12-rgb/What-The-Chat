@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /server/
+Disallow: /output/
+Disallow: /growing-giant/
+Disallow: /.git/
+Disallow: /.agents/
+
+Sitemap: https://whatthechat.com/sitemap.xml

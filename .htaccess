@@ -1,0 +1,4 @@
+# Apache hosting at the domain root; requires AllowOverride FileInfo.
+# Local error documents preserve the original error status (no external redirect).
+ErrorDocument 404 /404.html
+ErrorDocument 500 /500.html

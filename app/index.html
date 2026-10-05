@@ -3,7 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>What The Chat – Chat Story Studio</title>
+<title>WhatsApp Chat Story Studio | What The Chat</title>
+<meta name="description" content="Create scripted WhatsApp-style chats in the free What The Chat studio. Customize Android or iOS previews, save screenshots, and record vertical chat videos.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#09172e">
+<link rel="canonical" href="https://whatthechat.com/app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="What The Chat">
+<meta property="og:url" content="https://whatthechat.com/app/">
+<meta property="og:title" content="WhatsApp Chat Story Studio | What The Chat">
+<meta property="og:description" content="Write a scripted chat, customize its look, and export screenshots or cursor-free vertical videos from your browser.">
+<meta property="og:image" content="https://whatthechat.com/assets/app-preview.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="750">
+<meta property="og:image:alt" content="What The Chat editor and chat video preview">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="WhatsApp Chat Story Studio | What The Chat">
+<meta name="twitter:description" content="Write a scripted chat, customize its look, and export screenshots or cursor-free vertical videos from your browser.">
+<meta name="twitter:image" content="https://whatthechat.com/assets/app-preview.jpg">
+<meta name="twitter:image:alt" content="What The Chat editor and chat video preview">
 <script>try{if(localStorage.getItem('wtc-studio-theme')==='dark')document.documentElement.dataset.studioTheme='dark';}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,6 +75,9 @@
    * which shifted the whole studio up and left a blank band at the bottom. */
   #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;overflow:clip;}
 
+  .studioInfoLinks{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:24px;padding-top:16px;border-top:1px solid var(--studio-border);font-size:12px;}
+  .studioInfoLinks a{color:var(--studio-text-secondary);text-underline-offset:3px;}
+  .studioInfoLinks a:focus-visible{outline:2px solid var(--studio-focus);outline-offset:4px;}
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;
     clip:rect(0 0 0 0);white-space:nowrap;}
 
@@ -361,6 +382,14 @@
   .phone-frame{background:#000;border-radius:44px;padding:12px;position:relative;
     box-shadow:0 0 0 1px #2c2c31,0 0 0 5px #111113,0 0 0 6px #232327,0 30px 70px -20px rgb(0 0 0 / 80%);}
   #previewCanvas{display:block;width:min(30vw,360px);height:auto;border-radius:30px;background:#000;}
+  /* Interaction controls stay outside the canvas, so only the chat is exported. */
+  #chatScrollArea{position:absolute;user-select:none;-webkit-user-select:none;}
+  #chatScrollArea.can-scroll{touch-action:pan-x pinch-zoom;cursor:grab;}
+  #chatScrollArea.dragging{cursor:grabbing;}
+  #chatScrollArea:focus-visible{outline:2px solid var(--studio-accent);outline-offset:-3px;}
+  #chatLatestBtn{position:absolute;z-index:1;min-height:36px;padding:6px 12px;
+    border-radius:18px;background:var(--studio-surface);color:var(--studio-text);
+    box-shadow:0 2px 8px rgb(0 0 0 / 25%);font-size:12px;}
 
   /* Real, focusable input capturing keystrokes for the live "Me" composer —
      kept functionally real (so IME/mobile keyboards work) but visually
@@ -972,7 +1001,11 @@
 
     <main id="phoneStage">
       <div class="phone-frame">
-        <canvas id="previewCanvas" width="1080" height="1920"></canvas>
+        <canvas id="previewCanvas" width="1080" height="1920" role="img" aria-label="Scripted chat preview. Edit messages in the Messages panel; scroll the preview to review earlier messages."></canvas>
+        <div id="chatScrollArea" tabindex="0" role="region" aria-label="Chat preview messages"
+          aria-describedby="chatScrollHelp"></div>
+        <span id="chatScrollHelp" class="visually-hidden">Scroll or drag to review messages. Use arrow keys, Page Up, Page Down, Home, or End when focused. Scrolling changes the preview and recorded video.</span>
+        <button type="button" id="chatLatestBtn" hidden>Latest messages &darr;</button>
         <span class="dockResize" aria-hidden="true" title="Drag to resize"></span>
         <input type="text" id="composerInput" class="composerInput" autocomplete="off"
           autocapitalize="sentences" spellcheck="true" maxlength="500"
@@ -1076,6 +1109,12 @@
         Save screenshot
       </button>
       <p class="helperText">PNG at 1080&nbsp;&times;&nbsp;1920.</p>
+      <nav class="studioInfoLinks" aria-label="About and policies">
+        <a href="../about.html">About us</a>
+        <a href="../privacy-policy.html">Privacy policy</a>
+        <a href="../terms-and-conditions.html">Terms &amp; conditions</a>
+        <a href="../contact.html">Contact us</a>
+      </nav>
     </aside>
 
   </div>
@@ -1089,6 +1128,7 @@
 
 </div>
 
+<script src="../assets/chat-emoji.js"></script>
 <script>
 'use strict';
 
@@ -1101,11 +1141,11 @@ const BUBBLE_PAD_X = 26, BUBBLE_PAD_TOP = 18, BUBBLE_PAD_BOTTOM = 14, TS_ROW_H =
 const LINE_HEIGHT = 42, MSG_FONT_SIZE = 32, TS_FONT_SIZE = 22;
 const BUBBLE_GAP = 16, GROUP_GAP_EXTRA = 6;
 const MIN_BUBBLE_W = 160;
-const MAX_BUBBLE_W = Math.round(CANVAS_W * 0.72);
+const MAX_BUBBLE_W = Math.round(CANVAS_W * 0.80);
 const MAX_TEXT_W = MAX_BUBBLE_W - BUBBLE_PAD_X * 2;
 const FOOTER_H = 150;
 const WHATSAPP_GREEN = '#00a884';
-const MEDIA_W = 620, MEDIA_MIN_H = 220, MEDIA_MAX_H = 640;
+const MEDIA_W = Math.round(CANVAS_W * 0.76), MEDIA_MIN_H = 220, MEDIA_MAX_H = 980;
 const MEDIA_INSET = 8, MEDIA_RADIUS = 14, MEDIA_CAPTION_GAP = 10;
 const BUBBLE_DEFAULTS = {
   light: { me: '#d9fdd3', contact: '#ffffff' },
@@ -1146,7 +1186,7 @@ function bubbleFill(isMe, tokens){
   return isMe ? th.bubbleColorMe : th.bubbleColorContact;
 }
 const QUOTE_PAD_X = 14, QUOTE_PAD_Y = 10, QUOTE_BAR_W = 4, QUOTE_GAP_BELOW = 10;
-const QUOTE_FONT_SIZE = 26, QUOTE_LINE_HEIGHT = 32, QUOTE_MAX_LINES = 2;
+const QUOTE_FONT_SIZE = 36, QUOTE_LINE_HEIGHT = 44, QUOTE_MAX_LINES = 2;
 const REPLY_CANDIDATE_LIMIT = 5;
 const DEL_ICON_R = 13, DEL_ICON_GAP = 10;
 const REPLY_BANNER_H = 104, REPLY_BANNER_PAD_X = 24, REPLY_BANNER_PAD_Y = 14, REPLY_BANNER_BAR_W = 4;
@@ -1154,12 +1194,12 @@ const REPLY_BANNER_H = 104, REPLY_BANNER_PAD_X = 24, REPLY_BANNER_PAD_Y = 14, RE
 // Real system fonts first where the creator's machine has them (Apple devices
 // resolve -apple-system to SF Pro); otherwise the embedded fonts, so Windows
 // previews never fall back to Segoe UI.
-const ANDROID_FONT = "ChatRoboto,Roboto,Arial,sans-serif";
-const IOS_FONT = "-apple-system,BlinkMacSystemFont,ChatInter,'Helvetica Neue',Arial,sans-serif";
+const ANDROID_FONT = "ChatRoboto,Roboto,ChatEmoji,'Noto Color Emoji','Segoe UI Emoji',Arial,sans-serif";
+const IOS_FONT = "-apple-system,BlinkMacSystemFont,ChatInter,'Apple Color Emoji',ChatEmoji,'Helvetica Neue',Arial,sans-serif";
 
 const PLATFORM = {
   android: {
-    statusBarH: 64, headerH: 172, navBarH: 56,
+    statusBarH: 72, headerH: 168, navBarH: 56,
     bubbleRadius: 10, tailRadius: 3,
     font: ANDROID_FONT,
     headerBgLight: '#008069', headerBgDark: '#1f2c34',
@@ -1168,10 +1208,10 @@ const PLATFORM = {
     backIcon: 'arrow', notch: false,
   },
   ios: {
-    statusBarH: 100, headerH: 190, navBarH: 64,
+    statusBarH: 112, headerH: 132, navBarH: 64,
     bubbleRadius: 24, tailRadius: 4,
     font: IOS_FONT,
-    headerBgLight: '#f6f6f6', headerBgDark: '#101c26',
+    headerBgLight: '#f6f6f6', headerBgDark: '#1c1c1e',
     headerTextLight: '#0b0b0b', headerTextDark: '#f2f2f2',
     headerSubLight: 'rgba(0,0,0,.5)', headerSubDark: 'rgba(242,242,242,.55)',
     backIcon: 'chevron', notch: true,
@@ -1182,15 +1222,22 @@ const PLATFORM = {
 // generation field and retain the original renderer via the classic fallback.
 const GENERATIONS = ['classic', 'refreshed', 'current'];
 function getPlatformTokens(){
-  // Layout metrics. Modern values are measured from real 2024-26 WhatsApp
-  // screenshots normalised to this 1080px-wide canvas; classic keeps its
-  // original metrics because no pre-2024 reference was available to measure.
+  // Metrics are normalised to a 1080px-wide export, not a particular phone's
+  // physical pixels. The classic preset approximates the late pre-2024 era.
   const base = { ...PLATFORM[state.platform], msgFontSize: 44, lineHeight: 56, tsFontSize: 27, padX: BUBBLE_PAD_X,
     padTop: BUBBLE_PAD_TOP, padBottom: BUBBLE_PAD_BOTTOM, chatPadX: CHAT_PAD_X,
     gapSame: BUBBLE_GAP, gapGroup: BUBBLE_GAP + GROUP_GAP_EXTRA,
     dateChipH: 46, dateFont: '600 24px', dateRadius: 10,
     avatarR: 40, statusTimeSize: 30, composerFont: 38 };
-  if (state.generation === 'classic') return base;
+  if (state.generation === 'classic') return { ...base,
+    avatarR: 50, statusTimeSize: state.platform === 'ios' ? 44 : 36,
+    headerNameSize: state.platform === 'ios' ? 44 : 46,
+    headerNameWeight: 500,
+    headerStatusSize: 32, composerFont: 46,
+    dateChipH: 54, dateFont: '500 30px', dateRadius: 16,
+    gapSame: 8, gapGroup: 22,
+    iosNeutralDark: state.platform === 'ios',
+  };
   const ios = state.platform === 'ios';
   const current = state.generation === 'current';
   return {
@@ -1296,6 +1343,9 @@ function resetPreview(){
   previewState.revealedCount = 0;
   typingArmedId = null;
   scrollOffsetCurrent = 0;
+  chatScroll.target = 0;
+  chatScroll.max = 0;
+  chatScroll.followLatest = true;
   lastRevealWallTime = null;
 }
 
@@ -1415,34 +1465,53 @@ function mediaSourceSize(media){
 }
 
 const wrapCache = new Map();
+const graphemeSegmenter = typeof Intl.Segmenter === 'function'
+  ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+function textGraphemes(text){
+  const value = String(text || '');
+  if (graphemeSegmenter) return Array.from(graphemeSegmenter.segment(value), part => part.segment);
+  // Older browsers: preserve modifiers, combining marks, flags and ZWJ chains.
+  return value.match(/(?:\p{Regional_Indicator}{2}|[^])[\p{Mark}\uFE0E\uFE0F\p{Emoji_Modifier}\u{E0020}-\u{E007F}]*(?:\u200D[^][\p{Mark}\uFE0E\uFE0F\p{Emoji_Modifier}]*)*/gu) || [];
+}
+function wrapTextLines(ctx, text, maxWidth){
+  const lines = [];
+  for (const paragraph of String(text || '').split('\n')){
+    if (!paragraph){ lines.push(''); continue; }
+    let current = '';
+    for (const word of paragraph.split(' ')){
+      const candidate = current ? current + ' ' + word : word;
+      if (ctx.measureText(candidate).width <= maxWidth){ current = candidate; continue; }
+      if (current){ lines.push(current); current = ''; }
+      // Even the first word may be wider than the bubble (URLs, CJK, emojis).
+      for (const grapheme of textGraphemes(word)){
+        if (current && ctx.measureText(current + grapheme).width > maxWidth){
+          lines.push(current); current = '';
+        }
+        current += grapheme;
+      }
+    }
+    lines.push(current);
+  }
+  return lines;
+}
+const emojiCountCache = new Map();
+function emojiOnlyCount(text){
+  const value = String(text || '');
+  if (emojiCountCache.has(value)) return emojiCountCache.get(value);
+  const parts = textGraphemes(value.replace(/\s/g, ''));
+  const count = parts.length > 0 && parts.every(part =>
+    /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u.test(part)) ? parts.length : 0;
+  if (emojiCountCache.size > 1000) emojiCountCache.clear();
+  emojiCountCache.set(value, count);
+  return count;
+}
 function getWrappedLines(ctx, msg, font, maxWidth){
   const key = msg.id + '|' + msg.text + '|' + font + '|' + maxWidth;
   const cached = wrapCache.get(key);
   if (cached) return cached;
   ctx.font = font;
-  const paragraphs = String(msg.text || '').split('\n');
-  const lines = [];
-  for (const para of paragraphs){
-    if (para === ''){ lines.push(''); continue; }
-    const words = para.split(' ');
-    let cur = '';
-    for (const word of words){
-      const test = cur ? cur + ' ' + word : word;
-      if (ctx.measureText(test).width > maxWidth && cur){
-        lines.push(cur);
-        cur = word;
-        while (ctx.measureText(cur).width > maxWidth && cur.length > 1){
-          let i = cur.length - 1;
-          while (i > 1 && ctx.measureText(cur.slice(0, i)).width > maxWidth) i--;
-          lines.push(cur.slice(0, i));
-          cur = cur.slice(i);
-        }
-      } else {
-        cur = test;
-      }
-    }
-    lines.push(cur);
-  }
+  const lines = wrapTextLines(ctx, msg.text, maxWidth);
+  if (wrapCache.size > 1000) wrapCache.clear();
   wrapCache.set(key, lines);
   return lines;
 }
@@ -1453,28 +1522,11 @@ function getWrappedLines(ctx, msg, font, maxWidth){
  * paragraph and are always short-lived (not cached per message). */
 function wrapClampedLines(ctx, text, font, maxWidth, maxLines){
   ctx.font = font;
-  const words = String(text || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
-  if (!words.length) return [''];
-  const allLines = [];
-  let cur = words[0];
-  for (let i = 1; i < words.length; i++){
-    const test = cur + ' ' + words[i];
-    if (ctx.measureText(test).width > maxWidth){
-      allLines.push(cur);
-      cur = words[i];
-    } else {
-      cur = test;
-    }
-  }
-  allLines.push(cur);
+  const allLines = wrapTextLines(ctx, String(text || '').replace(/\s+/g, ' ').trim(), maxWidth);
   if (allLines.length <= maxLines) return allLines;
 
   const clamped = allLines.slice(0, maxLines);
-  let last = clamped[maxLines - 1];
-  while (last.length > 1 && ctx.measureText(last + '…').width > maxWidth){
-    last = last.slice(0, -1);
-  }
-  clamped[maxLines - 1] = last.replace(/\s+$/, '') + '…';
+  clamped[maxLines - 1] = ellipsize(ctx, allLines.slice(maxLines - 1).join(' '), maxWidth);
   return clamped;
 }
 
@@ -1487,7 +1539,8 @@ function to12h(hhmm){
 
 function truncateLabel(text, maxChars){
   const s = String(text || '').replace(/\s+/g, ' ').trim();
-  return s.length > maxChars ? s.slice(0, maxChars - 1).trimEnd() + '…' : s;
+  const parts = textGraphemes(s);
+  return parts.length > maxChars ? parts.slice(0, maxChars - 1).join('').trimEnd() + '…' : s;
 }
 
 /* WhatsApp's date chip wording per platform/era:
@@ -1779,8 +1832,8 @@ function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   if (!tokens.androidModern){
-    ctx.font = '600 ' + (state.generation === 'classic' ? 30 : (tokens.statusTimeSize || 36)) + 'px ' + tokens.font;
-    ctx.fillText('9:41', 40, statusBarH / 2);
+    ctx.font = '600 ' + (tokens.statusTimeSize || 36) + 'px ' + tokens.font;
+    ctx.fillText('9:41', isIOS ? 112 : 40, statusBarH / 2);
   }
 
   if (tokens.androidModern){
@@ -1810,8 +1863,8 @@ function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
 
   if (isIOS){
     // iOS cluster, right-aligned: signal dots, wifi arc, pill battery with a nub, no % label
-    const battW = 46, battH = 22;
-    const battX = w - 40 - battW;
+    const battW = 64, battH = 30;
+    const battX = w - 88 - battW;
     ctx.lineWidth = 2.5;
     roundRectPath(ctx, battX, midY - battH / 2, battW, battH, { tl: 6, tr: 6, br: 6, bl: 6 });
     ctx.stroke();
@@ -1820,13 +1873,13 @@ function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
     roundRectPath(ctx, battX + pad, midY - battH / 2 + pad, (battW - pad * 2) * 0.8, battH - pad * 2, { tl: 2, tr: 2, br: 2, bl: 2 });
     ctx.fill();
 
-    const wifiCx = battX - 32;
-    drawWifiIcon(ctx, wifiCx, midY + 11, 26, color, false);
+    const wifiCx = battX - 46;
+    drawWifiIcon(ctx, wifiCx, midY + 15, 36, color, false);
 
-    const sigX = wifiCx - 72;
+    const sigX = wifiCx - 90;
     for (let i = 0; i < 4; i++){
-      const bh = 8 + i * 5;
-      roundRectPath(ctx, sigX + i * 11, midY + 10 - bh, 6, bh, { tl: 1, tr: 1, br: 1, bl: 1 });
+      const bh = 12 + i * 7;
+      roundRectPath(ctx, sigX + i * 14, midY + 14 - bh, 9, bh, { tl: 2, tr: 2, br: 2, bl: 2 });
       ctx.fill();
     }
   } else {
@@ -1857,7 +1910,9 @@ function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
   if (tokens.notch){
     ctx.fillStyle = '#000';
     const modern = state.generation !== 'classic';
-    roundRectPath(ctx, w / 2 - (modern ? 124 : 80), modern ? 24 : 14, modern ? 248 : 160, modern ? 60 : 34, { tl: 30, tr: 30, br: 30, bl: 30 });
+    // The blue-accent era predates Dynamic Island: use a top-connected notch.
+    roundRectPath(ctx, w / 2 - (modern ? 156 : 205), modern ? 24 : 0, modern ? 312 : 410, modern ? 80 : 70,
+      { tl: modern ? 40 : 0, tr: modern ? 40 : 0, br: modern ? 40 : 30, bl: modern ? 40 : 30 });
     ctx.fill();
   } else if (state.generation !== 'classic'){
     ctx.fillStyle = '#111b21'; ctx.beginPath(); ctx.arc(w / 2, statusBarH / 2, 16, 0, Math.PI * 2); ctx.fill();
@@ -1976,6 +2031,81 @@ function drawHeaderActionIcons(ctx, tokens, chrome, w, cy){
  * Layout + main draw
  * ------------------------------------------------------------------- */
 let scrollOffsetCurrent = 0;
+const chatScroll = { target: 0, max: 0, followLatest: true };
+
+function getChatViewport(){
+  const tokens = getPlatformTokens();
+  const top = tokens.statusBarH + tokens.headerH;
+  const bottom = CANVAS_H - FOOTER_H - getComposerFooterExtraH() - tokens.navBarH;
+  return { top, bottom, height: bottom - top };
+}
+
+function scrollChatTo(offset){
+  chatScroll.target = Math.max(0, Math.min(chatScroll.max, offset));
+  chatScroll.followLatest = chatScroll.max - chatScroll.target <= 2;
+  // Direct manipulation tracks the finger/wheel without a trailing animation.
+  scrollOffsetCurrent = chatScroll.target;
+}
+
+function wireChatScrolling(){
+  const area = $('chatScrollArea');
+  const latest = $('chatLatestBtn');
+  const canvasScale = () => CANVAS_H / previewCanvas.getBoundingClientRect().height;
+  let drag = null;
+
+  area.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || !chatScroll.max || !e.deltaY) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaMode === 1 ? e.deltaY * 20 * canvasScale()
+      : e.deltaMode === 2 ? e.deltaY * getChatViewport().height
+      : e.deltaY * canvasScale();
+    scrollChatTo(scrollOffsetCurrent + delta);
+  }, { passive: false });
+
+  area.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0 || !chatScroll.max) return;
+    // A drag inside the conversation scrolls it; the dock's header/frame can
+    // still be dragged to reposition the mini preview.
+    e.stopPropagation();
+    if (e.pointerType === 'mouse') e.preventDefault();
+    area.focus({ preventScroll: true });
+    drag = { id: e.pointerId, y: e.clientY };
+    area.setPointerCapture(e.pointerId);
+    area.classList.add('dragging');
+  });
+  area.addEventListener('pointermove', (e) => {
+    if (!drag || drag.id !== e.pointerId) return;
+    e.stopPropagation();
+    scrollChatTo(scrollOffsetCurrent + (drag.y - e.clientY) * canvasScale());
+    drag.y = e.clientY;
+  });
+  const endDrag = (e) => {
+    if (!drag || drag.id !== e.pointerId) return;
+    drag = null;
+    area.classList.remove('dragging');
+    if (area.hasPointerCapture(e.pointerId)) area.releasePointerCapture(e.pointerId);
+  };
+  area.addEventListener('pointerup', endDrag);
+  area.addEventListener('pointercancel', endDrag);
+  area.addEventListener('lostpointercapture', endDrag);
+  area.addEventListener('keydown', (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey || !chatScroll.max) return;
+    const page = getChatViewport().height * 0.85;
+    const offsets = { ArrowUp: -120, ArrowDown: 120, PageUp: -page, PageDown: page };
+    if (!(e.key in offsets) && e.key !== 'Home' && e.key !== 'End') return;
+    e.preventDefault();
+    e.stopPropagation();
+    scrollChatTo(e.key === 'Home' ? 0 : e.key === 'End' ? chatScroll.max
+      : scrollOffsetCurrent + offsets[e.key]);
+  });
+  latest.addEventListener('pointerdown', (e) => e.stopPropagation());
+  latest.addEventListener('click', () => {
+    chatScroll.followLatest = true;
+    // The button disappears at the bottom; keep keyboard focus in the chat.
+    area.focus({ preventScroll: true });
+  });
+}
 
 function computeVisibleState(){
   const visibleCount = Math.min(previewState.revealedCount, state.messages.length);
@@ -2059,7 +2189,10 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
       y += tokens.dateChipH + 28;
       lastDate = m.date;
     }
-    const font = MSG_FONT_SIZE + 'px ' + tokens.font;
+    const emojiCount = !m.deleted && !m.media && !m.replyTo ? emojiOnlyCount(m.text) : 0;
+    const textSize = emojiCount > 0 && emojiCount <= 3 ? [0, 96, 80, 64][emojiCount] : MSG_FONT_SIZE;
+    const textLineHeight = textSize > MSG_FONT_SIZE ? Math.ceil(textSize * 1.3) : LINE_HEIGHT;
+    const font = textSize + 'px ' + tokens.font;
     let lines, h, w, quote = null, media = null;
     if (m.deleted){
       const delText = m.sender === 'me' ? 'You deleted this message' : 'This message was deleted';
@@ -2081,8 +2214,8 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
         const mediaW = MEDIA_W;
         const mediaH = Math.max(MEDIA_MIN_H, Math.min(MEDIA_MAX_H, Math.round(mediaW * aspect)));
         const hasCaption = !!m.text.trim();
-        lines = hasCaption ? getWrappedLines(ctx, m, font, MEDIA_W + MEDIA_INSET * 2 - BUBBLE_PAD_X * 2) : [];
         const frameless = tokens.roundedMedia && !quote;
+        lines = hasCaption ? getWrappedLines(ctx, m, font, MEDIA_W + (frameless ? 0 : MEDIA_INSET * 2) - BUBBLE_PAD_X * 2) : [];
         let contentW = mediaW + (frameless ? 0 : MEDIA_INSET * 2);
         if (quote) contentW = Math.max(contentW, quote.w + BUBBLE_PAD_X * 2);
         w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, contentW));
@@ -2098,7 +2231,7 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
         for (const l of lines) maxLineW = Math.max(maxLineW, ctx.measureText(l).width);
         const contentW = quote ? Math.max(maxLineW, quote.w) : maxLineW;
         w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, contentW + BUBBLE_PAD_X * 2));
-        h = BUBBLE_PAD_TOP + lines.length * LINE_HEIGHT + TS_ROW_H + BUBBLE_PAD_BOTTOM;
+        h = BUBBLE_PAD_TOP + lines.length * textLineHeight + TS_ROW_H + BUBBLE_PAD_BOTTOM;
         {
           const lastLineW = ctx.measureText(lines[lines.length - 1] || '').width;
           ctx.font = TS_FONT_SIZE + 'px ' + tokens.font;
@@ -2112,7 +2245,8 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
     const firstInGroup = i === 0 || state.messages[i - 1].sender !== m.sender || state.messages[i - 1].date !== m.date;
     const nextMsg = i + 1 < visibleCount ? state.messages[i + 1] : null;
     const lastInGroup = !nextMsg || nextMsg.sender !== m.sender || nextMsg.date !== m.date;
-    blocks.push({ type: 'bubble', msg: m, y, h, w, lines, quote, media, firstInGroup, lastInGroup });
+    blocks.push({ type: 'bubble', msg: m, y, h, w, lines, quote, media, firstInGroup, lastInGroup,
+      textSize, textLineHeight, emojiCount });
     const nextSameSender = state.messages[i + 1] && state.messages[i + 1].sender === m.sender && i + 1 < visibleCount;
     y += h + (nextSameSender ? tokens.gapSame : tokens.gapGroup);
   }
@@ -2162,8 +2296,12 @@ function drawChatArea(ctx, originY, height, now){
   const { visibleCount, typingActive } = computeVisibleState();
   const { blocks, totalHeight } = buildBlocks(ctx, tokens, visibleCount, typingActive, MAX_TEXT_W);
 
-  const scrollTarget = Math.max(0, totalHeight - (messagesH - 20));
-  scrollOffsetCurrent += (scrollTarget - scrollOffsetCurrent) * 0.22;
+  chatScroll.max = Math.max(0, totalHeight - (messagesH - 20));
+  chatScroll.target = Math.min(chatScroll.target, chatScroll.max);
+  if (chatScroll.max - chatScroll.target <= 2) chatScroll.followLatest = true;
+  const scrollTarget = chatScroll.followLatest ? chatScroll.max : chatScroll.target;
+  scrollOffsetCurrent = Math.min(scrollOffsetCurrent, chatScroll.max);
+  scrollOffsetCurrent += (scrollTarget - scrollOffsetCurrent) * (prefersReducedMotion ? 1 : 0.22);
   if (Math.abs(scrollTarget - scrollOffsetCurrent) < 0.5) scrollOffsetCurrent = scrollTarget;
 
   // iOS 26 glass: messages keep their layout origin but scroll up *behind*
@@ -2288,14 +2426,15 @@ function drawChatArea(ctx, originY, height, now){
         }
       }
     } else {
-      let textStartY = y + BUBBLE_PAD_TOP + MSG_FONT_SIZE * .82;
+      const textSize = b.textSize || MSG_FONT_SIZE;
+      let textStartY = y + BUBBLE_PAD_TOP + textSize * (textSize > MSG_FONT_SIZE ? 1 : .82);
       if (b.quote) textStartY += b.quote.h + QUOTE_GAP_BELOW;
-      ctx.font = MSG_FONT_SIZE + 'px ' + tokens.font;
+      ctx.font = textSize + 'px ' + tokens.font;
       ctx.fillStyle = chromeMode === 'dark' ? '#e9edef' : '#111b21';
       let ly = textStartY;
       for (const line of b.lines){
         ctx.fillText(line, bx + BUBBLE_PAD_X, ly);
-        ly += LINE_HEIGHT;
+        ly += b.textLineHeight || LINE_HEIGHT;
       }
     }
 
@@ -2483,9 +2622,11 @@ function drawSendIconSmall(ctx, cx, cy, r, color){
  * so those three call sites can never drift out of sync with each other. */
 function getComposerLayout(footerX, footerY, footerW, footerH){
   if (getPlatformTokens().glass){
+    const typing = !!getComposerDisplayText().trim();
     return {
-      field: { x: footerX + 130, y: footerY + (footerH - 104) / 2, w: footerW - 264, h: 104 },
+      field: { x: footerX + 130, y: footerY + (footerH - 104) / 2, w: footerW - (typing ? 264 : 380), h: 104 },
       actionCx: footerX + footerW - 68, actionCy: footerY + footerH / 2, actionR: 48,
+      cameraCx: typing ? null : footerX + footerW - 184,
     };
   }
   if (state.platform === 'ios'){
@@ -2510,8 +2651,8 @@ function getComposerLayout(footerX, footerY, footerW, footerH){
       actionCx: footerX + 1003, actionCy: footerY + footerH / 2 - 2, actionR: btnR,
     };
   }
-  const pillH = state.generation === 'classic' ? 96 : 124;
-  const btnR = state.generation === 'classic' ? 48 : 66;
+  const pillH = 126;
+  const btnR = 63;
   const edge = state.generation === 'classic' ? 16 : 12;
   const pillLeft = footerX + edge;
   const pillRight = footerX + footerW - edge - btnR * 2 - 12;
@@ -2887,19 +3028,25 @@ function drawTopGlassEdge(ctx, totalTopH, mode, statusBarH){
 }
 
 function drawFooterBarGlass(ctx, tokens, mode, x, y, w, h, now){
-  const { field, actionCx, actionCy, actionR } = getComposerLayout(x, y, w, h);
+  const { field, actionCx, actionCy, actionR, cameraCx } = getComposerLayout(x, y, w, h);
   const color = mode === 'dark' ? '#e9edef' : '#111b21';
   const cy = y + h / 2;
   drawGlassSurface(ctx, x + 20, cy - 48, 96, 96, 48, mode);
   drawGlassSurface(ctx, field.x, field.y, field.w, field.h, field.h / 2, mode);
-  drawGlassSurface(ctx, actionCx - actionR, cy - actionR, actionR * 2, actionR * 2, actionR, mode);
+  if (cameraCx !== null){
+    drawGlassSurface(ctx, cameraCx - 48, cy - 48, 96, 96, 48, mode);
+    drawAndroidChatIcon(ctx, 'camera', cameraCx, cy, 48, color);
+  }
   ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(x + 48, cy); ctx.lineTo(x + 88, cy);
   ctx.moveTo(x + 68, cy - 20); ctx.lineTo(x + 68, cy + 20); ctx.stroke();
   drawComposerTextField(ctx, tokens, field.x, cy, field.w - 100, field.x + 28, color, mode === 'dark' ? '#a1adb3' : '#667781', now);
   drawIosStickerIcon(ctx, field.x + field.w - 48, cy, 48, color);
   drawComposerAction(actionCx, actionCy, actionR, now,
-    () => drawMicIconSmall(ctx, actionCx, actionCy, 25, color),
+    () => {
+      ctx.fillStyle = tokens.accent; ctx.beginPath(); ctx.arc(actionCx, actionCy, actionR, 0, Math.PI * 2); ctx.fill();
+      drawMicIconSmall(ctx, actionCx, actionCy, 25, '#ffffff');
+    },
     (scale, alpha) => {
       ctx.save(); ctx.globalAlpha = alpha;
       ctx.translate(actionCx, actionCy); ctx.scale(scale, scale);
@@ -2941,7 +3088,7 @@ function drawNavBar(ctx, tokens, chromeMode, x, y, w, h){
 
 function ellipsize(ctx, text, maxWidth){
   if (ctx.measureText(text).width <= maxWidth) return text;
-  const chars = Array.from(text);
+  const chars = textGraphemes(text);
   while (chars.length && ctx.measureText(chars.join('') + '\u2026').width > maxWidth) chars.pop();
   return chars.join('') + '\u2026';
 }
@@ -3043,7 +3190,7 @@ function drawTopChrome(ctx, typingIsContact){
   const subColor = chromeMode === 'dark' ? tokens.headerSubDark : tokens.headerSubLight;
   const modernHeader = state.generation !== 'classic';
   // Keep the identity block proportional to the avatar in the compact headers.
-  const textX = ah ? ah.textX : (modernHeader ? avatarCx + avatarR + 24 : 190);
+  const textX = ah ? ah.textX : avatarCx + avatarR + 24;
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = nameColor;
   ctx.font = (tokens.headerNameWeight || 600) + ' ' + (tokens.headerNameSize || 40) + 'px ' + tokens.font;
@@ -3165,6 +3312,17 @@ function layoutComposerInput(){
   composerInputEl.style.top = (canvasRect.top - frameRect.top + field.y * scaleY) + 'px';
   composerInputEl.style.width = (field.w * scaleX) + 'px';
   composerInputEl.style.height = (field.h * scaleY) + 'px';
+  const viewport = getChatViewport();
+  const area = $('chatScrollArea');
+  area.style.left = (canvasRect.left - frameRect.left) + 'px';
+  area.style.top = (canvasRect.top - frameRect.top + viewport.top * scaleY) + 'px';
+  area.style.width = canvasRect.width + 'px';
+  area.style.height = (viewport.height * scaleY) + 'px';
+  area.classList.toggle('can-scroll', chatScroll.max > 0);
+  const latest = $('chatLatestBtn');
+  latest.hidden = chatScroll.followLatest || chatScroll.max === 0;
+  latest.style.right = (frameRect.right - canvasRect.right + 10) + 'px';
+  latest.style.bottom = (frameRect.bottom - canvasRect.top - viewport.bottom * scaleY + 10) + 'px';
 }
 
 /* ---------------------------------------------------------------------
@@ -3214,7 +3372,9 @@ function downloadBlob(blob, filename){
  * CLAUDE.md) — just grabs the current canvas frame as a PNG instead of a
  * video stream. No draw calls of its own, so it can never drift from what's
  * actually on screen. */
-function saveScreenshot(){
+async function saveScreenshot(){
+  await window.chatEmojiReady;
+  draw(previewCtx, performance.now());
   previewCanvas.toBlob((blob) => {
     if (!blob){ showToast('Screenshot failed — try again.'); return; }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -3312,8 +3472,14 @@ function makeRecorder(kind, canvas){
 
   function setState(next){ ctrl.state = next; setButtons(); }
 
-  ctrl.start = function(){
+  ctrl.start = async function(){
     if (ctrl.state === 'recording' || ctrl.state === 'paused' || ctrl.state === 'processing') return;
+    // Unlock audio in the click gesture, then wait for stable emoji metrics.
+    const notifCtx = ensureNotifAudioCtx();
+    if (notifCtx && notifCtx.state === 'suspended') notifCtx.resume();
+    await window.chatEmojiReady;
+    if (ctrl.state === 'recording' || ctrl.state === 'paused' || ctrl.state === 'processing') return;
+    draw(previewCtx, performance.now());
     setNote(kind, '');
     ctrl.lastBlob = null;
     let stream;
@@ -3323,7 +3489,6 @@ function makeRecorder(kind, canvas){
       // so it's genuinely baked into the recorded file, not just audible
       // live — must happen before the MediaRecorder is constructed below,
       // since tracks added afterward aren't picked up in every browser.
-      const notifCtx = ensureNotifAudioCtx();
       if (notifCtx && notifDestNode){
         notifDestNode.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
         if (notifCtx.state === 'suspended') notifCtx.resume();
@@ -4963,6 +5128,7 @@ function init(){
   wireResizeHandle();
   wireTabs();
   wireDockingPreview();
+  wireChatScrolling();
   wireExportSheet();
   renderMessageList();
 
@@ -5026,7 +5192,7 @@ function init(){
   });
 
   // Refresh line measurements once the embedded fonts are available.
-  Promise.all(['44px ChatRoboto', '44px ChatInter', '600 44px ChatInter'].map((f) => document.fonts.load(f)))
+  Promise.all([window.chatEmojiReady, ...['44px ChatRoboto', '44px ChatInter', '600 44px ChatInter'].map((f) => document.fonts.load(f))])
     .then(() => wrapCache.clear(), () => wrapCache.clear());
   requestAnimationFrame(loop);
   checkMp4Backend();
