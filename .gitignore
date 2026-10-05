@@ -17,3 +17,6 @@ tests/test-results/
 tests/playwright-report/
 # Superpowers execution scratch
 .superpowers/
+
+# Local Edge Function secrets
+supabase/functions/.env*
