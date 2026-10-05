@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chatreel – Chat Story Studio</title>
+<title>What The Chat – Chat Story Studio</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2325d366' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z'/%3E%3C/svg%3E">
 <style>
   /* Roboto: Google Fonts, SIL OFL 1.1; see assets/Roboto-LICENSE.txt. */
@@ -19,6 +19,9 @@
     --studio-surface-hover:#202024;
     --studio-input:#0c0c0e;
     --studio-card:#151518;
+    --studio-section:#131316;
+    --card-contact:#1f2a30; --card-contact-border:#2d3b42; --card-contact-edge:#6b7f8a;
+    --card-me:#0b3b2e; --card-me-border:#16564a;
     --studio-border:#2a2a2f;
     --studio-border-strong:#3f3f46;
     --studio-text:#fafafa;
@@ -77,9 +80,8 @@
   /* ---- workspace layout: editor sidebar | phone stage | export panel ---- */
   #workspace{flex:1;display:flex;min-height:0;position:relative;}
   .tabsBar{display:none;}
-  #platformControls{margin-bottom:var(--space-6);}
 
-  #leftPanel{width:var(--editor-w);flex-shrink:0;background:var(--studio-surface);
+  #leftPanel{width:var(--editor-w);flex-shrink:0;background:var(--studio-bg);
     overflow-y:auto;padding:var(--space-5);border-right:1px solid var(--studio-border);}
   #leftPanel > *,#exportPanel > *{flex-shrink:0;}
   #resizeHandle{width:6px;flex-shrink:0;cursor:col-resize;background:transparent;position:relative;
@@ -103,19 +105,35 @@
   .panelTitle{font-size:11px;text-transform:uppercase;letter-spacing:.08em;
     color:var(--studio-text-secondary);margin:var(--space-6) 0 var(--space-3);font-weight:600;}
   .panelTitle:first-child{margin-top:0;}
-  #exportPanel .panelTitle{margin:var(--space-5) 0 var(--space-1);}
+  #exportPanel .panelTitle{margin:var(--space-5) 0 var(--space-1);font-size:13.5px;text-transform:none;
+    letter-spacing:-.01em;color:var(--studio-text);}
   #exportPanel .panelTitle:first-child{margin-top:0;}
-  details.appearanceDetails{border-top:1px solid var(--studio-border);
-    margin-top:var(--space-6);padding-top:var(--space-4);}
-  #panelMessages{border-top:1px solid var(--studio-border);
-    margin-top:var(--space-6);padding-top:var(--space-4);}
-  details.appearanceDetails summary.panelTitle{cursor:pointer;margin-top:0;
-    display:flex;align-items:center;justify-content:space-between;list-style:none;user-select:none;}
-  details.appearanceDetails summary.panelTitle::-webkit-details-marker{display:none;}
-  details.appearanceDetails summary.panelTitle::after{content:'';width:7px;height:7px;
+  /* Editor sections: icon tile + title + one-line subtitle, separated by
+     hairlines, so the sidebar reads as distinct steps rather than one long form. */
+  .editorSection{padding:var(--space-4);margin-bottom:var(--space-3);background:var(--studio-section);
+    border:1px solid var(--studio-border);border-radius:12px;box-shadow:inset 0 1px 0 rgb(255 255 255 / 3%);}
+  #panelMessages{background:transparent;border:none;box-shadow:none;padding:var(--space-2) 0 0;}
+  .sectionHead{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);}
+  .sectionIcon{width:32px;height:32px;flex-shrink:0;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    background:var(--studio-surface-raised);border:1px solid var(--studio-border);color:var(--studio-text-secondary);
+    box-shadow:inset 0 1px 0 rgb(255 255 255 / 4%);}
+  .sectionHeadText{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+  .sectionTitle{margin:0;font-size:13.5px;font-weight:600;letter-spacing:-.01em;color:var(--studio-text);
+    display:flex;align-items:center;gap:var(--space-2);}
+  .sectionSub{margin:0;font-size:12px;color:var(--studio-text-tertiary);line-height:1.4;}
+  .countBadge{font-size:11px;font-weight:600;color:var(--studio-text-secondary);background:var(--studio-surface-hover);
+    border:1px solid var(--studio-border);border-radius:999px;padding:1px 7px;font-variant-numeric:tabular-nums;}
+  details.appearanceDetails > summary.sectionHead{cursor:pointer;list-style:none;user-select:none;
+    margin:0;border-radius:var(--radius-md);}
+  details.appearanceDetails[open] > summary.sectionHead{margin-bottom:var(--space-4);}
+  details.appearanceDetails > .row:first-of-type > div > label:first-child{margin-top:0;}
+  details.appearanceDetails > summary::-webkit-details-marker{display:none;}
+  details.appearanceDetails > summary.sectionHead::after{content:'';width:7px;height:7px;
     border-right:1.5px solid var(--studio-text-tertiary);border-bottom:1.5px solid var(--studio-text-tertiary);
-    transform:rotate(45deg);transition:transform .15s ease;flex-shrink:0;margin-right:4px;}
-  details.appearanceDetails[open] summary.panelTitle::after{transform:rotate(-135deg);}
+    transform:rotate(45deg);transition:transform .15s ease;flex-shrink:0;margin:0 6px 4px 0;}
+  details.appearanceDetails[open] > summary.sectionHead::after{transform:rotate(-135deg);margin:4px 6px 0 0;}
+  details.appearanceDetails > summary.sectionHead:hover .sectionIcon{color:var(--studio-text);border-color:var(--studio-border-strong);}
+  .sectionHead + label,.sectionHead + .row > div > label:first-child{margin-top:0;}
 
   label{display:block;font-size:12px;color:var(--studio-text-secondary);
     margin:var(--space-4) 0 6px;font-weight:500;}
@@ -175,38 +193,118 @@
   button.danger{background:transparent;color:var(--studio-text-tertiary);border-color:transparent;box-shadow:none;}
   button.danger:hover:not(:disabled){background:var(--studio-danger-bg);border-color:#5a2a2a;color:var(--studio-danger);}
 
-  /* Segmented control: one recessed track, the selected option raised and
-     neutral (green is reserved for the region's primary action). */
+  /* Segmented control: one recessed track; the selected option is solid
+     WhatsApp green so the current choice is readable at a glance. */
   .seg{display:flex;gap:2px;padding:3px;background:var(--studio-input);
     border:1px solid var(--studio-border);border-radius:9px;}
   button.segbtn{flex:1;min-width:0;height:30px;border-color:transparent;background:transparent;
     box-shadow:none;color:var(--studio-text-tertiary);border-radius:6px;font-weight:500;}
   button.segbtn:hover{background:transparent;border-color:transparent;color:var(--studio-text);}
-  button.segbtn.active{background:var(--studio-surface-hover);border-color:var(--studio-border-strong);
-    color:var(--studio-text);box-shadow:0 1px 2px rgb(0 0 0 / 45%),inset 0 1px 0 rgb(255 255 255 / 6%);}
+  button.segbtn.active,button.segbtn.active:hover{background:var(--studio-accent);border-color:transparent;
+    color:var(--studio-accent-text);font-weight:600;
+    box-shadow:0 1px 2px rgb(0 0 0 / 45%),inset 0 1px 0 rgb(255 255 255 / 28%);}
 
-  #avatarPreview{width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;
-    background:var(--studio-surface-hover);border:1px solid var(--studio-border);}
-  .avatarRow{display:flex;align-items:center;gap:var(--space-3);}
-  .avatarRow #removeAvatarBtn{margin-left:auto;}
+  #avatarPreview{width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;
+    background:var(--studio-surface-hover);border:1px solid var(--studio-border-strong);}
+  /* Contact identity: avatar beside the name field and its image actions. */
+  .identityCard{display:flex;align-items:flex-start;gap:var(--space-4);}
+  .identityFields{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .identityFields > label{margin-top:0;}
+  .identityActions{display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);}
+  .identityActions .uploadBtn{height:30px;font-size:12px;padding:0 10px;}
+  .identityActions button.small{width:30px;height:30px;}
+  .bubblePickerWrap{position:relative;}
+  button.bubbleColorsBtn{width:100%;justify-content:flex-start;gap:10px;background:var(--studio-input);
+    box-shadow:none;padding:0 var(--space-3) 0 10px;}
+  .bubbleColorsName{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bubbleColorsChevron{color:var(--studio-text-secondary);transition:transform .15s ease;flex-shrink:0;}
+  button.bubbleColorsBtn[aria-expanded="true"]{border-color:var(--studio-border-strong);}
+  button.bubbleColorsBtn[aria-expanded="true"] .bubbleColorsChevron{transform:rotate(180deg);}
+  /* Small floating window under the trigger: presets + custom pickers. */
+  .bubblePopover{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;padding:var(--space-3);
+    background:var(--studio-surface-raised);border:1px solid var(--studio-border-strong);border-radius:12px;
+    box-shadow:var(--shadow-float);animation:popIn .14s ease-out;}
+  .popoverLabel{margin-top:0;}
+  .uploadName{flex:1;}
+  .popHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);}
+  .popHead label{margin:0;color:var(--studio-text);font-size:12.5px;font-weight:600;}
+  .popHead output{font-size:12.5px;color:var(--studio-text-secondary);font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%;accent-color:var(--studio-accent);height:24px;margin:0;cursor:pointer;}
+  .rangeEnds{display:flex;justify-content:space-between;font-size:11px;color:var(--studio-text-tertiary);
+    margin:2px 0 var(--space-3);}
+  @keyframes popIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion:reduce){ .bubblePopover{animation:none;} .bubbleColorsChevron{transition:none;} }
+  .presetRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+  button.presetBtn{height:34px;padding:0 8px;gap:8px;justify-content:flex-start;font-size:12px;
+    background:var(--studio-input);color:var(--studio-text-secondary);box-shadow:none;min-width:0;}
+  button.presetBtn > span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  button.presetBtn:hover{color:var(--studio-text);}
+  button.presetBtn.active{border-color:var(--studio-accent);color:var(--studio-text);
+    box-shadow:0 0 0 1px var(--studio-accent);}
+  .presetDots{display:flex;flex-shrink:0;}
+  .presetDots span{width:16px;height:16px;border-radius:50%;border:1px solid rgb(255 255 255 / 25%);}
+  .presetDots span + span{margin-left:-6px;}
+  .customLabel{margin:var(--space-3) 0 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--studio-text-tertiary);font-weight:600;}
+  .swatchRow{display:flex;gap:var(--space-2);}
+  label.swatch{flex:1;display:flex;align-items:center;gap:10px;margin:0;padding:6px 10px 6px 6px;cursor:pointer;
+    background:var(--studio-input);border:1px solid var(--studio-border);border-radius:var(--radius-md);
+    color:var(--studio-text);font-size:12.5px;font-weight:500;transition:border-color .12s ease;}
+  label.swatch:hover{border-color:var(--studio-border-strong);}
+  label.swatch input[type=color]{width:28px;height:24px;padding:0;border:none;background:transparent;border-radius:6px;}
+  label.swatch:focus-within{outline:2px solid var(--studio-focus);outline-offset:2px;}
   .uploadBtn{height:34px;font-size:12.5px;}
   .uploadBtn svg{color:var(--studio-text-secondary);}
   .uploadRow{display:flex;align-items:center;gap:var(--space-2);min-width:0;}
   .uploadName{font-size:12px;color:var(--studio-text-tertiary);min-width:0;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-  /* Message cards: full width; sender shown by a thin left edge plus the
-     Contact/Me control (accent for Me, neutral for Contact). */
-  #messageList{display:flex;flex-direction:column;gap:10px;margin-top:var(--space-3);}
-  .msgCard{--edge:var(--studio-border-strong);background:var(--studio-card);border:1px solid var(--studio-border);
+  /* Message cards read like the chat: Contact cards anchor left, Me cards
+     anchor right (sharp top corner on the anchored side, sender bar on that
+     edge, faint green tint for Me), mirroring the bubbles in the preview. */
+  #messageList{display:flex;flex-direction:column;gap:10px;}
+  .timeStepRow{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);}
+  .timeStepRow label{margin:0;white-space:nowrap;}
+  .timeStepRow select{height:32px;font-size:12.5px;flex:1;min-width:0;}
+  .msgCard{--edge:var(--card-contact-edge);background:var(--card-contact);border:1px solid var(--card-contact-border);
     border-radius:10px;padding:var(--space-3) var(--space-3) var(--space-3) 15px;
-    position:relative;transition:border-color .12s ease;}
+    position:relative;transition:border-color .12s ease;width:92%;}
   .msgCard::before{content:'';position:absolute;left:-1px;top:14px;bottom:14px;width:3px;
     border-radius:0 3px 3px 0;background:var(--edge);}
-  .msgCard:focus-within{border-color:var(--studio-border-strong);}
-  .msgCard--me{--edge:var(--studio-accent);}
+  .msgCard:focus-within{border-color:#4a5c66;}
+  .msgCard--contact{margin-right:auto;border-top-left-radius:3px;}
+  .msgCard--me{--edge:var(--studio-accent);margin-left:auto;border-top-right-radius:3px;
+    padding:var(--space-3) 15px var(--space-3) var(--space-3);
+    background:var(--card-me);border-color:var(--card-me-border);}
+  .msgCard--me::before{left:auto;right:-1px;border-radius:3px 0 0 3px;}
+  .msgCard--me:focus-within{border-color:color-mix(in srgb,var(--studio-accent) 45%,var(--studio-border-strong));}
   .msgCardHead{display:flex;align-items:center;gap:4px;margin-bottom:10px;}
-  .msgCardHead .seg{flex:0 1 168px;margin-right:auto;padding:2px;}
+  .msgCardHead .seg{flex:0 1 150px;padding:2px;}
+  .msgIndex{font-size:11px;font-weight:600;color:var(--studio-text-tertiary);font-variant-numeric:tabular-nums;
+    min-width:20px;letter-spacing:.02em;}
+  .msgState{margin-right:auto;margin-left:6px;font-size:11px;font-weight:600;border-radius:999px;padding:2px 8px;
+    line-height:1.4;white-space:nowrap;}
+  .msgState:empty{display:none;}
+  .msgCard[data-state="next"] .msgState{color:var(--studio-accent);background:color-mix(in srgb,var(--studio-accent) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--studio-accent) 30%,transparent);}
+  .msgCard[data-state="sent"] .msgState{color:var(--studio-text-tertiary);border:1px solid var(--studio-border);}
+  .msgCard[data-state="next"]{box-shadow:0 0 0 1px color-mix(in srgb,var(--studio-accent) 45%,transparent),
+    0 6px 18px -8px rgb(0 0 0 / 60%);}
+  .msgCard[data-state="sent"] textarea{color:var(--studio-text-secondary);}
+  /* Narrow editor (resized panel or phone): drop the index, then the state
+     chip (the Send button still shows it), so move/delete never clip. */
+  #leftPanel{container-type:inline-size;}
+  @container (max-width:355px){
+    .msgIndex{display:none;}
+    .msgCardHead .seg{flex-basis:128px;}
+  }
+  @container (max-width:300px){
+    .msgState{display:none;}
+    .msgCard{width:100%;}
+    .msgCardHead .seg{flex:1 1 0;margin-right:auto;}
+    .msgCardHead button.segbtn{padding:0 6px;}
+    .msgCardHead button.small{width:26px;}
+  }
   .msgCardHead button.segbtn{height:26px;font-size:12px;}
   .msgCardHead button.small{width:28px;height:28px;background:transparent;border-color:transparent;box-shadow:none;}
   .msgCardHead button.small:hover:not(:disabled){background:var(--studio-surface-hover);border-color:var(--studio-border);}
@@ -214,7 +312,6 @@
   .composeRow{display:flex;gap:var(--space-2);align-items:stretch;}
   .composeRow textarea{flex:1;min-width:0;min-height:44px;}
   .replyRow{margin-top:10px;}
-  .replyRow label{margin:0 0 5px;}
   /* Send: neutral by default; solid green only on the next message to reveal
      (data-state set by syncSendButtonStates); quiet once already revealed. */
   .sendBtn{white-space:nowrap;padding:0 var(--space-3);}
@@ -229,7 +326,9 @@
   .fieldsRow > div:nth-child(1){flex-basis:136px;}
   .fieldsRow > div:nth-child(2){flex-basis:120px;}
   .fieldsRow > div:nth-child(3){flex-basis:96px;}
-  .fieldsRow label{margin:0 0 5px;}
+  .fieldsRow label,.replyRow label{margin:0 0 5px;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--studio-text-tertiary);font-weight:600;}
+  .fieldsRow input,.fieldsRow select,.replyRow select{height:32px;font-size:12.5px;}
   .fieldsRow input[type=date],.fieldsRow input[type=time]{padding:0 8px;font-variant-numeric:tabular-nums;}
   .delRow{margin-top:10px;padding-top:10px;border-top:1px solid var(--studio-border);font-size:12px;color:var(--studio-text-secondary);
     display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);flex-wrap:wrap;}
@@ -389,12 +488,12 @@
 <div id="app">
 
   <header id="studioHeader">
-    <a class="headerBrand" href="../index.html" aria-label="Chatreel — back to home">
+    <a class="headerBrand" href="../index.html" aria-label="What The Chat — back to home">
       <span class="brandMark" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
       </span>
       <div class="brandText">
-        <span class="brandName">Chatreel</span>
+        <span class="brandName">What The Chat</span>
       </div>
     </a>
 
@@ -419,9 +518,11 @@
     </nav>
 
     <div id="leftPanel">
-      <h2 class="panelTitle">Editor</h2>
-      <div id="platformControls">
-        <label>Phone platform</label>
+      <section id="platformControls" class="editorSection">
+        <div class="sectionHead">
+          <span class="sectionIcon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
+          <div class="sectionHeadText"><h2 class="sectionTitle">Phone</h2><p class="sectionSub">Platform and WhatsApp look</p></div>
+        </div>
         <div class="seg" role="group" aria-label="Phone platform">
           <button class="segbtn" id="platformAndroidBtn">Android</button>
           <button class="segbtn" id="platformIosBtn">iOS</button>
@@ -433,24 +534,29 @@
           <option value="current">Gen 3 &middot; 2026 rollout</option>
         </select>
         <p class="helperText" id="generationHelp"></p>
-      </div>
+      </section>
       <div id="editorFields">
-      <section id="panelContent">
-        <h2 class="panelTitle">Chat identity</h2>
-        <label for="contactNameInput">Contact name</label>
-        <input type="text" id="contactNameInput">
-
-        <label>Avatar</label>
-        <div class="avatarRow">
+      <section id="panelContent" class="editorSection">
+        <div class="sectionHead">
+          <span class="sectionIcon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg></span>
+          <div class="sectionHeadText"><h2 class="sectionTitle">Contact</h2><p class="sectionSub">Who the conversation is with</p></div>
+        </div>
+        <div class="identityCard avatarRow">
           <img id="avatarPreview" alt="Contact avatar preview">
-          <input type="file" id="avatarInput" class="visually-hidden" tabindex="-1" accept="image/*" aria-label="Upload contact avatar">
-          <button type="button" class="uploadBtn" id="avatarUploadBtn" aria-label="Upload contact avatar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span>Upload image</span>
-          </button>
-          <button class="small" id="removeAvatarBtn" aria-label="Reset avatar to default" title="Reset avatar to default">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-          </button>
+          <div class="identityFields">
+            <label for="contactNameInput">Contact name</label>
+            <input type="text" id="contactNameInput">
+            <div class="identityActions">
+              <input type="file" id="avatarInput" class="visually-hidden" tabindex="-1" accept="image/*" aria-label="Upload contact avatar">
+              <button type="button" class="uploadBtn" id="avatarUploadBtn" aria-label="Upload contact avatar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span>Upload image</span>
+              </button>
+              <button class="small" id="removeAvatarBtn" aria-label="Reset avatar to default" title="Reset avatar to default">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         <label for="statusModeSelect">Header status</label>
@@ -465,31 +571,50 @@
         </div>
       </section>
 
-      <details class="appearanceDetails" id="panelAppearance" open>
-        <summary class="panelTitle">Appearance</summary>
+      <details class="appearanceDetails editorSection" id="panelAppearance" open>
+        <summary class="sectionHead">
+          <span class="sectionIcon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 1 9-9c0 2.5-2 3.5-3.5 3.5H15a2 2 0 0 0-1.5 3.3c.4.5.5 1.2.1 1.7-.4.4-1 .5-1.6.5Z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="14.5" cy="7" r="1"/><circle cx="17" cy="10.5" r="1"/></svg></span>
+          <span class="sectionHeadText"><span class="sectionTitle">Appearance</span><span class="sectionSub">Theme, wallpaper and bubbles</span></span>
+        </summary>
 
-        <label>Chrome mode</label>
-        <div class="seg">
-          <button class="segbtn" id="chromeLightBtn">Light</button>
-          <button class="segbtn" id="chromeDarkBtn">Dark</button>
+        <div class="row">
+          <div>
+            <label>Chrome mode</label>
+            <div class="seg">
+              <button class="segbtn" id="chromeLightBtn">Light</button>
+              <button class="segbtn" id="chromeDarkBtn">Dark</button>
+            </div>
+          </div>
+          <div>
+            <label for="wallpaperTypeSelect">Wallpaper</label>
+            <select id="wallpaperTypeSelect">
+              <option value="default">Default doodle</option>
+              <option value="custom">Custom image</option>
+              <option value="solid">Solid color</option>
+              <option value="gradient">Gradient</option>
+            </select>
+          </div>
         </div>
-
-        <label for="wallpaperTypeSelect">Wallpaper</label>
-        <select id="wallpaperTypeSelect">
-          <option value="default">Default doodle</option>
-          <option value="custom">Custom image</option>
-          <option value="solid">Solid color</option>
-          <option value="gradient">Gradient</option>
-        </select>
         <div id="wallpaperCustomField" class="themeSubField">
           <label for="wallpaperFileInput">Wallpaper image</label>
           <input type="file" id="wallpaperFileInput" class="visually-hidden" tabindex="-1" accept="image/*" aria-label="Upload wallpaper image">
-          <div class="uploadRow">
+          <div class="uploadRow bubblePickerWrap" id="wallpaperAdjustWrap">
             <button type="button" class="uploadBtn" id="wallpaperUploadBtn" aria-label="Upload wallpaper image" aria-describedby="wallpaperFileName">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <span>Upload image</span>
             </button>
             <span class="uploadName" id="wallpaperFileName">No image chosen</span>
+            <button type="button" class="uploadBtn" id="wallpaperAdjustBtn" aria-haspopup="dialog"
+              aria-expanded="false" aria-controls="wallpaperOpacityPopover" hidden>Adjust</button>
+            <div class="bubblePopover" id="wallpaperOpacityPopover" role="dialog" aria-label="Wallpaper opacity" hidden>
+              <div class="popHead">
+                <label for="wallpaperOpacityInput">Wallpaper opacity</label>
+                <output id="wallpaperOpacityValue" for="wallpaperOpacityInput">100%</output>
+              </div>
+              <input type="range" id="wallpaperOpacityInput" min="10" max="100" step="1" value="100">
+              <div class="rangeEnds" aria-hidden="true"><span>Faint</span><span>Full</span></div>
+              <button type="button" class="btnBlock" id="wallpaperOpacityDone">Done</button>
+            </div>
           </div>
         </div>
         <div id="wallpaperSolidField" class="themeSubField">
@@ -504,21 +629,49 @@
           </div>
         </div>
 
-        <label>Bubble colors</label>
-        <div class="row">
-          <div>
-            <label for="bubbleMeInput">Me</label>
-            <input type="color" id="bubbleMeInput" value="#d9fdd3">
-          </div>
-          <div>
-            <label for="bubbleContactInput">Contact</label>
-            <input type="color" id="bubbleContactInput" value="#ffffff">
+        <label id="bubblePresetsLabel" for="bubbleColorsBtn">Bubble colors</label>
+        <div class="bubblePickerWrap" id="bubblePickerWrap">
+          <button type="button" class="bubbleColorsBtn" id="bubbleColorsBtn" aria-haspopup="dialog"
+            aria-expanded="false" aria-controls="bubbleColorsPopover">
+            <span class="presetDots" aria-hidden="true"><span id="bubbleDotContact"></span><span id="bubbleDotMe"></span></span>
+            <span class="bubbleColorsName" id="bubbleColorsName">Default</span>
+            <svg class="bubbleColorsChevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="bubblePopover" id="bubbleColorsPopover" role="dialog" aria-label="Bubble colors" hidden>
+            <p class="customLabel popoverLabel">Presets</p>
+            <div class="presetRow" id="bubblePresets" role="group" aria-label="Bubble color presets"></div>
+            <p class="customLabel">Custom</p>
+            <div class="swatchRow">
+              <label class="swatch" for="bubbleMeInput">
+                <input type="color" id="bubbleMeInput" value="#d9fdd3">
+                <span>Me</span>
+              </label>
+              <label class="swatch" for="bubbleContactInput">
+                <input type="color" id="bubbleContactInput" value="#ffffff">
+                <span>Contact</span>
+              </label>
+            </div>
           </div>
         </div>
       </details>
 
-      <section id="panelMessages">
-        <h2 class="panelTitle">Messages</h2>
+      <section id="panelMessages" class="editorSection">
+        <div class="sectionHead">
+          <span class="sectionIcon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.5a7.5 7.5 0 0 1-11.1 6.6L4 20.5l1.4-4.6A7.5 7.5 0 1 1 20 12.5Z"/></svg></span>
+          <div class="sectionHeadText"><h2 class="sectionTitle">Messages <span class="countBadge" id="messageCount">0</span></h2><p class="sectionSub">Click a contact message&rsquo;s text to show typing</p></div>
+        </div>
+        <div class="timeStepRow">
+          <label for="timeStepSelect">Time step</label>
+          <select id="timeStepSelect" aria-describedby="timeStepHelp">
+            <option value="1">+1 min every message</option>
+            <option value="2">+1 min every 2 messages</option>
+            <option value="3">+1 min every 3 messages</option>
+            <option value="4">+1 min every 4 messages</option>
+            <option value="5">+1 min every 5 messages</option>
+            <option value="0">Keep the same time</option>
+          </select>
+          <p class="visually-hidden" id="timeStepHelp">Sets the time on new messages. Existing times stay as they are.</p>
+        </div>
         <div id="messageList"></div>
         <button id="addMessageBtn" class="btnBlock">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -659,6 +812,28 @@ const BUBBLE_DEFAULTS = {
   light: { me: '#d9fdd3', contact: '#ffffff' },
   dark:  { me: '#005c4b', contact: '#202c33' },
 };
+/* One-click bubble colour pairs, per chrome mode (bubble text is dark in
+ * light mode and light in dark mode, so each list stays legible). "whatsapp"
+ * restores the stock colours that follow the light/dark toggle; a preset id
+ * present in both lists (graphite) carries across a mode switch. */
+const BUBBLE_PRESETS = {
+  light: [
+    { id: 'whatsapp', name: 'Default', me: '#d9fdd3', contact: '#ffffff' },
+    { id: 'classic', name: 'Classic', me: '#dcf8c6', contact: '#ffffff' },
+    { id: 'sky', name: 'Sky', me: '#d6e9ff', contact: '#ffffff' },
+    { id: 'lavender', name: 'Lavender', me: '#e8dcff', contact: '#ffffff' },
+    { id: 'peach', name: 'Peach', me: '#ffe1d1', contact: '#ffffff' },
+    { id: 'graphite', name: 'Graphite', me: '#e4e6e8', contact: '#ffffff' },
+  ],
+  dark: [
+    { id: 'whatsapp', name: 'Default', me: '#005c4b', contact: '#202c33' },
+    { id: 'teal', name: 'Teal', me: '#056162', contact: '#262d31' },
+    { id: 'midnight', name: 'Midnight', me: '#1e3a5f', contact: '#1f2329' },
+    { id: 'plum', name: 'Plum', me: '#43295a', contact: '#22202a' },
+    { id: 'blood', name: 'Blood', me: '#5a1a1d', contact: '#1f1c1d' },
+    { id: 'graphite', name: 'Graphite', me: '#3b3d40', contact: '#232526' },
+  ],
+};
 // iOS dark mode uses neutral greys, not Android's blue-grey (measured from
 // 2024 and 2026 iOS screenshots). Applied only while the project still uses
 // the stock dark defaults, so custom colours are never overridden.
@@ -711,7 +886,7 @@ function getPlatformTokens(){
   // Layout metrics. Modern values are measured from real 2024-26 WhatsApp
   // screenshots normalised to this 1080px-wide canvas; classic keeps its
   // original metrics because no pre-2024 reference was available to measure.
-  const base = { ...PLATFORM[state.platform], msgFontSize: 44, lineHeight: 56, tsFontSize: 27,
+  const base = { ...PLATFORM[state.platform], msgFontSize: 44, lineHeight: 56, tsFontSize: 27, padX: BUBBLE_PAD_X,
     padTop: BUBBLE_PAD_TOP, padBottom: BUBBLE_PAD_BOTTOM, chatPadX: CHAT_PAD_X,
     gapSame: BUBBLE_GAP, gapGroup: BUBBLE_GAP + GROUP_GAP_EXTRA,
     dateChipH: 46, dateFont: '600 24px', dateRadius: 10,
@@ -722,19 +897,24 @@ function getPlatformTokens(){
   return {
     ...base,
     font: ios ? IOS_FONT : ANDROID_FONT,
-    statusBarH: ios ? 112 : 72,
-    headerH: ios ? 138 : 152,
-    navBarH: ios ? 64 : 48,
-    bubbleRadius: current ? (ios ? 34 : 48) : (ios ? 24 : 18),
+    statusBarH: ios ? 112 : 66,
+    headerH: ios ? 138 : 154,
+    navBarH: ios ? 64 : 65,
+    bubbleRadius: current ? (ios ? 34 : 48) : 24, // Android Gen 2 measured ~25px (Nov 2024 capture)
     tailRadius: current ? (ios ? 34 : 48) : 5,
     headerBgLight: '#ffffff', headerBgDark: ios ? '#1d1d1d' : '#0b141a',
     headerTextLight: '#111b21', headerTextDark: '#e9edef',
-    // Android header measured from WABetaInfo's 2024 "Sarah / online" and
-    // Mar 2026 Android captures (~1:1 at 1080px): regular-weight 52px name,
-    // ~0.68x subtitle in near-black grey, 96px avatar 191px from the edge.
-    headerSubLight: ios ? '#667781' : '#2b2e31', headerSubDark: '#8696a0',
+    // Android header measured pixel-by-pixel from two native 1080px captures:
+    // WABetaInfo's Nov 2024 "WBI Group / 5 online" screenshot (Gen 2) and the
+    // Mar 2026 rounded-bubble rollout (Gen 3). Both: 46px regular name (33px
+    // cap height), 33px subtitle in the same near-black, header centred 142px
+    // from the top, 220px of chrome. Only the leading spacing differs.
+    headerSubLight: ios ? '#667781' : '#111b21', headerSubDark: ios ? '#8696a0' : '#aebac1',
     headerNameWeight: ios ? 600 : 400,
-    headerStatusSize: ios ? 28 : 35,
+    headerStatusSize: ios ? 28 : 33,
+    androidHeader: ios ? null : (current
+      ? { backCx: 65, avatarCx: 193, avatarR: 48.5, textX: 277 }
+      : { backCx: 45, avatarCx: 125, avatarR: 47.5, textX: 200 }),
     accent: '#1daa61', glass: ios && current,
     androidModern: !ios, roundedMedia: !ios && current,
     msgFontSize: 44, lineHeight: 56,
@@ -743,14 +923,21 @@ function getPlatformTokens(){
     // between same-sender bubbles, timestamp cap ~0.77 of message text.
     // iOS: timestamp cap ~0.69 of text, ~40px edge margin, 96-99px avatar,
     // ~46px status clock, 2024 nav bar 281px tall with the status bar.
-    tsFontSize: ios ? 30 : 33,
+    // iOS 2026 capture: timestamp digits ~0.62 of the message cap height,
+    // text inset ~1.1 cap from the bubble edge (11pt vs 17pt in points).
+    tsFontSize: ios ? 28 : 33, padX: ios ? 34 : BUBBLE_PAD_X,
     padTop: ios ? BUBBLE_PAD_TOP : 32, padBottom: ios ? BUBBLE_PAD_BOTTOM : 17,
     chatPadX: ios ? 40 : 44, gapSame: 8, gapGroup: 22,
-    dateChipH: ios ? 44 : 60, dateFont: ios ? '600 27px' : '500 34px', dateRadius: ios ? 12 : 16,
-    avatarR: 48, statusTimeSize: ios ? 46 : 40,
-    composerFont: ios ? 40 : 48,
+    // iOS date chips (2024 + Jun 2026 captures): neutral pill, bold black on
+    // white / white on #171717, wide side padding (~3x the text cap height).
+    dateChipH: ios ? 46 : 60, dateFont: ios ? '600 32px' : '500 34px', dateRadius: ios ? 23 : 16,
+    datePadX: ios ? (current ? 66 : 52) : null,
+    dateBg: ios ? { light: '#ffffff', dark: '#171717' } : null,
+    dateText: ios ? { light: '#000000', dark: '#ffffff' } : null,
+    avatarR: 48, statusTimeSize: ios ? 46 : 38,
+    composerFont: ios ? 40 : 50,
     ...(ios && !current ? { headerH: 168 } : {}),
-    headerNameSize: ios ? 40 : 52,
+    headerNameSize: ios ? 40 : 46,
     iosNeutralDark: ios,
   };
 }
@@ -768,6 +955,7 @@ const state = {
   contact: { name: 'Alex', avatarImg: null, statusMode: 'online', lastSeenText: 'today at 11:47 PM' },
   platform: 'android',
   generation: 'current',
+  timeStepEvery: 3, // new messages bump the clock 1 min every N messages; 0 = never
   theme: {
     chromeMode: 'light',
     wallpaperType: 'default',
@@ -779,6 +967,8 @@ const state = {
     bubbleColorContact: '#ffffff',
     bubbleMeCustomized: false,
     bubbleContactCustomized: false,
+    wallpaperOpacity: 1, // custom image strength over the plain chat background
+    bubblePreset: 'whatsapp', // id from BUBBLE_PRESETS, or null for picker colours
   },
   messages: [
     { id: seedId1, sender: 'contact', text: 'hey are you still awake', date: today(), time: '23:47', status: 'read', deleted: false, replyTo: null, media: null },
@@ -887,8 +1077,9 @@ let composerHadText = false;
 let composerSendHit = null; // {cx,cy,r} in canvas coords while the send icon is tappable, else null
 let replyBannerCancelHit = null; // {x,y,w,h} in canvas coords while the reply-banner cancel (X) is tappable, else null
 let liveMirrorSourceId = null; // id of the sidebar "me" message textarea currently focused, for the mirrored caret
-// Contact typing indicator only shows once the creator clicks into that
-// message's editor box (stays on until it's sent); replay shows it unprompted.
+// Contact typing indicator shows only while the creator is in that message's
+// editor box (click or keyboard focus); leaving the box stops it. Replay
+// shows it unprompted.
 let typingArmedId = null;
 let suppressNextMirrorFocus = null; // msg id whose next 'focus' event is the auto-focus-on-add, not a real click — see focusMessageTextarea
 let composerMirroring = false; // whether the phone composer is currently mirroring a sidebar message (see syncComposerMirrorMode)
@@ -1187,10 +1378,15 @@ function drawWallpaper(ctx, x, y, w, h){
     ctx.fillStyle = g;
     ctx.fillRect(x, y, w, h);
   } else if (th.wallpaperType === 'custom' && th.wallpaperImg){
+    // Faded images sit on WhatsApp's plain chat colour, like a dimmed wallpaper.
+    ctx.fillStyle = th.chromeMode === 'dark' ? '#0b141a' : '#efeae2';
+    ctx.fillRect(x, y, w, h);
     const img = th.wallpaperImg;
     const scale = Math.max(w / img.width, h / img.height);
     const dw = img.width * scale, dh = img.height * scale;
+    ctx.globalAlpha = typeof th.wallpaperOpacity === 'number' ? th.wallpaperOpacity : 1;
     ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    ctx.globalAlpha = 1;
   } else {
     ctx.fillStyle = getDefaultWallpaperPattern(ctx, state.theme.chromeMode);
     ctx.fillRect(x, y, w, h);
@@ -1199,7 +1395,66 @@ function drawWallpaper(ctx, x, y, w, h){
   ctx.restore();
 }
 
+/* Google Material Symbols (Outlined, weight 400; Apache License 2.0), the
+ * icon family WhatsApp's 2024+ Android chrome and Android's status bar use.
+ * Paths are verbatim from google/material-design-icons, in their native
+ * 960-unit viewBox (0 -960 960 960); drawn by drawMaterialSymbol(). */
+const MATERIAL_SYMBOLS = {
+  arrowBack: new Path2D('m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z'),
+  videocam: new Path2D('M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h480q33 0 56.5 23.5T720-720v180l160-160v440L720-420v180q0 33-23.5 56.5T640-160H160Zm0-80h480v-480H160v480Zm0 0v-480 480Z'),
+  call: new Path2D('M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z'),
+  moreVert: new Path2D('M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z'),
+  signal: new Path2D('m80-80 800-800v800H80Z'),
+  battery: new Path2D('M320-80q-17 0-28.5-11.5T280-120v-640q0-17 11.5-28.5T320-800h80v-80h160v80h80q17 0 28.5 11.5T680-760v640q0 17-11.5 28.5T640-80H320Z'),
+  wifi: new Path2D('M480-120 0-600q95-97 219.5-148.5T480-800q137 0 261 51t219 149L480-120Z'),
+  attachFile: new Path2D('M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z'),
+  photoCamera: new Path2D('M480-260q75 0 127.5-52.5T660-440q0-75-52.5-127.5T480-620q-75 0-127.5 52.5T300-440q0 75 52.5 127.5T480-260Zm0-80q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29ZM160-120q-33 0-56.5-23.5T80-200v-480q0-33 23.5-56.5T160-760h126l74-80h240l74 80h126q33 0 56.5 23.5T880-680v480q0 33-23.5 56.5T800-120H160Zm0-80h640v-480H638l-73-80H395l-73 80H160v480Zm320-240Z'),
+  micFilled: new Path2D('M480-400q-50 0-85-35t-35-85v-240q0-50 35-85t85-35q50 0 85 35t35 85v240q0 50-35 85t-85 35Zm-40 280v-123q-104-14-172-93t-68-184h80q0 83 58.5 141.5T480-320q83 0 141.5-58.5T680-520h80q0 105-68 184t-172 93v123h-80Z'),
+  // Material Icons "send" (filled, notched paper plane), rescaled to 960 units.
+  send: new Path2D('M80.4-120 920-480 80.4-840 80-560l600 80-600 80Z'),
+};
+/* WhatsApp's Android sticker-face button (no Material equivalent): rounded
+ * square with a peeled bottom-right corner, solid eyes and a filled open
+ * mouth, traced from the Nov 2024 / Mar 2026 captures (glyph 54px at 65px). */
+const ANDROID_STICKER_FACE = {
+  outline: new Path2D('M13 21.4H8.6A6.1 6.1 0 0 1 2.5 15.3V8.6A6.1 6.1 0 0 1 8.6 2.5h6.8a6.1 6.1 0 0 1 6.1 6.1V13ZM13 21.4v-4.1a4.3 4.3 0 0 1 4.3-4.3h4.2'),
+  mouth: new Path2D('M6.2 12.7h9.6c-.8.6-1.9 1.6-2.4 2.9v1.3c-3.4.2-6-1.5-7.2-4.2Z'),
+};
+function drawAndroidStickerFace(ctx, cx, cy, size, color){
+  ctx.save();
+  ctx.translate(cx - size / 2, cy - size / 2); ctx.scale(size / 24, size / 24);
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = 2.05; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.stroke(ANDROID_STICKER_FACE.outline);
+  ctx.fill(ANDROID_STICKER_FACE.mouth);
+  for (const ex of [8.9, 15.1]){ ctx.beginPath(); ctx.arc(ex, 8.9, 1.45, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
+// Draws a symbol whose 24-unit box (960 path units) spans `size` px, centred.
+function drawMaterialSymbol(ctx, name, cx, cy, size, color){
+  ctx.save();
+  ctx.translate(cx - size / 2, cy - size / 2);
+  ctx.scale(size / 960, size / 960);
+  ctx.translate(0, 960);
+  ctx.fillStyle = color;
+  ctx.fill(MATERIAL_SYMBOLS[name]);
+  ctx.restore();
+}
+
 function drawDefaultAvatar(ctx, cx, cy, r){
+  if (getPlatformTokens().androidHeader){
+    // 2024+ Android default: pale blue-grey disc with a white silhouette
+    // (sampled #ced6dd from the Nov 2024 capture).
+    const dark = state.theme.chromeMode === 'dark';
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = dark ? '#3b4a54' : '#ced6dd'; ctx.fill(); ctx.clip();
+    ctx.fillStyle = dark ? '#8696a0' : '#ffffff';
+    ctx.beginPath(); ctx.arc(cx, cy - r * 0.2, r * 0.36, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx, cy + r * 0.86, r * 0.7, r * 0.56, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -1223,22 +1478,31 @@ function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
   ctx.strokeStyle = color;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  ctx.font = (tokens.androidModern ? '400 ' : '600 ') + (state.generation === 'classic' ? 30 : (tokens.statusTimeSize || 36)) + 'px ' + tokens.font;
-  ctx.fillText('9:41', 40, statusBarH / 2);
+  if (!tokens.androidModern){
+    ctx.font = '600 ' + (state.generation === 'classic' ? 30 : (tokens.statusTimeSize || 36)) + 'px ' + tokens.font;
+    ctx.fillText('9:41', 40, statusBarH / 2);
+  }
 
   if (tokens.androidModern){
-    // Android screenshot reference: mobile network label, triangular signal,
-    // upright battery and a centered camera cutout (not an iOS icon cluster).
-    ctx.font = '40px ' + tokens.font;
-    ctx.textAlign = 'right';
-    ctx.fillText('5G', w - 130, statusBarH / 2);
-    ctx.textAlign = 'left';
-    const signalX = w - 119, signalY = statusBarH / 2 + 15;
-    ctx.beginPath(); ctx.moveTo(signalX, signalY); ctx.lineTo(signalX + 30, signalY - 30);
-    ctx.lineTo(signalX + 30, signalY); ctx.closePath(); ctx.fill();
-    ctx.fillRect(w - 65, statusBarH / 2 - 14, 19, 30);
-    ctx.fillRect(w - 60, statusBarH / 2 - 18, 9, 5);
-    ctx.fillStyle = '#111b21'; ctx.beginPath(); ctx.arc(w / 2, statusBarH / 2, 16, 0, Math.PI * 2); ctx.fill();
+    // Measured status bars (both native 1080px captures): grey #606060 clock
+    // and icons in light mode, clock baseline 48px down at x=78, icon cluster
+    // ending 76px from the right edge. Gen 2 shows wifi + signal + battery;
+    // the Gen 3 capture shows a 5G label + signal + battery.
+    const fg = chrome === 'dark' ? '#c4c7c5' : '#606060';
+    ctx.fillStyle = fg;
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = '400 38px ' + tokens.font;
+    ctx.fillText('9:41', 78, 48);
+    drawMaterialSymbol(ctx, 'battery', w - 86, 34, 40, fg);
+    drawMaterialSymbol(ctx, 'signal', w - 133, 35, 39, fg);
+    if (state.generation === 'current'){
+      ctx.textAlign = 'right';
+      ctx.fillText('5G', w - 163, 47);
+      ctx.textAlign = 'left';
+    } else {
+      drawMaterialSymbol(ctx, 'wifi', w - 177, 38, 40, fg);
+    }
+    ctx.fillStyle = '#0b0b0b'; ctx.beginPath(); ctx.arc(w / 2, 34, 17, 0, Math.PI * 2); ctx.fill();
     return;
   }
 
@@ -1317,6 +1581,12 @@ function drawWifiIcon(ctx, cx, by, r, color, filled){
 }
 
 function drawBackIcon(ctx, tokens, chrome, x, y){
+  if (tokens.androidHeader){
+    // Material arrow_back at 65px (glyph measured 42x41 in both captures).
+    drawMaterialSymbol(ctx, 'arrowBack', tokens.androidHeader.backCx, y, 65,
+      chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight);
+    return;
+  }
   const color = state.platform === 'ios' && !tokens.glass
     ? (state.generation === 'classic' ? '#007aff' : '#1daa61')
     : (chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight);
@@ -1341,17 +1611,7 @@ function drawBackIcon(ctx, tokens, chrome, x, y){
   ctx.stroke();
 }
 
-function drawVideoCallIcon(ctx, x, cy, color, tall = false){
-  if (tall){
-    // Modern Android: taller camera body (measured glyph ~56 x 45).
-    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 5.5; ctx.lineJoin = 'round';
-    // Body ~43x42 outlined, lens a small solid wedge (Mar 2026 Android capture).
-    roundRectPath(ctx, x, cy - 19, 40, 38, {tl:6,tr:6,br:6,bl:6}); ctx.stroke();
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.moveTo(x + 40, cy - 5); ctx.lineTo(x + 54, cy - 13);
-    ctx.lineTo(x + 54, cy + 13); ctx.lineTo(x + 40, cy + 5); ctx.closePath(); ctx.fill(); ctx.restore();
-    return;
-  }
+function drawVideoCallIcon(ctx, x, cy, color){
   if (state.generation !== 'classic'){
     ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.lineJoin = 'round';
     roundRectPath(ctx, x, cy - 18, 42, 36, {tl:5,tr:5,br:5,bl:5}); ctx.stroke();
@@ -1375,19 +1635,13 @@ function drawVideoCallIcon(ctx, x, cy, color, tall = false){
  * google/material-design-icons — used verbatim rather than hand-traced. */
 const PHONE_CALL_ICON_PATH = new Path2D('M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z');
 
-function drawPhoneCallIcon(ctx, cx, cy, scale, color, outline = false){
+function drawPhoneCallIcon(ctx, cx, cy, scale, color){
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(scale, scale);
   ctx.translate(-12, -12);
-  if (outline){
-    // 2024+ Android header uses the outlined handset (measured ~5px stroke).
-    ctx.strokeStyle = color; ctx.lineWidth = 5 / scale; ctx.lineJoin = 'round';
-    ctx.stroke(PHONE_CALL_ICON_PATH);
-  } else {
-    ctx.fillStyle = color;
-    ctx.fill(PHONE_CALL_ICON_PATH);
-  }
+  ctx.fillStyle = color;
+  ctx.fill(PHONE_CALL_ICON_PATH);
   ctx.restore();
 }
 
@@ -1405,11 +1659,12 @@ function drawHeaderActionIcons(ctx, tokens, chrome, w, cy){
   const color = ios ? (state.generation === 'classic' ? '#007aff' : (tokens.glass ? (chrome === 'dark' ? '#e9edef' : '#111b21') : '#1daa61'))
     : (chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight);
   if (tokens.glass) drawGlassSurface(ctx, w - 270, cy - 47, 242, 94, 47, chrome);
-  if (tokens.androidModern){
-    // Measured centres: video 771, call 904, menu 1020; call glyph ~49px, menu dots 11px.
-    drawVideoCallIcon(ctx, w - 337, cy, color, true);
-    drawPhoneCallIcon(ctx, w - 176, cy, 2.45, color, true);
-    drawMenuDotsIcon(ctx, w - 60, cy, color, 5.5, 17);
+  if (tokens.androidHeader){
+    // Material videocam / call / more_vert at 65px; measured centres 771-772,
+    // 903-904 and 1019-1020 in both generations.
+    drawMaterialSymbol(ctx, 'videocam', w - 308, cy, 65, color);
+    drawMaterialSymbol(ctx, 'call', w - 176, cy, 65, color);
+    drawMaterialSymbol(ctx, 'moreVert', w - 60, cy, 65, color);
     return;
   }
   drawVideoCallIcon(ctx, w - (ios ? 226 : 298), cy, color);
@@ -1474,7 +1729,7 @@ function buildQuoteInfo(ctx, tokens, m){
   const { senderLabel, snippetText, isMeSource, deletedTarget } = resolved;
   const nameFont = '600 ' + QUOTE_FONT_SIZE + 'px ' + tokens.font;
   const snippetFont = (deletedTarget ? 'italic ' : '') + QUOTE_FONT_SIZE + 'px ' + tokens.font;
-  const innerMaxW = MAX_TEXT_W - QUOTE_BAR_W - QUOTE_PAD_X * 2;
+  const innerMaxW = MAX_BUBBLE_W - getPlatformTokens().padX * 2 - QUOTE_BAR_W - QUOTE_PAD_X * 2;
   const snippetLines = wrapClampedLines(ctx, snippetText, snippetFont, innerMaxW, QUOTE_MAX_LINES);
   ctx.font = nameFont;
   let maxLineW = ctx.measureText(senderLabel).width;
@@ -1487,7 +1742,7 @@ function buildQuoteInfo(ctx, tokens, m){
 
 function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
   const { msgFontSize: MSG_FONT_SIZE, lineHeight: LINE_HEIGHT, tsFontSize: TS_FONT_SIZE } = tokens;
-  const BUBBLE_PAD_TOP = tokens.padTop, BUBBLE_PAD_BOTTOM = tokens.padBottom;
+  const BUBBLE_PAD_TOP = tokens.padTop, BUBBLE_PAD_BOTTOM = tokens.padBottom, BUBBLE_PAD_X = tokens.padX;
   // WhatsApp only draws an in-chat typing bubble since late 2024; before
   // that the header subtitle was the only typing cue.
   const showTypingBubble = typingActive && state.generation !== 'classic';
@@ -1512,6 +1767,10 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
       const contentW = DEL_ICON_R * 2 + DEL_ICON_GAP + tw;
       w = Math.max(MIN_BUBBLE_W, Math.min(MAX_BUBBLE_W, contentW + BUBBLE_PAD_X * 2));
       h = BUBBLE_PAD_TOP + LINE_HEIGHT + TS_ROW_H + BUBBLE_PAD_BOTTOM;
+      // Real WhatsApp keeps the time (never ticks) beside the placeholder.
+      ctx.font = TS_FONT_SIZE + 'px ' + tokens.font;
+      const delInlineW = contentW + ctx.measureText(to12h(m.time || '00:00')).width + 20 + BUBBLE_PAD_X * 2;
+      if (delInlineW <= MAX_BUBBLE_W){ w = Math.max(w, delInlineW); h -= TS_ROW_H; }
     } else {
       quote = buildQuoteInfo(ctx, tokens, m);
       if (m.media){
@@ -1531,7 +1790,7 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
         if (frameless && !hasCaption) h = mediaH;
         media = { w: mediaW, h: mediaH, topPad, hasCaption, frameless, overlayMeta: frameless && !hasCaption };
       } else {
-        lines = getWrappedLines(ctx, m, font, MAX_TEXT_W);
+        lines = getWrappedLines(ctx, m, font, MAX_BUBBLE_W - BUBBLE_PAD_X * 2);
         ctx.font = font;
         let maxLineW = 0;
         for (const l of lines) maxLineW = Math.max(maxLineW, ctx.measureText(l).width);
@@ -1550,25 +1809,47 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
     }
     const firstInGroup = i === 0 || state.messages[i - 1].sender !== m.sender || state.messages[i - 1].date !== m.date;
     const nextMsg = i + 1 < visibleCount ? state.messages[i + 1] : null;
-    const typingFollows = !nextMsg && showTypingBubble && m.sender === 'contact';
-    const lastInGroup = !typingFollows && (!nextMsg || nextMsg.sender !== m.sender || nextMsg.date !== m.date);
+    const lastInGroup = !nextMsg || nextMsg.sender !== m.sender || nextMsg.date !== m.date;
     blocks.push({ type: 'bubble', msg: m, y, h, w, lines, quote, media, firstInGroup, lastInGroup });
     const nextSameSender = state.messages[i + 1] && state.messages[i + 1].sender === m.sender && i + 1 < visibleCount;
-    const typingNext = !nextSameSender && i + 1 === visibleCount && showTypingBubble && m.sender === 'contact';
-    y += h + (nextSameSender || typingNext ? tokens.gapSame : tokens.gapGroup);
+    y += h + (nextSameSender ? tokens.gapSame : tokens.gapGroup);
   }
   if (showTypingBubble){
-    // Same height as a one-line message bubble; measured ~1.2x wider than tall.
-    const th = BUBBLE_PAD_TOP + LINE_HEIGHT + BUBBLE_PAD_BOTTOM;
-    blocks.push({ type: 'typing', y, h: th });
+    // Its own small tailed bubble, a group gap below the last message.
+    // Measured (scaled to this canvas): Android ~102x84 with the top-left
+    // nub (creator reference + Oct 2024 WABetaInfo capture); iOS ~104x80
+    // with the curled bottom-left tail (Oct 2024 iOS capture).
+    const th = state.platform === 'ios' ? 80 : 84;
+    blocks.push({ type: 'typing', y, h: th, w: state.platform === 'ios' ? 104 : 102 });
     y += th + tokens.gapSame;
   }
   return { blocks, totalHeight: y };
 }
 
+/* Bubble tail in the current fill style. Android: pointed nub on the top
+ * outer corner. iOS: curled tail off the bottom outer corner. */
+function drawBubbleTail(ctx, ios, isMe, bx, y, bw, bh){
+  const edge = isMe ? bx + bw : bx;
+  const d = isMe ? 1 : -1;
+  ctx.beginPath();
+  if (ios){
+    const bottom = y + bh;
+    ctx.moveTo(edge - d * 2, bottom - 30);
+    ctx.quadraticCurveTo(edge - d * 1, bottom - 6, edge + d * 13, bottom - 1);
+    ctx.quadraticCurveTo(edge + d * 4, bottom + 2, edge - d * 16, bottom);
+    ctx.lineTo(edge - d * 16, bottom - 30);
+  } else {
+    ctx.moveTo(edge - d, y); ctx.lineTo(edge + d * 16, y);
+    ctx.quadraticCurveTo(edge + d * 20, y, edge + d * 14, y + 7);
+    ctx.lineTo(edge - d, y + 24);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
 function drawChatArea(ctx, originY, height, now){
   const tokens = getPlatformTokens();
   const BUBBLE_PAD_TOP = tokens.padTop, BUBBLE_PAD_BOTTOM = tokens.padBottom, CHAT_PAD_X = tokens.chatPadX;
+  const BUBBLE_PAD_X = tokens.padX;
   const { msgFontSize: MSG_FONT_SIZE, lineHeight: LINE_HEIGHT, tsFontSize: TS_FONT_SIZE } = tokens;
   const chromeMode = state.theme.chromeMode;
   if (!tokens.glass) drawWallpaper(ctx, 0, originY, CANVAS_W, height);
@@ -1596,36 +1877,45 @@ function drawChatArea(ctx, originY, height, now){
       const text = b.text;
       ctx.font = tokens.dateFont + ' ' + tokens.font;
       const tw = ctx.measureText(text).width;
-      const pillH = tokens.dateChipH, pillW = tw + Math.round(pillH * 0.95);
+      const pillH = tokens.dateChipH, pillW = tw + (tokens.datePadX ? tokens.datePadX * 2 : Math.round(pillH * 0.95));
       const px = CANVAS_W / 2 - pillW / 2;
-      ctx.fillStyle = chromeMode === 'dark' ? '#182229' : '#ffffff';
+      ctx.fillStyle = tokens.dateBg ? tokens.dateBg[chromeMode] : (chromeMode === 'dark' ? '#182229' : '#ffffff');
       const cr = tokens.dateRadius;
       roundRectPath(ctx, px, y, pillW, pillH, { tl: cr, tr: cr, br: cr, bl: cr });
       ctx.fill();
-      ctx.fillStyle = chromeMode === 'dark' ? '#8696a0' : '#54656f';
+      ctx.fillStyle = tokens.dateText ? tokens.dateText[chromeMode] : (chromeMode === 'dark' ? '#8696a0' : '#54656f');
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(text, CANVAS_W / 2, y + pillH / 2 + 1);
       continue;
     }
 
     if (b.type === 'typing'){
-      // Measured: ~13px dots, ~24px apart, all on one line; in stills they
-      // differ in shade rather than height, so they pulse instead of bounce.
-      const bh = b.h, bw = Math.round(bh * 1.2);
-      const bx = CHAT_PAD_X;
-      const R = tokens.bubbleRadius;
+      const ios = state.platform === 'ios';
+      const bh = b.h, bw = b.w, bx = CHAT_PAD_X;
+      const R = Math.min(tokens.bubbleRadius, bh / 2);
       ctx.fillStyle = bubbleFill(false, tokens);
-      roundRectPath(ctx, bx, y, bw, bh, { tl: R, tr: R, br: R, bl: R });
+      roundRectPath(ctx, bx, y, bw, bh, ios ? { tl: R, tr: R, br: R, bl: 6 } : { tl: 0, tr: R, br: R, bl: R });
       ctx.fill();
-      const dotY = y + bh / 2, cx = bx + bw / 2;
-      ctx.fillStyle = chromeMode === 'dark' ? '#8696a0' : '#93999f';
+      drawBubbleTail(ctx, ios, false, bx, y, bw, bh);
+      const dark = chromeMode === 'dark';
+      const cx = bx + bw / 2, cy = y + bh / 2;
+      const t = now / 1000;
       for (let i = 0; i < 3; i++){
-        const t = (now / 1000 * 1.6 - i * 0.18) % 1;
-        const pulse = prefersReducedMotion ? 0.7 : 0.35 + 0.65 * Math.max(0, Math.sin(Math.PI * (t < 0 ? t + 1 : t)));
-        ctx.globalAlpha = pulse;
-        ctx.beginPath();
-        ctx.arc(cx + (i - 1) * 24, dotY, 6.5, 0, Math.PI * 2);
-        ctx.fill();
+        const dx = cx + (i - 1) * (ios ? 22 : 23);
+        if (ios){
+          // iOS: dots ripple in a left-to-right wave, rising as they brighten.
+          const phase = Math.sin(2 * Math.PI * (t * 1.25 - i * 0.16));
+          const lift = prefersReducedMotion ? 0 : Math.max(0, phase) * 6;
+          ctx.globalAlpha = prefersReducedMotion ? 0.8 : 0.45 + 0.55 * Math.max(0, phase);
+          ctx.fillStyle = dark ? '#8e8e93' : '#a2a2a8';
+          ctx.beginPath(); ctx.arc(dx, cy - lift, 7.5, 0, Math.PI * 2); ctx.fill();
+        } else {
+          // Android: dots fade up one after another, no vertical motion.
+          const ph = (t * 1.6 - i * 0.2) % 1;
+          ctx.globalAlpha = prefersReducedMotion ? 0.7 : 0.3 + 0.7 * Math.max(0, Math.sin(Math.PI * (ph < 0 ? ph + 1 : ph)));
+          ctx.fillStyle = dark ? '#8696a0' : '#9aa0a5';
+          ctx.beginPath(); ctx.arc(dx, cy, 8, 0, Math.PI * 2); ctx.fill();
+        }
       }
       ctx.globalAlpha = 1;
       continue;
@@ -1653,23 +1943,7 @@ function drawChatArea(ctx, originY, height, now){
     roundRectPath(ctx, bx, y, bw, bh, radii);
     ctx.fill();
 
-    if (hasTail && !frameless){
-      const edge = isMe ? bx + bw : bx;
-      const d = isMe ? 1 : -1;
-      ctx.beginPath();
-      if (ios){
-        const bottom = y + bh;
-        ctx.moveTo(edge - d * 2, bottom - 30);
-        ctx.quadraticCurveTo(edge - d * 1, bottom - 6, edge + d * 13, bottom - 1);
-        ctx.quadraticCurveTo(edge + d * 4, bottom + 2, edge - d * 16, bottom);
-        ctx.lineTo(edge - d * 16, bottom - 30);
-      } else {
-        ctx.moveTo(edge - d, y); ctx.lineTo(edge + d * 16, y);
-        ctx.quadraticCurveTo(edge + d * 20, y, edge + d * 14, y + 7);
-        ctx.lineTo(edge - d, y + 24);
-      }
-      ctx.closePath(); ctx.fill();
-    }
+    if (hasTail && !frameless) drawBubbleTail(ctx, ios, isMe, bx, y, bw, bh);
 
     if (b.quote){
       drawQuoteBlock(ctx, tokens, chromeMode, bx + BUBBLE_PAD_X, y + BUBBLE_PAD_TOP, bw - BUBBLE_PAD_X * 2, b.quote);
@@ -1727,9 +2001,11 @@ function drawChatArea(ctx, originY, height, now){
     if (b.media && b.media.overlayMeta) ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'right';
     const timeText = to12h(m.time || '00:00');
-    const ticksW = isMe ? ticksWidth(TS_FONT_SIZE) : 0;
-    ctx.fillText(timeText, bx + bw - BUBBLE_PAD_X - ticksW - (isMe ? 6 : 0), tsY);
-    if (isMe){
+    // Deleted messages carry a time but never delivery ticks.
+    const showTicks = isMe && !m.deleted;
+    const ticksW = showTicks ? ticksWidth(TS_FONT_SIZE) : 0;
+    ctx.fillText(timeText, bx + bw - BUBBLE_PAD_X - ticksW - (showTicks ? 6 : 0), tsY);
+    if (showTicks){
       drawTicks(ctx, bx + bw - BUBBLE_PAD_X - ticksW, tsY, m.status || 'read', chromeMode, TS_FONT_SIZE,
         !!(b.media && b.media.overlayMeta));
     }
@@ -1922,6 +2198,13 @@ function getComposerLayout(footerX, footerY, footerW, footerH){
       plusCx: footerX + 61, cameraCx: footerX + 913,
     };
   }
+  if (state.generation !== 'classic'){
+    const pillH = 127, btnR = 64.5;
+    return {
+      field: { x: footerX + 15, y: footerY + (footerH - pillH) / 2 - 5, w: 909, h: pillH },
+      actionCx: footerX + 1003, actionCy: footerY + footerH / 2 - 2, actionR: btnR,
+    };
+  }
   const pillH = state.generation === 'classic' ? 96 : 124;
   const btnR = state.generation === 'classic' ? 48 : 66;
   const edge = state.generation === 'classic' ? 16 : 12;
@@ -2096,7 +2379,6 @@ function drawComposerReplyBanner(ctx, tokens, chromeMode, x, y, w, h, info){
 const ANDROID_CHAT_ICONS = {
   attach: new Path2D('M16.5 6.5v10a4.5 4.5 0 0 1-9 0v-11a3 3 0 0 1 6 0v10.8a1.5 1.5 0 0 1-3 0V7'),
   camera: new Path2D('M8 5l1.5-2h5L16 5h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3ZM16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0'),
-  sticker: new Path2D('M20.5 13.5V8a5 5 0 0 0-5-5h-7A5.5 5.5 0 0 0 3 8.5v7A5.5 5.5 0 0 0 8.5 21H13l7.5-7.5ZM13 21v-4a3.5 3.5 0 0 1 3.5-3.5h4M7 12.5c1 2 2.5 3 4.5 3'),
   smile: new Path2D('M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM7.5 14c1.5 4 7.5 4 9 0'),
   mic: new Path2D('M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z'),
   micStand: new Path2D('M6 10v1a6 6 0 0 0 12 0v-1M12 17v4'),
@@ -2121,7 +2403,7 @@ function drawAndroidChatIcon(ctx, kind, cx, cy, size, color, rotation = 0){
   if (kind === 'mic' || kind === 'send') ctx.fill(ANDROID_CHAT_ICONS[kind]);
   else ctx.stroke(ANDROID_CHAT_ICONS[kind]);
   if (kind === 'mic') ctx.stroke(ANDROID_CHAT_ICONS.micStand);
-  if (kind === 'smile' || kind === 'sticker'){
+  if (kind === 'smile'){
     for (const eyeX of [8.3, 14.5]){
       ctx.beginPath(); ctx.arc(eyeX, 8.5, 1.15, 0, Math.PI * 2); ctx.fill();
     }
@@ -2135,7 +2417,8 @@ function drawFooterBarAndroid(ctx, tokens, chromeMode, x, y, w, h, now){
   const pillRight = field.x + field.w;
   const cy = field.y + field.h / 2;
   const iconSize = modern ? 56 : 46;
-  const iconColor = chromeMode === 'dark' ? '#aebac1' : '#667781';
+  // Measured #55595d placeholder/icons (Nov 2024 capture); classic keeps its grey.
+  const iconColor = chromeMode === 'dark' ? '#aebac1' : (modern ? '#54585d' : '#667781');
   const hasText = !!getComposerDisplayText().trim();
   ctx.save();
   roundRectPath(ctx, field.x, field.y, field.w, field.h, {tl:field.h/2,tr:field.h/2,br:field.h/2,bl:field.h/2});
@@ -2143,28 +2426,39 @@ function drawFooterBarAndroid(ctx, tokens, chromeMode, x, y, w, h, now){
   ctx.shadowColor = 'rgba(0,0,0,.12)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 2;
   ctx.fill(); ctx.restore();
 
-  const leadingX = field.x + (modern ? 64 : 52);
-  const textX = field.x + (modern ? 128 : 100);
-  const cameraX = pillRight - (modern ? 64 : 50);
-  const attachX = hasText ? cameraX : cameraX - (modern ? 132 : 96);
-  drawAndroidChatIcon(ctx, state.generation === 'current' ? 'sticker' : 'smile', leadingX, cy, iconSize, iconColor);
-  drawComposerTextField(ctx, tokens, field.x, cy, attachX - iconSize / 2 - 24 - textX, textX,
-    chromeMode === 'dark' ? '#e9edef' : '#111b21', iconColor, now);
-  drawAndroidChatIcon(ctx, 'attach', attachX, cy, iconSize, iconColor, modern ? 0 : -Math.PI / 4);
-  if (!hasText) drawAndroidChatIcon(ctx, 'camera', cameraX, cy, iconSize, iconColor);
+  const leadingX = field.x + (modern ? 60 : 52);
+  const textX = field.x + (modern ? 120 : 100);
+  const cameraX = pillRight - (modern ? 67 : 50);
+  const attachX = hasText ? cameraX : cameraX - (modern ? 128 : 96);
+  if (modern){
+    // Measured centres: face 75, clip 729, camera 857; glyphs 54x54, 34x54, 54x50.
+    drawAndroidStickerFace(ctx, leadingX, cy + 2, 63, iconColor);
+    drawComposerTextField(ctx, tokens, field.x, cy + 6, attachX - 17 - 24 - textX, textX,
+      chromeMode === 'dark' ? '#e9edef' : '#111b21', iconColor, now);
+    drawMaterialSymbol(ctx, 'attachFile', attachX, cy + 1, 65, iconColor);
+    if (!hasText) drawMaterialSymbol(ctx, 'photoCamera', cameraX, cy + 2, 65, iconColor);
+  } else {
+    drawAndroidChatIcon(ctx, 'smile', leadingX, cy, iconSize, iconColor);
+    drawComposerTextField(ctx, tokens, field.x, cy, attachX - iconSize / 2 - 24 - textX, textX,
+      chromeMode === 'dark' ? '#e9edef' : '#111b21', iconColor, now);
+    drawAndroidChatIcon(ctx, 'attach', attachX, cy, iconSize, iconColor, -Math.PI / 4);
+    if (!hasText) drawAndroidChatIcon(ctx, 'camera', cameraX, cy, iconSize, iconColor);
+  }
 
   drawComposerAction(actionCx, actionCy, actionR, now,
     () => {
       ctx.beginPath(); ctx.arc(actionCx, actionCy, actionR, 0, Math.PI * 2);
       ctx.fillStyle = tokens.accent || WHATSAPP_GREEN; ctx.fill();
-      drawAndroidChatIcon(ctx, 'mic', actionCx, actionCy, iconSize, '#ffffff');
+      if (modern) drawMaterialSymbol(ctx, 'micFilled', actionCx, actionCy, 65, '#ffffff');
+      else drawAndroidChatIcon(ctx, 'mic', actionCx, actionCy, iconSize, '#ffffff');
     },
     (scale, alpha) => {
       ctx.save(); ctx.globalAlpha = alpha;
       ctx.translate(actionCx, actionCy); ctx.scale(scale, scale);
       ctx.beginPath(); ctx.arc(0, 0, actionR, 0, Math.PI * 2);
       ctx.fillStyle = tokens.accent || WHATSAPP_GREEN; ctx.fill();
-      drawAndroidChatIcon(ctx, 'send', 0, 0, iconSize, '#ffffff');
+      if (modern) drawMaterialSymbol(ctx, 'send', 4, 0, 56, '#ffffff');
+      else drawAndroidChatIcon(ctx, 'send', 0, 0, iconSize, '#ffffff');
       ctx.restore();
     });
 }
@@ -2263,6 +2557,13 @@ function drawNavBar(ctx, tokens, chromeMode, x, y, w, h){
     roundRectPath(ctx, x + (w - barW) / 2, y + h - barH - 14, barW, barH, { tl: barH / 2, tr: barH / 2, br: barH / 2, bl: barH / 2 });
     ctx.fillStyle = indicatorColor;
     ctx.fill();
+  } else if (tokens.androidModern){
+    // Measured: 65px #f6f7fa strip under the composer, 297x10 #606164 handle.
+    ctx.fillStyle = chromeMode === 'dark' ? '#0b141a' : '#f6f7fa';
+    ctx.fillRect(x, y, w, h);
+    roundRectPath(ctx, x + (w - 297) / 2, y + (h - 10) / 2, 297, 10, { tl: 5, tr: 5, br: 5, bl: 5 });
+    ctx.fillStyle = chromeMode === 'dark' ? '#8a8d90' : '#606164';
+    ctx.fill();
   } else {
     // Android gesture pill: narrower, vertically centered in the nav strip
     const barW = w * 0.30, barH = 8;
@@ -2300,8 +2601,9 @@ function drawTopChrome(ctx, typingIsContact){
   if (tokens.glass) drawGlassSurface(ctx, 18, headerCy - 53, 106, 106, 53, chromeMode);
   drawBackIcon(ctx, tokens, chromeMode, tokens.glass ? 63 : 40, headerCy);
 
-  const avatarR = tokens.avatarR || 40;
-  const avatarCx = tokens.glass ? 184 : (tokens.androidModern ? 191 : 128), avatarCy = headerCy;
+  const ah = tokens.androidHeader;
+  const avatarR = ah ? ah.avatarR : (tokens.avatarR || 40);
+  const avatarCx = ah ? ah.avatarCx : (tokens.glass ? 184 : 128), avatarCy = headerCy;
   if (state.contact.avatarImg){
     ctx.save();
     ctx.beginPath();
@@ -2320,22 +2622,24 @@ function drawTopChrome(ctx, typingIsContact){
   const subColor = chromeMode === 'dark' ? tokens.headerSubDark : tokens.headerSubLight;
   const modernHeader = state.generation !== 'classic';
   // Keep the identity block proportional to the avatar in the compact headers.
-  const textX = modernHeader ? avatarCx + avatarR + (tokens.androidModern ? 36 : 24) : 190;
+  const textX = ah ? ah.textX : (modernHeader ? avatarCx + avatarR + 24 : 190);
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = nameColor;
   ctx.font = (tokens.headerNameWeight || 600) + ' ' + (tokens.headerNameSize || 40) + 'px ' + tokens.font;
-  const textWidth = CANVAS_W - textX - (state.platform === 'ios' ? 295 : 360);
-  ctx.fillText(ellipsize(ctx, state.contact.name || 'Contact', textWidth), textX, headerCy - (modernHeader ? (tokens.androidModern ? 5 : 6) : 2));
+  // Android: the name stops before the video icon (left edge ~745).
+  const textWidth = ah ? 715 - textX : CANVAS_W - textX - (state.platform === 'ios' ? 295 : 360);
+  ctx.fillText(ellipsize(ctx, state.contact.name || 'Contact', textWidth), textX, headerCy - (modernHeader ? (ah ? 7 : 6) : 2));
 
   let subtitle;
-  // Since the late-2024 in-chat typing bubble, the header no longer says "typing".
-  if (typingIsContact && state.generation === 'classic') subtitle = 'typing\u2026';
+  // 1:1 chats show "typing..." in the header while the contact types (with the
+  // in-chat bubble too from Gen 2); both stop together.
+  if (typingIsContact) subtitle = 'typing\u2026';
   else if (state.contact.statusMode === 'typing') subtitle = 'typing\u2026';
   else if (state.contact.statusMode === 'lastSeen') subtitle = 'last seen ' + (state.contact.lastSeenText || '');
   else subtitle = 'online';
   ctx.fillStyle = subColor;
   ctx.font = (tokens.headerStatusSize || 26) + 'px ' + tokens.font;
-  ctx.fillText(ellipsize(ctx, subtitle, textWidth), textX, headerCy + (tokens.androidModern ? 41 : 32));
+  ctx.fillText(ellipsize(ctx, subtitle, textWidth), textX, headerCy + (ah ? 40 : 32));
 
   drawHeaderActionIcons(ctx, tokens, chromeMode, CANVAS_W, headerCy);
 }
@@ -3019,8 +3323,12 @@ function syncSendButtonStates(){
   if (key === sendStateKey) return;
   sendStateKey = key;
   cards.forEach((card, i) => {
+    const st = i < revealed ? 'sent' : (i === revealed ? 'next' : 'queued');
+    card.dataset.state = st;
     const btn = card.querySelector('.sendBtn');
-    if (btn) btn.dataset.state = i < revealed ? 'sent' : (i === revealed ? 'next' : 'queued');
+    if (btn) btn.dataset.state = st;
+    const chip = card.querySelector('.msgState');
+    if (chip) chip.textContent = st === 'next' ? 'Next' : (st === 'sent' ? 'Sent' : '');
   });
 }
 
@@ -3042,6 +3350,8 @@ function wireSoundToggle(){
 }
 
 function wireGlobalControls(){
+  $('timeStepSelect').value = String(state.timeStepEvery);
+  $('timeStepSelect').addEventListener('change', (e) => { state.timeStepEvery = Number(e.target.value); });
   $('contactNameInput').value = state.contact.name;
   $('contactNameInput').addEventListener('input', (e) => { state.contact.name = e.target.value; });
 
@@ -3087,11 +3397,20 @@ function wireGlobalControls(){
     $('chromeDarkBtn').classList.toggle('active', state.theme.chromeMode === 'dark');
   }
   function applyBubbleDefaultsForMode(){
+    const th = state.theme;
+    if (th.bubblePreset && th.bubblePreset !== 'whatsapp'){
+      // A named preset follows the mode if it exists there; otherwise its
+      // colours would clash with the new text colour, so fall back to stock.
+      const same = BUBBLE_PRESETS[th.chromeMode].find((pr) => pr.id === th.bubblePreset);
+      if (same){ applyBubblePreset(same); return; }
+      applyBubblePreset(BUBBLE_PRESETS[th.chromeMode][0]); return;
+    }
     const defaults = BUBBLE_DEFAULTS[state.theme.chromeMode];
     if (!state.theme.bubbleMeCustomized) state.theme.bubbleColorMe = defaults.me;
     if (!state.theme.bubbleContactCustomized) state.theme.bubbleColorContact = defaults.contact;
     $('bubbleMeInput').value = state.theme.bubbleColorMe;
     $('bubbleContactInput').value = state.theme.bubbleColorContact;
+    renderBubblePresets();
   }
   $('chromeLightBtn').addEventListener('click', () => { state.theme.chromeMode = 'light'; setChromeButtons(); applyBubbleDefaultsForMode(); });
   $('chromeDarkBtn').addEventListener('click', () => { state.theme.chromeMode = 'dark'; setChromeButtons(); applyBubbleDefaultsForMode(); });
@@ -3116,7 +3435,11 @@ function wireGlobalControls(){
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
-      img.onload = () => { state.theme.wallpaperImg = img; };
+      img.onload = () => {
+        state.theme.wallpaperImg = img;
+        syncWallpaperOpacityUI();
+        if (openWallpaperOpacity) openWallpaperOpacity(true, false);
+      };
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
@@ -3133,11 +3456,100 @@ function wireGlobalControls(){
   $('bubbleMeInput').addEventListener('input', (e) => {
     state.theme.bubbleColorMe = e.target.value;
     state.theme.bubbleMeCustomized = true;
+    state.theme.bubblePreset = null;
+    renderBubblePresets();
   });
   $('bubbleContactInput').value = state.theme.bubbleColorContact;
   $('bubbleContactInput').addEventListener('input', (e) => {
     state.theme.bubbleColorContact = e.target.value;
     state.theme.bubbleContactCustomized = true;
+    state.theme.bubblePreset = null;
+    renderBubblePresets();
+  });
+  renderBubblePresets();
+}
+
+/* Small anchored window: toggled by `btn`, closed by outside click or
+ * Escape (focus then returns to the trigger). Returns setOpen(open, refocus). */
+function makePopover(btn, pop, wrap){
+  const setOpen = (open, refocus) => {
+    pop.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open){
+      const first = pop.querySelector('.presetBtn.active') || pop.querySelector('input, button');
+      if (first) first.focus();
+    } else if (refocus) btn.focus();
+  };
+  btn.addEventListener('click', () => setOpen(pop.hidden, false));
+  document.addEventListener('pointerdown', (e) => { if (!pop.hidden && !wrap.contains(e.target)) setOpen(false, false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden){ e.stopPropagation(); setOpen(false, true); } });
+  return setOpen;
+}
+
+// Bubble colours live in a small popover opened from #bubbleColorsBtn.
+function wireBubblePopover(){
+  makePopover($('bubbleColorsBtn'), $('bubbleColorsPopover'), $('bubblePickerWrap'));
+}
+
+/* Custom wallpaper opacity: the window opens on its own once a chosen image
+ * has loaded, and the Adjust button reopens it later. */
+let openWallpaperOpacity = null;
+function syncWallpaperOpacityUI(){
+  const pct = Math.round((typeof state.theme.wallpaperOpacity === 'number' ? state.theme.wallpaperOpacity : 1) * 100);
+  $('wallpaperOpacityInput').value = pct;
+  $('wallpaperOpacityValue').textContent = pct + '%';
+  $('wallpaperAdjustBtn').hidden = !state.theme.wallpaperImg;
+}
+function wireWallpaperOpacity(){
+  openWallpaperOpacity = makePopover($('wallpaperAdjustBtn'), $('wallpaperOpacityPopover'), $('wallpaperAdjustWrap'));
+  $('wallpaperOpacityInput').addEventListener('input', (e) => {
+    state.theme.wallpaperOpacity = Number(e.target.value) / 100;
+    $('wallpaperOpacityValue').textContent = e.target.value + '%';
+  });
+  $('wallpaperOpacityDone').addEventListener('click', () => openWallpaperOpacity(false, true));
+  syncWallpaperOpacityUI();
+}
+
+/* Applies a BUBBLE_PRESETS entry. The "whatsapp" pair is stored as
+ * not-customized so it keeps following the light/dark toggle (and the iOS
+ * neutral-dark substitution in bubbleFill) exactly like a fresh project. */
+function applyBubblePreset(preset){
+  const th = state.theme;
+  th.bubbleColorMe = preset.me;
+  th.bubbleColorContact = preset.contact;
+  const stock = preset.id === 'whatsapp';
+  th.bubbleMeCustomized = !stock;
+  th.bubbleContactCustomized = !stock;
+  th.bubblePreset = preset.id;
+  $('bubbleMeInput').value = preset.me;
+  $('bubbleContactInput').value = preset.contact;
+  renderBubblePresets();
+}
+
+function renderBubblePresets(){
+  const wrap = $('bubblePresets');
+  const th = state.theme;
+  const hadFocus = wrap.contains(document.activeElement);
+  $('bubbleDotMe').style.background = th.bubbleColorMe;
+  $('bubbleDotContact').style.background = th.bubbleColorContact;
+  const named = BUBBLE_PRESETS[th.chromeMode].find((pr) => th.bubblePreset
+    ? pr.id === th.bubblePreset : (pr.me === th.bubbleColorMe && pr.contact === th.bubbleColorContact));
+  $('bubbleColorsName').textContent = named ? named.name : 'Custom';
+  wrap.innerHTML = '';
+  BUBBLE_PRESETS[th.chromeMode].forEach((preset) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'presetBtn';
+    const active = th.bubblePreset === preset.id
+      || (!th.bubblePreset && th.bubbleColorMe === preset.me && th.bubbleColorContact === preset.contact);
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+    btn.title = preset.id === 'whatsapp' ? 'WhatsApp default bubbles' : preset.name + ' bubbles';
+    btn.innerHTML = '<span class="presetDots" aria-hidden="true"><span style="background:' + preset.contact +
+      '"></span><span style="background:' + preset.me + '"></span></span><span>' + preset.name + '</span>';
+    btn.addEventListener('click', () => applyBubblePreset(preset));
+    wrap.appendChild(btn);
+    if (hadFocus && active) btn.focus();
   });
 }
 
@@ -3205,12 +3617,18 @@ function loadMessageMedia(m, file){
   });
 }
 
+/* Timestamp for a message inserted at `index` after `last`: messages share a
+ * time in groups of state.timeStepEvery (the Messages "Time step" dropdown)
+ * before the clock moves on a minute; 0 keeps the same time throughout. */
+function nextMessageTime(last, index){
+  if (!last) return '21:30';
+  const every = state.timeStepEvery;
+  return every > 0 && index % every === 0 ? addTimeMinutes(last.time, 1) : last.time;
+}
+
 function addMessage(){
   const last = state.messages[state.messages.length - 1];
-  // Time bumps by 1 minute only every 3rd message, so messages cluster in
-  // groups of 3 sharing a timestamp before the clock advances.
-  const newIndex = state.messages.length;
-  const time = !last ? '21:30' : (newIndex % 3 === 0 ? addTimeMinutes(last.time, 1) : last.time);
+  const time = nextMessageTime(last, state.messages.length);
   const newMsg = {
     id: uid(),
     sender: last ? (last.sender === 'me' ? 'contact' : 'me') : 'contact',
@@ -3289,10 +3707,9 @@ function sendComposerMessage(){
   if (!text.trim()) return;
   const insertIdx = previewState.revealedCount;
   const last = state.messages[insertIdx - 1];
-  // Continues the same timestamp chain as addMessage() (every 3rd message
-  // bumps the clock by 1 minute) instead of stamping the real wall-clock
-  // time, so a live composer send stays consistent with the message panel.
-  const time = !last ? '21:30' : (insertIdx % 3 === 0 ? addTimeMinutes(last.time, 1) : last.time);
+  // Continues the same timestamp chain as addMessage() instead of stamping
+  // the real wall-clock time, so a live composer send stays consistent.
+  const time = nextMessageTime(last, insertIdx);
   const msg = {
     id: uid(),
     sender: 'me',
@@ -3352,6 +3769,7 @@ function renderMessageList(){
   const container = $('messageList');
   container.innerHTML = '';
   sendStateKey = '';
+  $('messageCount').textContent = state.messages.length;
   state.messages.forEach((m, idx) => {
     const card = document.createElement('div');
     card.className = 'msgCard ' + (m.sender === 'me' ? 'msgCard--me' : 'msgCard--contact');
@@ -3359,6 +3777,10 @@ function renderMessageList(){
 
     const head = document.createElement('div');
     head.className = 'msgCardHead';
+    const indexEl = document.createElement('span');
+    indexEl.className = 'msgIndex';
+    indexEl.textContent = String(idx + 1).padStart(2, '0');
+    head.appendChild(indexEl);
     const seg = document.createElement('div');
     seg.className = 'seg';
     const btnContact = document.createElement('button');
@@ -3373,6 +3795,9 @@ function renderMessageList(){
     btnMe.addEventListener('click', () => { m.sender = 'me'; renderMessageList(); });
     seg.appendChild(btnContact); seg.appendChild(btnMe);
     head.appendChild(seg);
+    const stateEl = document.createElement('span');
+    stateEl.className = 'msgState';
+    head.appendChild(stateEl);
 
     const upBtn = document.createElement('button');
     upBtn.className = 'small'; upBtn.innerHTML = iconSvg('chevronUp'); upBtn.type = 'button';
@@ -3439,7 +3864,14 @@ function renderMessageList(){
       liveMirrorSourceId = m.id;
       typingArmedId = m.id;
     });
-    textarea.addEventListener('blur', () => { if (liveMirrorSourceId === m.id) liveMirrorSourceId = null; });
+    textarea.addEventListener('blur', (e) => {
+      if (liveMirrorSourceId === m.id) liveMirrorSourceId = null;
+      // Leaving the box stops the contact "typing", like real WhatsApp. Moving
+      // straight to this card's own Send keeps it until the message replaces
+      // it, so a recording never shows a gap between typing and the message.
+      if (typingArmedId === m.id && !(e.relatedTarget && e.relatedTarget.closest('.msgCard') === card
+          && e.relatedTarget.classList.contains('sendBtn'))) typingArmedId = null;
+    });
     composeRow.appendChild(textarea);
 
     const sendBtn = document.createElement('button');
@@ -3660,6 +4092,7 @@ function serializeProjectData(){
     contact: { ...state.contact, avatarImg: state.contact.avatarImg ? state.contact.avatarImg.src : null },
     platform: state.platform,
     generation: state.generation,
+    timeStepEvery: state.timeStepEvery,
     theme: { ...state.theme, wallpaperImg: state.theme.wallpaperImg ? state.theme.wallpaperImg.src : null },
     messages: state.messages.map((m) => ({
       ...m,
@@ -3690,7 +4123,8 @@ function deserializeProjectData(data){
     }
     return { ...m, media };
   });
-  return { contact, platform: data.platform, generation: GENERATIONS.includes(data.generation) ? data.generation : 'classic', theme, messages, timeline: data.timeline ? { ...data.timeline } : {} };
+  const step = Number.isInteger(data.timeStepEvery) && data.timeStepEvery >= 0 && data.timeStepEvery <= 10 ? data.timeStepEvery : 3;
+  return { contact, platform: data.platform, generation: GENERATIONS.includes(data.generation) ? data.generation : 'classic', timeStepEvery: step, theme, messages, timeline: data.timeline ? { ...data.timeline } : {} };
 }
 
 function uidProject(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -3743,8 +4177,11 @@ function syncUIFromState(){
   $('wallpaperGradToInput').value = state.theme.wallpaperGradTo;
   $('bubbleMeInput').value = state.theme.bubbleColorMe;
   $('bubbleContactInput').value = state.theme.bubbleColorContact;
+  renderBubblePresets();
+  syncWallpaperOpacityUI();
 
   $('projectNameText').textContent = currentProjectName;
+  $('timeStepSelect').value = String(state.timeStepEvery);
 
   resetPreview();
   stopReplay();
@@ -3871,6 +4308,7 @@ async function bootProject(){
     state.contact = data.contact;
     state.platform = data.platform;
     state.generation = data.generation;
+    state.timeStepEvery = data.timeStepEvery;
     state.theme = data.theme;
     state.messages = data.messages;
     state.timeline = data.timeline;
@@ -3903,6 +4341,8 @@ function init(){
   wireGlobalControls();
   wireSoundToggle();
   wireUploadButtons();
+  wireBubblePopover();
+  wireWallpaperOpacity();
   setAvatarPreview(state.contact.avatarImg ? state.contact.avatarImg.src : null);
   wireResizeHandle();
   wireTabs();

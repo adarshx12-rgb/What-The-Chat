@@ -22,7 +22,10 @@ None of them combined: PC/desktop use, a genuine Android-vs-iOS toggle, fine-gra
 
 - **`index.html` (root) — marketing homepage.** Introduces the product and links to the app. Not the recorder.
 - **`app/index.html` — the actual recorder tool** (see Full feature spec below). This is what used to be the root `index.html` before a homepage was added; it was moved via `git mv` to preserve history.
-- **`assets/app-preview.png`** — a real screenshot of the app (sidebar + phone preview + an active "Recording" state), used in the homepage's product-showcase section. Not a mockup/illustration.
+- **`assets/app-preview.webp`** (1600×1000, ~62 KB, shown on the page via `<picture>`) and **`assets/app-preview.jpg`** (1200×750, ~78 KB; the `<img>` fallback and the og:image/twitter:image/JSON-LD image).
+  - Both are real captures of the studio, not mockups: Playwright in a temporary profile, 1440×900 at 2× scale, downscaled.
+  - The scene: a dark Android 2026 "Maya" horror chat with a deleted message, the typing indicator, the recorder running, and the project named "Don't look".
+  - They replaced the old 3200×1936, 287 KB `app-preview.png` (Oct 2026). Recapture the same way when the UI changes noticeably.
 - All navigation between the two is via **relative paths only** (`app/index.html` from the homepage, `../index.html` for the recorder header's back-link) — intentionally not `/app/` (which would break under `file://`) and not any hardcoded `localhost` URL, so both pages work identically whether opened directly as `file://`, served by a static file server, or deployed to a subpath. This is unrelated to the optional MP4 backend's own `127.0.0.1:8787` URL (see below), which is deliberately hardcoded for a different reason and should stay that way.
 - The two pages also **share a browser-storage origin under plain `file://`** — Chromium treats every `file://` page as the same origin (`file://`, no host/path), confirmed by testing, so IndexedDB written from one page is immediately readable from the other with zero server. This is why project management (New/Open/Rename/Duplicate/Delete/Import) lives on the homepage in a left-sliding Projects drawer while `app/index.html` only edits whichever project it's given via `?project=<id>` — see the Current status entry on this. Don't confuse this with the *separate* canvas-tainting rule elsewhere in this file (that one's about cross-origin `<img>`/`drawImage` resource fetches, not the page's own storage origin) — they're different checks that happen to both involve `file://` oddities.
 - The homepage is a single self-contained file using **Tailwind CSS v4 via the `@tailwindcss/browser` CDN runtime** (`https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3`, pinned) — this is Tailwind's official no-build-step "Play CDN" replacement for v4: it JIT-compiles utility classes straight from the DOM at runtime, with a `<style type="text/tailwindcss">` block for the `@theme` token overrides and a few `@layer components` classes (buttons, cards, the hero phone mockup, HUD chips). No Node build pipeline, bundler, or `package.json` was introduced for this — deliberately, to match the project's existing zero-setup/single-file philosophy. The `@theme` tokens reuse the exact same hex values as `DESIGN.md`'s studio palette (renamed for Tailwind's naming conventions, e.g. `--color-base`/`--color-ink` instead of `--studio-bg`/`--studio-text`) so the two pages read as one visual system without sharing a stylesheet.
@@ -34,7 +37,7 @@ None of them combined: PC/desktop use, a genuine Android-vs-iOS toggle, fine-gra
 1b. **Live composer** in the phone preview's own composer bar, for typing "Me" messages as if actively chatting — see Current status below for how it's implemented (real hidden input + canvas draw loop) and why that split matters for recording correctness.
 2. Right panel: live WhatsApp-accurate chat UI (status bar, header, bubbles with tails/ticks/timestamps, wallpaper, date dividers, and a bottom compose-bar footer with emoji/camera icons + a green mic button) built from the left panel's data. The left panel's width is resizable by dragging the handle between the two panels.
 3. Every visual detail is genuinely editable — nothing hardcoded/templated.
-4. Manual by default. The conversation advances when the creator clicks a message's Send button, or when the optional Play control replays a recorded take (spec #12). The typing indicator for a Contact message shows only once the creator clicks (or keyboard-focuses) that message's editor box while it is the next un-sent message. It then stays on until the message is sent, and the "Add message" auto-focus does not count. During replay it shows automatically for the pending contact message. "Me" messages never show a typing indicator (matches real WhatsApp). A "Restart preview" button (formerly labeled "Reset chat" — same function, renamed per DESIGN.md copy-style guidance since it clears revealed state, not message data) clears the preview back to empty.
+4. Manual by default. The conversation advances when the creator clicks a message's Send button, or when the optional Play control replays a recorded take (spec #12). The typing indicator for a Contact message shows only while the creator is in that message's editor box (click or keyboard focus) while it is the next un-sent message. Leaving the box stops it immediately, as in real WhatsApp. Moving straight to that card's own Send keeps it until the message replaces it, so recordings never flicker. The "Add message" auto-focus does not count. During replay it shows automatically for the pending contact message. "Me" messages never show a typing indicator (matches real WhatsApp). A "Restart preview" button (formerly labeled "Reset chat" — same function, renamed per DESIGN.md copy-style guidance since it clears revealed state, not message data) clears the preview back to empty.
 5. Full-preview recorder: Start/Pause/Resume/Stop, in a `.recorder-panel` inside a dedicated Export panel to the right of the phone mockup (not overlaid on the canvas), exports a real video file. The recorder now runs an explicit Ready → Recording → Paused → Processing → Complete/Error state machine (see Current status below) instead of just idle/recording/paused.
 6. (Removed) A chat-only recorder used to exist here (same controls, cropped to just the message/wallpaper area) but was removed at the user's request — only the recorder in #5 remains. If it's ever wanted back, the old approach was a second hidden canvas mirroring just the chat-area draw calls.
 7. Android/iOS toggle: status bar style, header style, bubble shape, font — driven by one shared theme-tokens config, not duplicated UI.
@@ -178,29 +181,53 @@ This folder **is** a git repository now (it wasn't in earlier sessions — that 
 
 ## SEO and branding (October 2026)
 
-- **Brand name: Chatreel** (placeholder domain `chatreel.com`; neither verified as available yet). Replaces "Chat Story Recorder" on the homepage. Meta's WhatsApp brand guidelines prohibit "WhatsApp" (or look-alikes) in domain names, product names and usernames, and WhatsApp LLC actively wins UDRP domain transfers, so the brand and domain must never contain "WhatsApp". Using "WhatsApp" descriptively in page copy is allowed with a non-affiliation disclaimer (footer + FAQ already carry one, plus "WhatsApp is a trademark of WhatsApp LLC."). No WhatsApp logo anywhere.
+- **Brand name: What The Chat** (renamed from Chatreel in Oct 2026 at the creator's request; the GitHub repo is `What-The-Chat`). Domain: **whatthechat.com**, used by canonical, og:url, og:image(+secure_url), twitter:image and the JSON-LD url (one HTML comment in `index.html` marks them). Meta's WhatsApp brand guidelines prohibit "WhatsApp" (or look-alikes) in domain names, product names and usernames, and WhatsApp LLC actively wins UDRP domain transfers, so the brand and domain must never contain "WhatsApp". Using "WhatsApp" descriptively in page copy is allowed with a non-affiliation disclaimer (footer + FAQ already carry one, plus "WhatsApp is a trademark of WhatsApp LLC."). No WhatsApp logo anywhere.
 - **Primary keyword: "fake whatsapp chat generator"** (Ahrefs, Oct 2026: India >1,000/mo, KD 0; weak SERP of GitHub/Instagram/LinkedIn/YouTube pages). Secondary: "whatsapp chat generator" (India >1,000/mo, Medium), "fake chat video maker", "whatsapp fake chat video". Avoid targeting "fake chat generator" for now (US KD 59, led by ifaketextmessage.com).
-- Homepage on-page setup: title "Fake WhatsApp Chat Generator – Free Chat Video Maker | Chatreel"; keyword eyebrow lives *inside* the H1; canonical/og/twitter/JSON-LD point at chatreel.com; `meta keywords` removed; JSON-LD = WebApplication + FAQPage generated from the on-page FAQ text (keep them in sync if FAQ copy changes).
+- Homepage on-page setup: title "Fake WhatsApp Chat Generator | What The Chat" (og/twitter titles match); keyword eyebrow lives *inside* the H1; canonical/og/twitter/JSON-LD point at chatreel.com; `meta keywords` removed; JSON-LD = WebApplication + FAQPage generated from the on-page FAQ text (keep them in sync if FAQ copy changes).
 - **Audience: India + US from one English page.** `.com` domain, `lang="en"`, og:locale en_US + alternate en_IN, no country/currency mentions, no hreflang until a second language version exists.
 - **Roadmap:** WhatsApp first. iMessage later as a real tool feature with its own page (demand is mainly US). Telegram/Instagram are low-volume (<100/mo US) — only add as separate pages once the tool genuinely supports them. Never list other chat apps on the WhatsApp page before they exist. Optional future Hindi page (`/hi/`) with hreflang.
-- **Open items:** the modern-generation default wallpaper in `app/index.html` (`modernWallpaperImg`, ~line 978–981) is WhatsApp's own doodle asset — replace with an original pattern before public launch. `app/index.html` title and header brand were renamed to Chatreel at the same time.
+- **Open items:** the modern-generation default wallpaper in `app/index.html` (`modernWallpaperImg`, ~line 978–981) is WhatsApp's own doodle asset — replace with an original pattern before public launch. `app/index.html` title ("What The Chat – Chat Story Studio") and header brand use the same name.
 
 ## Studio polish + Android header accuracy (October 2026)
 
-- **Android header (refreshed/current only), re-measured** against WABetaInfo's Mar 2026 Android capture (1:1 at 1080px) and the 2024 "Sarah / online" image:
-  - avatar 96px, centred 191px from the left edge, with the name 36px after it;
-  - name in regular-weight 52px Roboto; subtitle 35px in `#2b2e31`;
-  - back arrow 44px;
-  - status clock and "5G" in regular weight at 40px;
-  - outlined call icon; the video icon has a solid lens wedge.
-  - Classic keeps its original metrics.
-- **Typing indicator is click-armed** (`typingArmedId`, spec #4).
+- **Android Gen 2 / Gen 3 chrome, pixel-measured** from two native 1080px captures (Nov 2024 `WA_ONLINE_COUNTER_FEATURE_GROUP_CHATS_ANDROID`, Gen 2; Mar 2026 `WA_NEW_CHAT_MESSAGE_BUBBLE_DESIGN_ANDROID`, Gen 3). Classic and iOS are untouched (verified pixel-identical).
+  - **Header, both gens:**
+    - name 46px regular Roboto (33px cap height); subtitle 33px in the same near-black;
+    - 220px of chrome (`statusBarH` 66 + `headerH` 154), header centred at y≈142.
+  - **The gens differ in leading spacing** (`androidHeader` token):
+    - Gen 2: arrow centre 45, avatar centre 125 (r 47.5), name at x 200;
+    - Gen 3: arrow centre 65, avatar centre 193 (r 48.5), name at x 277.
+  - **Status bar:**
+    - grey `#606060` clock (38px regular, x 78) and icons;
+    - Gen 2 shows wifi+signal+battery; Gen 3 shows 5G+signal+battery.
+  - **Nav strip:** modern Android now paints a 65px `#f6f7fa` nav strip with a 297×10 `#606164` handle. This corrects the earlier "Android never paints a nav bar" note.
+  - **Icons:** header, status-bar and composer icons are verbatim Google **Material Symbols** paths (Apache-2.0) in `MATERIAL_SYMBOLS`, drawn by `drawMaterialSymbol()` at a 65px box.
+    - The composer sticker face (no Material equivalent) is traced in `ANDROID_STICKER_FACE`.
+  - **Composer, measured:**
+    - pill 15–924 × 127, mic circle 129px at x 1003;
+    - placeholder 50px in `#54585d`;
+    - Gen 2 uses the sticker face too (the capture shows it).
+  - **Bubbles:** Gen 2 radius 24 (measured ~25); Gen 3 stays a pill (48).
+  - **Default avatar** (modern Android): `#ced6dd` disc with a white silhouette.
+- **Typing indicator follows focus** (`typingArmedId`, spec #4): focusing the pending contact box arms it, and blurring clears it unless focus moved to that card's Send.
+  - While active, the header subtitle reads "typing…" in every generation; Gen 2/3 add the in-chat bubble.
+  - Bubbles are platform-specific and drawn with the shared `drawBubbleTail()`. Android is ~102×84 with the top-left nub and dots fading in sequence. iOS is ~104×80 with the curled bottom-left tail and dots rippling in a rising wave.
+  - Both sit a group gap below the last message.
 - **Sound toggle** `#soundToggle` (top-left of `#phoneStage`) mutes the contact ping both live and in recordings (`notifMuted`, kept in localStorage).
 - **Phone composer** `#composerInput` no longer draws a DOM focus ring; the canvas caret is the indicator.
+- **Left panel sections:** Phone / Contact / Appearance / Messages use `.editorSection` + `.sectionHead`, each with an icon tile, title and subtitle.
+  - Sections are raised cards (`--studio-section`) on a darker panel.
+  - Message cards use WhatsApp dark-bubble colours: Contact slate (`--card-contact`) and Me green (`--card-me`).
+  - The next card to send gets a faint green ring.
+  - Contact is an identity card with a 64px avatar.
+  - Appearance is compact: chrome mode and wallpaper sit on one row, and bubble colours use swatch chips.
+  - Messages shows a count badge (`#messageCount`).
+  - Message cards show an index and a Next/Sent chip (`card.dataset.state`, set in `syncSendButtonStates()`).
+  - Container queries on `#leftPanel` drop the index, then the chip, at narrow widths.
 - **Studio shell restyle**, CSS/markup only, with no ID changes:
-  - Neutral segmented controls; one green action per region. Play is secondary.
+  - Segmented controls (Android/iOS, Light/Dark, Contact/Me) show the selected option in solid WhatsApp green (creator's explicit preference). Play is a secondary button.
   - Send buttons use `data-state` = `next` (green) / `queued` / `sent`, set by `syncSendButtonStates()` from `loop()`.
-  - Full-width cards with a thin sender edge bar.
+  - Message cards anchor like the chat: Contact cards sit left (sender bar on the left), Me cards sit right (bar on the right, faint green tint). At very narrow panel widths they go full width.
   - Styled upload buttons over visually hidden file inputs.
   - DOM-only avatar placeholder (`AVATAR_PLACEHOLDER_SRC`, never put into `state.contact.avatarImg`).
   - Playback status row is hidden while idle; the backend status line only shows when connected.
@@ -210,3 +237,40 @@ This folder **is** a git repository now (it wasn't in earlier sessions — that 
   - no horizontal scroll and no clipped fields;
   - platform/generation switches change the canvas; delete+undo works;
   - replay reaches Done; recording produces a non-zero file; the screenshot is 1080×1920.
+- **iOS message realism (Gen 2/3)**, measured against WABetaInfo's Jun 2026 Liquid Glass capture. That capture uses a smaller text setting, so values were matched as ratios to the text, not absolute sizes:
+  - text inset `padX` 34 (Android keeps 26); timestamps 28px;
+  - date chips are neutral pills: white with black bold text in light, `#171717` with white in dark; wide padding (`datePadX` 66, 2024 look 52).
+- **Deleted messages, every platform:** they never show delivery ticks, and the time sits inline beside the placeholder when it fits. This matches real WhatsApp.
+- **Time step dropdown** (`#timeStepSelect`, Messages section): sets how many new messages share a timestamp before the clock advances 1 minute.
+  - Options: every 1-5 messages, or 'keep the same time' (0); default 3.
+  - Stored per project as `state.timeStepEvery`, autosaved and in backups. Old projects default to 3.
+  - Used by `nextMessageTime()` for both "Add message" and live-composer sends. Existing message times are never rewritten.
+- **Bubble colour presets** (`BUBBLE_PRESETS`, `#bubblePresets`) sit above the Custom pickers, with one set per chrome mode so text stays legible.
+  - Light: Default, Classic, Sky, Lavender, Peach, Graphite. Dark: Default, Teal, Midnight, Plum, Blood, Graphite.
+  - "Default" restores the stock colours (not customized, so they follow the light/dark toggle).
+  - `state.theme.bubblePreset` is saved with the project. A named preset carries across a mode switch when the other mode has the same id (Graphite); otherwise it falls back to Default.
+  - Using a picker clears the preset.
+  - Bubble colours collapse into one trigger (`#bubbleColorsBtn`, under Appearance) showing the current pair and preset name (or "Custom").
+  - It opens a small popover (`#bubbleColorsPopover`, `wireBubblePopover()`) with the presets in 2 columns plus the Custom pickers.
+  - Outside click or Escape closes it, and Escape returns focus to the trigger. Choosing a preset keeps it open.
+- **Custom wallpaper opacity**: `state.theme.wallpaperOpacity` (0.1-1, default 1; saved with the project via the theme).
+  - `drawWallpaper()` paints WhatsApp's plain chat colour (`#efeae2` light / `#0b141a` dark), then the image at that alpha. This canvas change shows in preview, recording and screenshot alike.
+  - The slider lives in a popover (`#wallpaperOpacityPopover`) that opens automatically once a chosen image loads; the "Adjust" button (`#wallpaperAdjustBtn`, shown only when an image exists) reopens it.
+  - Both popovers share `makePopover()`: outside click or Escape closes, Escape refocuses the trigger.
+
+## On-page SEO pass (October 2026)
+
+- **Keywords:**
+  - main **fake whatsapp chat generator**;
+  - supporting: **whatsapp chat generator**, **fake whatsapp chat screenshot**, **fake whatsapp chat**.
+  - The creator rejected KD-N/A terms (video maker, simulator and so on) as targets; don't add them as headings.
+- **Body counts** (~1,530 words, all natural edits to existing copy):
+  - main 6;
+  - "whatsapp chat generator" on its own 2 (H3 "A WhatsApp Chat Generator Built for Realism");
+  - "fake whatsapp chat screenshot" 3 (an About sentence plus a new FAQ, "Can I save a fake WhatsApp chat screenshot?", backed by the real 1080x1920 PNG export);
+  - "fake whatsapp chat" on its own 2 (hero subhead, final CTA).
+- **Meta:**
+  - description is 152 characters and carries the main and screenshot keywords (OG/Twitter descriptions are identical);
+  - og:image is the 1200x750 JPEG `app-preview.jpg`, with type, secure_url and alt; twitter:image:alt added;
+  - JSON-LD WebApplication gained `image`; the FAQPage now has 7 questions, matching the visible FAQ exactly.
+  - **Keep these in sync** if FAQ copy changes.
