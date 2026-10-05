@@ -49,7 +49,9 @@
     font-family:ChatInter,Inter,'Segoe UI',system-ui,Arial,sans-serif;height:100%;
     font-size:13px;-webkit-font-smoothing:antialiased;}
   body.resizing{user-select:none;cursor:col-resize;}
-  #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+  /* clip, not hidden: overflow:hidden still lets scrollIntoView() scroll #app,
+   * which shifted the whole studio up and left a blank band at the bottom. */
+  #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;overflow:clip;}
 
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;
     clip:rect(0 0 0 0);white-space:nowrap;}
@@ -84,6 +86,9 @@
   #leftPanel{width:var(--editor-w);flex-shrink:0;background:var(--studio-bg);
     overflow-y:auto;padding:var(--space-5);border-right:1px solid var(--studio-border);}
   #leftPanel > *,#exportPanel > *{flex-shrink:0;}
+  /* Contain .visually-hidden (absolute) children inside the scrolling panels;
+   * otherwise they overflow #workspace and make #app scrollable. */
+  #leftPanel,#exportPanel{position:relative;}
   #resizeHandle{width:6px;flex-shrink:0;cursor:col-resize;background:transparent;position:relative;
     margin:0 -3px;z-index:2;}
   #resizeHandle::after{content:'';position:absolute;top:0;bottom:0;left:2px;width:2px;
@@ -605,15 +610,15 @@
             </button>
             <span class="uploadName" id="wallpaperFileName">No image chosen</span>
             <button type="button" class="uploadBtn" id="wallpaperAdjustBtn" aria-haspopup="dialog"
-              aria-expanded="false" aria-controls="wallpaperOpacityPopover" hidden>Adjust</button>
-            <div class="bubblePopover" id="wallpaperOpacityPopover" role="dialog" aria-label="Wallpaper opacity" hidden>
+              aria-expanded="false" aria-controls="wallpaperBrightnessPopover" hidden>Adjust</button>
+            <div class="bubblePopover" id="wallpaperBrightnessPopover" role="dialog" aria-label="Wallpaper brightness" hidden>
               <div class="popHead">
-                <label for="wallpaperOpacityInput">Wallpaper opacity</label>
-                <output id="wallpaperOpacityValue" for="wallpaperOpacityInput">100%</output>
+                <label for="wallpaperBrightnessInput">Wallpaper brightness</label>
+                <output id="wallpaperBrightnessValue" for="wallpaperBrightnessInput">100%</output>
               </div>
-              <input type="range" id="wallpaperOpacityInput" min="10" max="100" step="1" value="100">
-              <div class="rangeEnds" aria-hidden="true"><span>Faint</span><span>Full</span></div>
-              <button type="button" class="btnBlock" id="wallpaperOpacityDone">Done</button>
+              <input type="range" id="wallpaperBrightnessInput" min="20" max="100" step="1" value="100">
+              <div class="rangeEnds" aria-hidden="true"><span>Dim</span><span>Bright</span></div>
+              <button type="button" class="btnBlock" id="wallpaperBrightnessDone">Done</button>
             </div>
           </div>
         </div>
@@ -967,7 +972,7 @@ const state = {
     bubbleColorContact: '#ffffff',
     bubbleMeCustomized: false,
     bubbleContactCustomized: false,
-    wallpaperOpacity: 1, // custom image strength over the plain chat background
+    wallpaperBrightness: 1, // custom image brightness; <1 dims toward black like WhatsApp's slider
     bubblePreset: 'whatsapp', // id from BUBBLE_PRESETS, or null for picker colours
   },
   messages: [
@@ -1081,7 +1086,6 @@ let liveMirrorSourceId = null; // id of the sidebar "me" message textarea curren
 // editor box (click or keyboard focus); leaving the box stops it. Replay
 // shows it unprompted.
 let typingArmedId = null;
-let suppressNextMirrorFocus = null; // msg id whose next 'focus' event is the auto-focus-on-add, not a real click — see focusMessageTextarea
 let composerMirroring = false; // whether the phone composer is currently mirroring a sidebar message (see syncComposerMirrorMode)
 
 function triggerSendPop(){ composerAnim.popStart = performance.now(); }
@@ -1378,15 +1382,17 @@ function drawWallpaper(ctx, x, y, w, h){
     ctx.fillStyle = g;
     ctx.fillRect(x, y, w, h);
   } else if (th.wallpaperType === 'custom' && th.wallpaperImg){
-    // Faded images sit on WhatsApp's plain chat colour, like a dimmed wallpaper.
-    ctx.fillStyle = th.chromeMode === 'dark' ? '#0b141a' : '#efeae2';
-    ctx.fillRect(x, y, w, h);
     const img = th.wallpaperImg;
     const scale = Math.max(w / img.width, h / img.height);
     const dw = img.width * scale, dh = img.height * scale;
-    ctx.globalAlpha = typeof th.wallpaperOpacity === 'number' ? th.wallpaperOpacity : 1;
     ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
-    ctx.globalAlpha = 1;
+    // WhatsApp's wallpaper slider dims the image (black overlay), it never
+    // fades it out, so the photo keeps full saturation at any setting.
+    const brightness = typeof th.wallpaperBrightness === 'number' ? th.wallpaperBrightness : 1;
+    if (brightness < 1){
+      ctx.fillStyle = 'rgba(0,0,0,' + (1 - brightness) + ')';
+      ctx.fillRect(x, y, w, h);
+    }
   } else {
     ctx.fillStyle = getDefaultWallpaperPattern(ctx, state.theme.chromeMode);
     ctx.fillRect(x, y, w, h);
@@ -1747,7 +1753,9 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
   // that the header subtitle was the only typing cue.
   const showTypingBubble = typingActive && state.generation !== 'classic';
   const blocks = [];
-  let y = 20;
+  // Glass header floats over the chat: start a little lower so the first
+  // item clears its fade instead of sitting half-frosted under it.
+  let y = tokens.glass ? 44 : 20;
   let lastDate = null;
   for (let i = 0; i < visibleCount; i++){
     const m = state.messages[i];
@@ -1864,14 +1872,17 @@ function drawChatArea(ctx, originY, height, now){
   scrollOffsetCurrent += (scrollTarget - scrollOffsetCurrent) * 0.22;
   if (Math.abs(scrollTarget - scrollOffsetCurrent) < 0.5) scrollOffsetCurrent = scrollTarget;
 
+  // iOS 26 glass: messages keep their layout origin but scroll up *behind*
+  // the header, which drawTopChrome() then frosts over.
+  const clipTop = tokens.glass ? 0 : originY;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, originY, CANVAS_W, messagesH);
+  ctx.rect(0, clipTop, CANVAS_W, originY + messagesH - clipTop);
   ctx.clip();
 
   for (const b of blocks){
     const y = originY + b.y - scrollOffsetCurrent;
-    if (y + b.h < originY - 40 || y > originY + messagesH + 40) continue;
+    if (y + b.h < clipTop - 40 || y > originY + messagesH + 40) continue;
 
     if (b.type === 'date'){
       const text = b.text;
@@ -2232,7 +2243,7 @@ function getComposerDisplayText(){
 function drawComposerTextField(ctx, tokens, fieldX, fieldCy, maxTextW, textX, textColor, placeholderColor, now){
   const pendingMsg = getPendingComposerMessage();
   const val = getComposerDisplayText();
-  const focused = pendingMsg ? (liveMirrorSourceId === pendingMsg.id) : (document.activeElement === composerInputEl);
+  const focused = document.activeElement === composerInputEl || (pendingMsg && liveMirrorSourceId === pendingMsg.id);
   ctx.save();
   ctx.beginPath();
   ctx.rect(fieldX, fieldCy - 40, maxTextW + (textX - fieldX) + 8, 80);
@@ -2520,6 +2531,48 @@ function drawGlassSurface(ctx, x, y, w, h, radius, mode){
   ctx.restore();
 }
 
+/* iOS 26 scroll-edge glass behind the status bar + header: no solid bar, the
+ * wallpaper/messages underneath are blurred and washed toward white (or black
+ * in dark mode), fading out just below the header. Only the back button and
+ * the call pill get their own glass capsules. Canvas-native (a blurred copy of
+ * the canvas itself), so preview, screenshot and recording stay identical. */
+const glassEdgeSrc = document.createElement('canvas');
+const glassEdgeBlur = document.createElement('canvas');
+function drawTopGlassEdge(ctx, totalTopH, mode){
+  const h = Math.round(totalTopH + 18), pad = 48;
+  for (const c of [glassEdgeSrc, glassEdgeBlur]){
+    if (c.width !== CANVAS_W || c.height !== h){ c.width = CANVAS_W; c.height = h; }
+  }
+  const sctx = glassEdgeSrc.getContext('2d');
+  sctx.clearRect(0, 0, CANVAS_W, h);
+  sctx.drawImage(ctx.canvas, 0, 0, CANVAS_W, h, 0, 0, CANVAS_W, h);
+
+  const bctx = glassEdgeBlur.getContext('2d');
+  bctx.clearRect(0, 0, CANVAS_W, h);
+  bctx.filter = 'blur(22px)';
+  // Overscan top/sides so the blur doesn't pull in transparent edge pixels.
+  bctx.drawImage(glassEdgeSrc, -pad, -pad, CANVAS_W + pad * 2, h + pad);
+  bctx.filter = 'none';
+  bctx.globalCompositeOperation = 'destination-in';
+  const mask = bctx.createLinearGradient(0, 0, 0, h);
+  mask.addColorStop(0, '#000');
+  mask.addColorStop((totalTopH - 24) / h, '#000');
+  mask.addColorStop(1, 'rgba(0,0,0,0)');
+  bctx.fillStyle = mask;
+  bctx.fillRect(0, 0, CANVAS_W, h);
+  bctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(glassEdgeBlur, 0, 0);
+
+  const c = mode === 'dark' ? '0,0,0' : '255,255,255';
+  const wash = ctx.createLinearGradient(0, 0, 0, h);
+  wash.addColorStop(0, 'rgba(' + c + ',.82)');
+  wash.addColorStop(0.35, 'rgba(' + c + ',.55)');
+  wash.addColorStop((totalTopH - 24) / h, 'rgba(' + c + ',.35)');
+  wash.addColorStop(1, 'rgba(' + c + ',0)');
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, 0, CANVAS_W, h);
+}
+
 function drawFooterBarGlass(ctx, tokens, mode, x, y, w, h, now){
   const { field, actionCx, actionCy, actionR } = getComposerLayout(x, y, w, h);
   const color = mode === 'dark' ? '#e9edef' : '#111b21';
@@ -2586,14 +2639,12 @@ function drawTopChrome(ctx, typingIsContact){
   const bg = chromeMode === 'dark' ? tokens.headerBgDark : tokens.headerBgLight;
   const totalTopH = tokens.statusBarH + tokens.headerH;
 
-  ctx.fillStyle = bg;
   if (tokens.glass){
-    const fade = ctx.createLinearGradient(0, 0, 0, totalTopH);
-    fade.addColorStop(0, chromeMode === 'dark' ? 'rgba(10,10,10,.98)' : 'rgba(255,255,255,.98)');
-    fade.addColorStop(1, chromeMode === 'dark' ? 'rgba(10,10,10,.75)' : 'rgba(255,255,255,.65)');
-    ctx.fillStyle = fade;
+    drawTopGlassEdge(ctx, totalTopH, chromeMode);
+  } else {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, CANVAS_W, totalTopH);
   }
-  ctx.fillRect(0, 0, CANVAS_W, totalTopH);
 
   drawStatusIcons(ctx, tokens, chromeMode, CANVAS_W, tokens.statusBarH);
 
@@ -2649,9 +2700,15 @@ function draw(ctx, now){
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
   if (tokens.glass) drawWallpaper(ctx, 0, 0, CANVAS_W, CANVAS_H);
   const { typingIsContact } = computeVisibleState();
-  drawTopChrome(ctx, typingIsContact);
   const chatY = tokens.statusBarH + tokens.headerH;
-  drawChatArea(ctx, chatY, CANVAS_H - chatY, now);
+  // Glass chrome sits on top of (and blurs) the chat, so the chat draws first.
+  if (tokens.glass){
+    drawChatArea(ctx, chatY, CANVAS_H - chatY, now);
+    drawTopChrome(ctx, typingIsContact);
+  } else {
+    drawTopChrome(ctx, typingIsContact);
+    drawChatArea(ctx, chatY, CANVAS_H - chatY, now);
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -2669,18 +2726,30 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
-/* Keeps the real (invisible) composer <input>'s enabled state in sync with
- * whether the phone composer is currently mirroring a pending scripted "me"
- * message (see getPendingComposerMessage). Disabled while mirroring, so it
- * can't be typed into directly — text only flows one way, from the sidebar
- * textarea into the phone preview (per the one-way mirror design) — and its
- * stale value is cleared right as mirroring begins, so leftover live-composer
- * text doesn't reappear once mirroring ends. */
+/* Two-way sync between the real (invisible) composer <input> and a pending
+ * scripted "me" message (see getPendingComposerMessage): sidebar edits flow
+ * into the input here, and typing in the phone composer writes back to the
+ * message (see the composer 'input' listener). Cleared once mirroring ends so
+ * the just-sent text doesn't linger in the free-typing composer. */
 function syncComposerMirrorMode(){
-  const mirroring = !!getPendingComposerMessage();
-  if (mirroring && !composerMirroring) composerInputEl.value = '';
-  composerInputEl.disabled = mirroring;
-  composerMirroring = mirroring;
+  const pendingMsg = getPendingComposerMessage();
+  if (pendingMsg){
+    if (composerInputEl.value !== pendingMsg.text) composerInputEl.value = pendingMsg.text;
+  } else if (composerMirroring){
+    composerInputEl.value = '';
+  }
+  composerMirroring = !!pendingMsg;
+}
+
+/* Pushes a message's text (changed from the phone composer) back into its
+ * sidebar card, so the textarea and its Send button stay in agreement. */
+function syncMessageCardText(m){
+  const card = document.querySelector('.msgCard[data-msg-id="' + m.id + '"]');
+  if (!card) return;
+  const textarea = card.querySelector('textarea');
+  if (textarea && textarea.value !== m.text) textarea.value = m.text;
+  const sendBtn = card.querySelector('.sendBtn');
+  if (sendBtn) sendBtn.disabled = !m.text.trim() && !m.media;
 }
 
 /* Keeps the real (invisible) composer <input> positioned exactly over the
@@ -3437,8 +3506,8 @@ function wireGlobalControls(){
       const img = new Image();
       img.onload = () => {
         state.theme.wallpaperImg = img;
-        syncWallpaperOpacityUI();
-        if (openWallpaperOpacity) openWallpaperOpacity(true, false);
+        syncWallpaperBrightnessUI();
+        if (openWallpaperBrightness) openWallpaperBrightness(true, false);
       };
       img.src = reader.result;
     };
@@ -3491,23 +3560,23 @@ function wireBubblePopover(){
   makePopover($('bubbleColorsBtn'), $('bubbleColorsPopover'), $('bubblePickerWrap'));
 }
 
-/* Custom wallpaper opacity: the window opens on its own once a chosen image
+/* Custom wallpaper brightness: the window opens on its own once a chosen image
  * has loaded, and the Adjust button reopens it later. */
-let openWallpaperOpacity = null;
-function syncWallpaperOpacityUI(){
-  const pct = Math.round((typeof state.theme.wallpaperOpacity === 'number' ? state.theme.wallpaperOpacity : 1) * 100);
-  $('wallpaperOpacityInput').value = pct;
-  $('wallpaperOpacityValue').textContent = pct + '%';
+let openWallpaperBrightness = null;
+function syncWallpaperBrightnessUI(){
+  const pct = Math.round((typeof state.theme.wallpaperBrightness === 'number' ? state.theme.wallpaperBrightness : 1) * 100);
+  $('wallpaperBrightnessInput').value = pct;
+  $('wallpaperBrightnessValue').textContent = pct + '%';
   $('wallpaperAdjustBtn').hidden = !state.theme.wallpaperImg;
 }
-function wireWallpaperOpacity(){
-  openWallpaperOpacity = makePopover($('wallpaperAdjustBtn'), $('wallpaperOpacityPopover'), $('wallpaperAdjustWrap'));
-  $('wallpaperOpacityInput').addEventListener('input', (e) => {
-    state.theme.wallpaperOpacity = Number(e.target.value) / 100;
-    $('wallpaperOpacityValue').textContent = e.target.value + '%';
+function wireWallpaperBrightness(){
+  openWallpaperBrightness = makePopover($('wallpaperAdjustBtn'), $('wallpaperBrightnessPopover'), $('wallpaperAdjustWrap'));
+  $('wallpaperBrightnessInput').addEventListener('input', (e) => {
+    state.theme.wallpaperBrightness = Number(e.target.value) / 100;
+    $('wallpaperBrightnessValue').textContent = e.target.value + '%';
   });
-  $('wallpaperOpacityDone').addEventListener('click', () => openWallpaperOpacity(false, true));
-  syncWallpaperOpacityUI();
+  $('wallpaperBrightnessDone').addEventListener('click', () => openWallpaperBrightness(false, true));
+  syncWallpaperBrightnessUI();
 }
 
 /* Applies a BUBBLE_PRESETS entry. The "whatsapp" pair is stored as
@@ -3642,7 +3711,9 @@ function addMessage(){
   };
   state.messages.push(newMsg);
   renderMessageList();
-  focusMessageTextarea(newMsg.id);
+  // Scroll only, no focus: the box (and the typing indicator) activates when
+  // the creator actually clicks into it.
+  scrollMessageCardIntoView(newMsg.id);
 }
 
 function removeMessage(id){
@@ -3743,24 +3814,27 @@ function handleComposerSendAction(){
   else sendComposerMessage();
 }
 
-function focusMessageTextarea(id){
-  const card = document.querySelector('.msgCard[data-msg-id="' + id + '"]');
-  if (!card) return;
-  const textarea = card.querySelector('textarea');
-  if (!textarea) return;
-  // This focus() call is programmatic (following "Add message"), not a real
-  // click into the box — suppress the one 'focus' event it triggers so the
-  // phone preview's mirrored caret doesn't start blinking until the creator
-  // actually clicks into (or types into) the box themselves.
-  suppressNextMirrorFocus = id;
-  textarea.focus();
-  card.scrollIntoView({ block: 'center', behavior: 'smooth' });
-}
-
 function scrollMessageCardIntoView(id){
   const card = document.querySelector('.msgCard[data-msg-id="' + id + '"]');
   if (!card) return;
-  card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  centerCardInScroller(card);
+}
+
+/* Scrolls only the nearest scrolling panel (#leftPanel on desktop, #workspace
+ * in the tab layout). Never scrollIntoView()/plain focus(): those also scroll
+ * every ancestor, which shifted the whole studio up and left a black band. */
+function centerCardInScroller(card){
+  let scroller = card.parentElement;
+  while (scroller && scroller !== document.body){
+    const oy = getComputedStyle(scroller).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && scroller.scrollHeight > scroller.clientHeight) break;
+    scroller = scroller.parentElement;
+  }
+  if (!scroller || scroller === document.body) return;
+  const sRect = scroller.getBoundingClientRect();
+  const cRect = card.getBoundingClientRect();
+  const target = scroller.scrollTop + (cRect.top - sRect.top) - (scroller.clientHeight - cRect.height) / 2;
+  scroller.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
 }
 
 function renderMessageList(){
@@ -3843,24 +3917,9 @@ function renderMessageList(){
         if (!sendBtn.disabled) sendMessage(m);
       }
     });
-    // Drives the mirrored composer's blinking caret (see drawComposerTextField)
-    // while this row is the one being live-mirrored into the phone preview.
-    // Skipped once for the auto-focus() that follows "Add message" — see
-    // suppressNextMirrorFocus / focusMessageTextarea — so the caret only
-    // starts blinking once the creator actually clicks into (or types into)
-    // the box themselves.
+    // Clicking (or tabbing) into the box is what arms the mirrored caret and
+    // the contact typing indicator — "Add message" never focuses it.
     textarea.addEventListener('focus', () => {
-      if (suppressNextMirrorFocus === m.id){ suppressNextMirrorFocus = null; return; }
-      liveMirrorSourceId = m.id;
-      typingArmedId = m.id;
-    });
-    // A real pointer click always counts as "the creator clicked into the
-    // box", even if the box was already focused by the "Add message"
-    // auto-focus() (in which case a plain click doesn't re-fire 'focus' at
-    // all, since focus isn't actually changing) — so a click still correctly
-    // arms the caret in that case.
-    textarea.addEventListener('pointerdown', () => {
-      suppressNextMirrorFocus = null;
       liveMirrorSourceId = m.id;
       typingArmedId = m.id;
     });
@@ -4178,7 +4237,7 @@ function syncUIFromState(){
   $('bubbleMeInput').value = state.theme.bubbleColorMe;
   $('bubbleContactInput').value = state.theme.bubbleColorContact;
   renderBubblePresets();
-  syncWallpaperOpacityUI();
+  syncWallpaperBrightnessUI();
 
   $('projectNameText').textContent = currentProjectName;
   $('timeStepSelect').value = String(state.timeStepEvery);
@@ -4342,7 +4401,7 @@ function init(){
   wireSoundToggle();
   wireUploadButtons();
   wireBubblePopover();
-  wireWallpaperOpacity();
+  wireWallpaperBrightness();
   setAvatarPreview(state.contact.avatarImg ? state.contact.avatarImg.src : null);
   wireResizeHandle();
   wireTabs();
@@ -4377,6 +4436,11 @@ function init(){
     }
   });
   composerInputEl.addEventListener('input', () => {
+    const pendingMsg = getPendingComposerMessage();
+    if (pendingMsg){
+      pendingMsg.text = composerInputEl.value;
+      syncMessageCardText(pendingMsg);
+    }
     const hasText = !!composerInputEl.value.trim();
     if (hasText && !composerHadText) triggerSendPop();
     composerHadText = hasText;
