@@ -8,6 +8,7 @@
   const OFFLINE = Object.freeze({ credits: 0, pro: false, admin: false, proUntil: null, isAnonymous: true, email: null, offline: true });
   const LINK_FLAG = 'wtc-google-link';
   const PENDING_VIDEO = 'wtc-pending-video-ms'; // charges that failed to reach the server
+  const PRO_CACHE = 'wtc-pro-until'; // last confirmed Pro expiry, honoured while offline
   const listeners = new Set();
   let sb = null;
   let entitlement = null;
@@ -17,7 +18,26 @@
     listeners.forEach((fn) => { try { fn(entitlement); } catch (e) { console.error(e); } });
   }
 
+  function rememberPro(ent){
+    if (ent.offline) return;
+    try {
+      if (ent.pro) localStorage.setItem(PRO_CACHE, ent.admin ? '9999-12-31T00:00:00Z' : (ent.proUntil || ''));
+      else localStorage.removeItem(PRO_CACHE);
+    } catch (e) {}
+  }
+
+  /* Offline: Pro (or admin) that the server confirmed earlier still counts
+   * until its expiry; everyone else gets 0 credits (fail closed). */
+  function offlineEntitlement(){
+    let until = null;
+    try { until = localStorage.getItem(PRO_CACHE); } catch (e) {}
+    return until && new Date(until) > new Date()
+      ? Object.assign({}, OFFLINE, { pro: true, proUntil: until })
+      : OFFLINE;
+  }
+
   function setEntitlement(next){
+    rememberPro(next);
     entitlement = next;
     emit();
     return next;
@@ -77,7 +97,7 @@
   }
 
   async function boot(){
-    if (!window.supabase || !cfg.supabaseUrl || !cfg.supabaseAnonKey) return setEntitlement(OFFLINE);
+    if (!window.supabase || !cfg.supabaseUrl || !cfg.supabaseAnonKey) return setEntitlement(offlineEntitlement());
     try {
       sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -96,7 +116,7 @@
       return entitlement || ent;
     } catch (e) {
       console.warn('[credits] offline mode:', e && e.message);
-      return setEntitlement(OFFLINE);
+      return setEntitlement(offlineEntitlement());
     }
   }
 
@@ -117,7 +137,7 @@
     if (!sb || entitlement.offline) return entitlement;
     // Fail closed: if the balance can't be confirmed now, treat it as 0 so a
     // recording started with the network cut is watermarked.
-    try { return await syncGrants(); } catch (e) { return setEntitlement(OFFLINE); }
+    try { return await syncGrants(); } catch (e) { return setEntitlement(offlineEntitlement()); }
   }
 
   async function spend(kind, amount){
@@ -196,7 +216,7 @@
     if (!sb) return entitlement;
     await sb.auth.signOut();
     try { await startAnonymous(); return await syncGrants(); }
-    catch (e) { return setEntitlement(OFFLINE); }
+    catch (e) { return setEntitlement(offlineEntitlement()); }
   }
 
   let checkoutScript = null;
