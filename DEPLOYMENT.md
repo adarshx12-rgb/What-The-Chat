@@ -1,6 +1,6 @@
 # Static site publishing
 
-There is no build step. Publish the root HTML pages, `app/index.html`, referenced
+There is no build step. Publish the root HTML pages (including `refund-policy.html`), `app/index.html`, referenced
 public assets, `robots.txt`, and `sitemap.xml`. Include `.htaccess` on Apache.
 Do not publish the repository metadata, local tooling, `output/`, `growing-giant/`,
 or `server/`. The server directory is an optional local MP4 converter, not the
@@ -53,3 +53,24 @@ Verify `/robots.txt` and `/sitemap.xml` return HTTP 200, and that every sitemap 
 resolves to its intended canonical page. The sitemap contains only canonical
 indexable pages, following
 [Google's sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap).
+
+## Accounts, credits and billing (Supabase + Razorpay)
+
+Publish `assets/credits-config.js`, `assets/credits-core.js` and `assets/credits.js`
+with the site. Do not publish `supabase/` or `tests/`. The anon key in
+`credits-config.js` is public by design; RLS in `supabase/migrations` protects
+the data. The service_role key and Razorpay secrets live only in Supabase
+secrets (`npx supabase secrets set`).
+
+Database changes: add a migration in `supabase/migrations/`, test locally with
+`npx supabase db reset && npx supabase test db`, then `npx supabase db push`.
+Functions: `npx supabase functions deploy billing` and
+`npx supabase functions deploy razorpay-webhook --no-verify-jwt`.
+
+Tests: `cd tests && npm install`, then `npm run unit`, `npx playwright test`
+(needs `npx supabase start`), and `npm run integration` (needs
+`npx supabase functions serve --env-file supabase/functions/.env.test`).
+
+The admin list (`private.admin_emails`) is filled by hand in the Supabase SQL
+editor and never committed. Local tests serve the site on port 8090 (8080 is
+often taken by other Docker projects).

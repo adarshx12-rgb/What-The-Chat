@@ -1,9 +1,11 @@
 # Database row security
 
-The application currently stores chat projects in browser IndexedDB. Its
-Supabase credits schema exists in the implementation plan, not deployed
-migrations in this checkout. These scripts prepare that schema's security;
-their presence does not mean they have been applied to the hosted database.
+The application stores chat projects in browser IndexedDB. Its Supabase
+credits schema is `supabase/migrations/20261006120000_credits.sql`, which
+already applies the same grants and policy names as `rls.sql` (plus a fifth
+internal table, `private.admin_emails`, with RLS on and no client access).
+`rls.sql` stays useful as an audit/re-hardening script and covers all five
+tables.
 
 | Table | Client access |
 | --- | --- |
@@ -11,8 +13,9 @@ their presence does not mean they have been applied to the hosted database.
 | `public.credit_ledger` | Read rows where `user_id = auth.uid()` |
 | `private.app_settings` | None; server-owned settings |
 | `private.visitor_ip_grants` | None; server-owned abuse counters |
+| `private.admin_emails` | None; filled by hand in the SQL editor |
 
-All four tables enable RLS. Unauthenticated `anon` cannot access them. Supabase
+All five tables enable RLS. Unauthenticated `anon` cannot access them. Supabase
 anonymous **Auth users** use the `authenticated` role and can read only their
 own rows. No client can insert, update, delete, truncate, change ownership,
 change a balance, or award itself Pro, even on its own profile. Credit changes
