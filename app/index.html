@@ -1128,6 +1128,10 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="../assets/credits-config.js"></script>
+<script src="../assets/credits-core.js"></script>
+<script src="../assets/credits.js"></script>
 <script src="../assets/chat-emoji.js"></script>
 <script>
 'use strict';
@@ -3387,6 +3391,13 @@ async function convertViaMp4Backend(blob){
   const form = new FormData();
   form.append('video', blob, 'recording');
   const res = await fetch('http://127.0.0.1:8787/convert', { method: 'POST', body: form });
+  if (res.status === 429){
+    const seconds = Number(res.headers.get('Retry-After'));
+    const error = new Error('Conversion rate limit reached');
+    error.code = 'rate_limit_exceeded';
+    error.retryAfter = Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
+    throw error;
+  }
   if (!res.ok) throw new Error('convert failed: ' + res.status);
   return await res.blob();
 }
@@ -3527,7 +3538,9 @@ function makeRecorder(kind, canvas){
           announce('Recording ready. Downloaded as MP4.');
           return;
         } catch (err) {
-          setNote(kind, 'MP4 conversion failed — downloaded the original recording instead.');
+          setNote(kind, err.code === 'rate_limit_exceeded'
+            ? 'MP4 conversion limit reached — downloaded the original recording. ' + (err.retryAfter ? `Try converting again in ${err.retryAfter} seconds.` : 'Try converting again later.')
+            : 'MP4 conversion failed — downloaded the original recording instead.');
         }
       } else {
         setNote(kind, 'MP4 backend not connected — downloaded the raw recording instead.');
@@ -5130,6 +5143,7 @@ function init(){
   wireDockingPreview();
   wireChatScrolling();
   wireExportSheet();
+  WTCCredits.ready();
   renderMessageList();
 
   $('addMessageBtn').addEventListener('click', addMessage);
