@@ -24,6 +24,9 @@ Do not apply the studio's minimalist styling inside the phone preview. The previ
 
 ### Studio shell
 
+> **Superseded Oct 2026 (trial):** the studio shell now uses the homepage's navy system: navy `#09172E`, sky `#CBE0F8` and green `#20BC59`. Sections are windows with sky title bars, labels are IBM Plex Mono, corners are square, and hard offset shadows are kept to windows and primary actions. It lives in one block marked `STUDIO THEME` at the end of `app/index.html`'s `<style>`; delete that block (and the Inter Tight / IBM Plex Mono `<link>`) to revert to the description below. Preview-first, green-for-selection, and red/danger for destructive actions still apply.
+
+
 Use a Vercel-like neutral dark UI:
 
 - Near-black page background

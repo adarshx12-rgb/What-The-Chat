@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>What The Chat – Chat Story Studio</title>
+<script>try{if(localStorage.getItem('wtc-studio-theme')==='dark')document.documentElement.dataset.studioTheme='dark';}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2325d366' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z'/%3E%3C/svg%3E">
 <style>
   /* Roboto: Google Fonts, SIL OFL 1.1; see assets/Roboto-LICENSE.txt. */
@@ -487,6 +491,243 @@
     .projectNameBtn{max-width:none;}
     .msgCardHead button.small{width:36px;height:36px;}
   }
+
+  /* =====================================================================
+   * STUDIO THEME — "What The Chat" navy (Oct 2026)
+   * Same system as the homepage: navy #09172E, sky #CBE0F8, green #20BC59;
+   * boxed windows with title bars, IBM Plex Mono labels, square corners,
+   * hard offset shadows on primary actions only. Shell only — nothing here
+   * touches the canvas. To revert, delete this whole block (and the
+   * Inter Tight / IBM Plex Mono <link> in <head>).
+   * ===================================================================== */
+  :root{
+    --studio-bg:#09172e;
+    --studio-surface:#0c1c38;
+    --studio-surface-raised:#132a4c;
+    --studio-surface-hover:#1a355c;
+    --studio-input:#061127;
+    --studio-card:#0f2343;
+    --studio-section:#0d1f3d;
+    --card-contact:#11284a; --card-contact-border:#25466f; --card-contact-edge:#9db3cf;
+    --card-me:#0c3833; --card-me-border:#1d6150;
+    --studio-border:#21406a;
+    --studio-border-strong:#3c6191;
+    --studio-text:#eef5fd;
+    --studio-text-secondary:#b4c9e4;
+    --studio-text-tertiary:#86a0c2;
+    --studio-accent:#20bc59;
+    --studio-accent-hover:#1ba34d;
+    --studio-accent-text:#09172e;
+    --studio-danger:#ff7a6e;
+    --studio-danger-bg:#3a1824;
+    --studio-warning:#f5b947;
+    --studio-focus:#cbe0f8;
+    --studio-sky:#cbe0f8;
+    --studio-shadow:#030a17;
+    --studio-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --radius-sm:2px; --radius-md:3px; --radius-lg:4px;
+    --shadow-float:5px 5px 0 var(--studio-shadow);
+  }
+  html,body{font-family:"Inter Tight",ChatInter,Inter,'Segoe UI',system-ui,Arial,sans-serif;}
+
+  /* header: brand + project, with a hard rule under it */
+  #studioHeader{border-bottom:1.5px solid var(--studio-border-strong);}
+  .brandMark{border-radius:2px;box-shadow:none;}
+  .brandName{font-size:15px;letter-spacing:-.02em;}
+  .projectSaveStatus{font-family:var(--studio-mono);font-size:11px;letter-spacing:.02em;}
+  .projectNameBtn{font-weight:600;}
+
+  /* sidebar sections become windows: sky title bar, navy body */
+  #leftPanel{background:var(--studio-bg);border-right:1.5px solid var(--studio-border-strong);}
+  .editorSection{padding:0 var(--space-4) var(--space-4);margin-bottom:var(--space-5);border-radius:0;
+    border:1.5px solid var(--studio-border-strong);background:var(--studio-section);
+    box-shadow:4px 4px 0 var(--studio-shadow);}
+  .sectionHead{background:var(--studio-heading);color:var(--studio-bg);margin:0 calc(-1 * var(--space-4)) var(--space-4);
+    padding:6px 10px;gap:var(--space-2);min-height:30px;}
+  .sectionIcon{width:auto;height:auto;background:transparent;border:none;box-shadow:none;color:var(--studio-bg);border-radius:0;}
+  .sectionHeadText{flex-direction:row;align-items:baseline;justify-content:space-between;gap:var(--space-3);}
+  .sectionTitle{font-family:var(--studio-mono);font-size:11px;font-weight:500;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--studio-bg);}
+  .sectionSub{font-family:var(--studio-mono);font-size:10.5px;color:rgb(9 23 46 / 68%);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;text-align:right;}
+  .countBadge{background:var(--studio-bg);color:var(--studio-sky);border:none;border-radius:0;
+    font-family:var(--studio-mono);font-weight:500;letter-spacing:0;}
+  details.appearanceDetails > summary.sectionHead{border-radius:0;}
+  details.appearanceDetails:not([open]){padding-bottom:0;}
+  details.appearanceDetails:not([open]) > summary.sectionHead{margin-bottom:0;}
+  details.appearanceDetails > summary.sectionHead::after{border-color:var(--studio-bg);}
+  details.appearanceDetails > summary.sectionHead:hover .sectionIcon{color:var(--studio-bg);}
+  /* Messages: a window too, so its cards sit on the window body */
+  #panelMessages{background:var(--studio-section);border:1.5px solid var(--studio-border-strong);
+    box-shadow:4px 4px 0 var(--studio-shadow);padding:0 var(--space-4) var(--space-4);}
+
+  /* labels: field captions in mono */
+  label{font-weight:500;}
+  .fieldsRow label,.replyRow label,.customLabel{font-family:var(--studio-mono);font-weight:500;}
+  .helperText,.recHelper,#recNote,.uploadName,.backend-status{font-size:11.5px;}
+
+  /* controls: square, flat, crisp borders */
+  input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+    border-radius:var(--radius-md);}
+  input:focus,select:focus,textarea:focus{border-color:var(--studio-sky);}
+  button{border-radius:var(--radius-md);box-shadow:none;}
+  button.btnPrimary{box-shadow:3px 3px 0 var(--studio-shadow);border:1.5px solid var(--studio-shadow);}
+  button.btnPrimary:active:not(:disabled){transform:translate(1px,1px);box-shadow:2px 2px 0 var(--studio-shadow);}
+  .seg{border-radius:var(--radius-md);}
+  button.segbtn{border-radius:2px;}
+  button.segbtn.active,button.segbtn.active:hover{box-shadow:none;}
+  .bubblePopover{border-radius:0;border:1.5px solid var(--studio-border-strong);}
+  label.swatch,button.presetBtn{border-radius:var(--radius-md);}
+  .presetDots span{border-color:rgb(203 224 248 / 35%);}
+
+  /* message cards: same left/right anchoring, square corners */
+  .msgCard{border-radius:3px;}
+  .msgCard::before{border-radius:0;}
+  .msgCard--contact{border-top-left-radius:0;}
+  .msgCard--me{border-top-right-radius:0;}
+  .msgIndex,.msgState{font-family:var(--studio-mono);font-weight:500;}
+  .msgState{border-radius:0;}
+  .msgCard[data-state="next"]{box-shadow:0 0 0 1.5px var(--studio-accent),4px 4px 0 var(--studio-shadow);}
+  .sendBtn[data-state="next"]{box-shadow:2px 2px 0 var(--studio-shadow);}
+  #addMessageBtn{border:1.5px dashed var(--studio-border-strong);}
+
+  /* phone stage: a quiet dot grid behind the device */
+  #phoneStage{background-color:var(--studio-bg);
+    background-image:radial-gradient(circle, rgb(203 224 248 / 9%) 0 .8px, transparent 1.2px);
+    background-size:6px 6px;}
+  .phone-frame{box-shadow:0 0 0 1px #2c3e5c,0 0 0 5px #06101f,0 0 0 6px #22385a,10px 10px 0 var(--studio-shadow);}
+  #resizeHandle:hover::after,#resizeHandle.dragging::after{background:var(--studio-sky);}
+
+  /* export panel: section labels in mono, recorder as a window */
+  #exportPanel{background:var(--studio-surface);border-left:1.5px solid var(--studio-border-strong);}
+  #exportPanel .panelTitle{font-family:var(--studio-mono);font-size:11px;font-weight:500;
+    letter-spacing:.07em;text-transform:uppercase;color:var(--studio-text-secondary);}
+  .recorder-panel{border-radius:0;border:1.5px solid var(--studio-border-strong);background:var(--studio-input);
+    box-shadow:4px 4px 0 var(--studio-shadow);}
+  .recStateLabel{font-family:var(--studio-mono);font-weight:500;letter-spacing:.02em;}
+  .recTimer{font-family:var(--studio-mono);}
+
+  /* toasts + tabs */
+  .toast{border-radius:0;border:1.5px solid var(--studio-sky);box-shadow:4px 4px 0 var(--studio-shadow);}
+  @media (max-width:1199.98px){
+    .tabsBar{border-bottom:1.5px solid var(--studio-border-strong);}
+    .tabsBar .tabBtn{font-family:var(--studio-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;}
+    .tabsBar .tabBtn.active{border-bottom-color:var(--studio-accent);}
+    #phoneStage.docked .phone-frame{box-shadow:0 0 0 1px #2c3e5c,5px 5px 0 var(--studio-shadow);}
+  }
+  ::-webkit-scrollbar-thumb{background:var(--studio-border);border-radius:0;}
+
+  /* ---- light page, navy boxes: open areas are sky, windows/cards/buttons
+     keep their navy colours; dark-blue halftone behind the phone ---- */
+  :root{
+    --studio-page:#cbe0f8;
+    --studio-heading:#ebf2f9; /* section title bars */
+    --studio-page-ink:#09172e;
+    --studio-page-muted:#33445e;
+    --studio-shadow:#09172e;
+    --studio-focus:#09172e;
+  }
+  html,body,#studioHeader,#leftPanel,#exportPanel{background:var(--studio-page);}
+  #studioHeader{border-bottom-color:var(--studio-page-ink);}
+  #leftPanel{border-right-color:var(--studio-page-ink);}
+  #exportPanel{border-left-color:var(--studio-page-ink);}
+  .brandName,.projectNameBtn{color:var(--studio-page-ink);}
+  .projectNameBtn:hover{background:rgb(9 23 46 / 8%);border-color:rgb(9 23 46 / 30%);}
+  .projectSaveStatus{color:var(--studio-page-muted);}
+  #exportPanel .panelTitle{color:var(--studio-page-ink);}
+  #exportPanel > .helperText,#recNote{color:var(--studio-page-muted);}
+  #resizeHandle:hover::after,#resizeHandle.dragging::after{background:var(--studio-page-ink);}
+  ::-webkit-scrollbar-thumb{background:#8fadd1;}
+
+  /* ---- studio dark theme (header toggle, html[data-studio-theme=dark]):
+     navy page, light-blue halftone, light-blue boxes with navy text ---- */
+  #studioThemeBtn{width:36px;height:36px;}
+  @media (max-width:1199.98px){ #studioThemeBtn{width:var(--touch-h);height:var(--touch-h);} }
+  :root[data-studio-theme="dark"]{
+    --studio-page:#09172e;
+    --studio-page-ink:#ebf2f9;
+    --studio-page-muted:#9db3cf;
+    --studio-heading:#ebf2f9;
+    --studio-section:#cbe0f8;
+    --studio-surface-raised:#ebf2f9;
+    --studio-surface-hover:#dce9f8;
+    --studio-input:#f4f8fd;
+    --studio-card:#dce9f8;
+    --card-contact:#ebf2f9; --card-contact-border:#9fb7d4; --card-contact-edge:#4a5b76;
+    --card-me:#d5f1df; --card-me-border:#7fcf9d;
+    --studio-border:#9fb7d4;
+    --studio-border-strong:#4a6a95;
+    --studio-text:#09172e;
+    --studio-text-secondary:#33445e;
+    --studio-text-tertiary:#4a5b76;
+    --studio-danger:#b42318;
+    --studio-danger-bg:#fbe3e1;
+    --studio-warning:#8a5a00;
+    --studio-shadow:#020812;
+    --studio-focus:#ebf2f9;
+    --halftone-ink:#cbe0f8;
+  }
+  :root[data-studio-theme="dark"] :is(input,select,textarea){color-scheme:light;}
+  :root[data-studio-theme="dark"] select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2333445e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");}
+  :root[data-studio-theme="dark"] .editorSection,
+  :root[data-studio-theme="dark"] #panelMessages,
+  :root[data-studio-theme="dark"] .recorder-panel{border-color:#ebf2f9;}
+  :root[data-studio-theme="dark"] .sectionHead{border-bottom:1.5px solid rgb(9 23 46 / 22%);}
+  :root[data-studio-theme="dark"] .projectNameBtn:hover{background:rgb(235 242 249 / 10%);border-color:rgb(235 242 249 / 30%);}
+  :root[data-studio-theme="dark"] input:focus,:root[data-studio-theme="dark"] select:focus,
+  :root[data-studio-theme="dark"] textarea:focus{border-color:#09172e;}
+  :root[data-studio-theme="dark"] .msgCard:focus-within{border-color:#4a6a95;}
+  :root[data-studio-theme="dark"] .presetDots span{border-color:rgb(9 23 46 / 30%);}
+  :root[data-studio-theme="dark"] .toast{border-color:#09172e;}
+  /* focus: light ring on the navy page, navy ring inside the light boxes */
+  :root[data-studio-theme="dark"] .editorSection :is(input,select,textarea,button,a,[tabindex]):focus-visible,
+  :root[data-studio-theme="dark"] .recorder-panel :is(button,a):focus-visible,
+  :root[data-studio-theme="dark"] .bubblePopover :is(input,button):focus-visible,
+  :root[data-studio-theme="dark"] .toast button:focus-visible{outline-color:#09172e;}
+  :root[data-studio-theme="dark"] .editorSection label.swatch:focus-within{outline-color:#09172e;}
+  :root[data-studio-theme="dark"] #phoneStage{
+    background-image:radial-gradient(circle, rgb(203 224 248 / 8%) 0 .8px, transparent 1.2px);}
+  :root[data-studio-theme="dark"] .phone-frame{
+    box-shadow:0 0 0 1.5px #3c6191,8px 8px 0 rgb(0 0 0 / 45%);}
+  :root[data-studio-theme="dark"] ::-webkit-scrollbar-thumb{background:#21406a;}
+  /* green as text on the light boxes needs a darker shade to stay legible */
+  :root[data-studio-theme="dark"] .msgCard[data-state="next"] .msgState,
+  :root[data-studio-theme="dark"] .backend-status.connected,
+  :root[data-studio-theme="dark"] .toast button{color:#0b6b30;}
+
+  /* focus: navy ring on the page, sky ring inside navy boxes */
+  .editorSection :is(input,select,textarea,button,a,[tabindex]):focus-visible,
+  .recorder-panel :is(button,a):focus-visible,
+  .bubblePopover :is(input,button):focus-visible,
+  .toast button:focus-visible{outline-color:var(--studio-sky);}
+  .editorSection label.swatch:focus-within{outline-color:var(--studio-sky);}
+
+  /* phone stage: sky with a fine navy dot grid, plus two dark-blue halftone
+     blobs (masked dot field) like the homepage */
+  #phoneStage{background-color:var(--studio-page);
+    background-image:radial-gradient(circle, rgb(9 23 46 / 7%) 0 .8px, transparent 1.2px);
+    background-size:6px 6px;isolation:isolate;}
+  #phoneStage::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background-image:radial-gradient(circle, var(--halftone-ink, #09172e) 0 1.2px, transparent 1.8px);
+    background-size:7px 7px;
+    -webkit-mask-image:radial-gradient(circle at 12% 24%, #000 0, #000 3rem, rgb(0 0 0 / 45%) 7rem, transparent 11rem),
+                       radial-gradient(circle at 90% 82%, #000 0, #000 4rem, rgb(0 0 0 / 45%) 9rem, transparent 14rem);
+            mask-image:radial-gradient(circle at 12% 24%, #000 0, #000 3rem, rgb(0 0 0 / 45%) 7rem, transparent 11rem),
+                       radial-gradient(circle at 90% 82%, #000 0, #000 4rem, rgb(0 0 0 / 45%) 9rem, transparent 14rem);
+    opacity:.8;}
+  /* Slim bezel, tighter concentric corners, one crisp outline (preview
+     framing only: the canvas/recording is unaffected). */
+  .phone-frame{padding:6px;border-radius:28px;
+    box-shadow:0 0 0 1.5px var(--studio-page-ink),8px 8px 0 rgb(9 23 46 / 35%);}
+  #previewCanvas{border-radius:22px;}
+
+  @media (max-width:1199.98px){
+    .tabsBar{background:var(--studio-page);border-bottom-color:var(--studio-page-ink);}
+    .tabsBar .tabBtn{color:var(--studio-page-muted);}
+    .tabsBar .tabBtn:hover,.tabsBar .tabBtn.active{color:var(--studio-page-ink);}
+    #phoneStage{background-color:var(--studio-page);}
+    #phoneStage.docked::before{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -508,6 +749,7 @@
         <span id="projectNameText">Untitled story</span>
       </button>
       <input type="text" id="projectNameInput" class="projectNameInput" hidden maxlength="80" aria-label="Project name">
+      <button type="button" class="small" id="studioThemeBtn" aria-pressed="false"></button>
       <button type="button" class="small" id="openProjectsBtn" title="Projects">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       </button>
@@ -3273,6 +3515,8 @@ const ICONS = {
   volume: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
   volumeOff: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
 };
 function iconSvg(name, size){
   size = size || 15;
@@ -3494,6 +3738,28 @@ function wireSoundToggle(){
   btn.addEventListener('click', () => {
     notifMuted = !notifMuted;
     try { localStorage.setItem('wa-notif-muted', notifMuted ? '1' : '0'); } catch (e) {}
+    apply();
+  });
+  apply();
+}
+
+/* Studio (shell) light/dark theme. Independent of the phone's own chrome
+ * mode; never touches the canvas. Per-browser convenience, so localStorage. */
+function wireStudioThemeToggle(){
+  const btn = $('studioThemeBtn');
+  const apply = () => {
+    const dark = document.documentElement.dataset.studioTheme === 'dark';
+    btn.innerHTML = iconSvg(dark ? 'sun' : 'moon', 16);
+    btn.setAttribute('aria-pressed', String(dark));
+    const label = dark ? 'Switch studio to light' : 'Switch studio to dark';
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+  };
+  btn.addEventListener('click', () => {
+    const dark = document.documentElement.dataset.studioTheme !== 'dark';
+    if (dark) document.documentElement.dataset.studioTheme = 'dark';
+    else delete document.documentElement.dataset.studioTheme;
+    try { localStorage.setItem('wtc-studio-theme', dark ? 'dark' : 'light'); } catch (e) {}
     apply();
   });
   apply();
@@ -4480,6 +4746,7 @@ async function bootProject(){
 function init(){
   wireGlobalControls();
   wireSoundToggle();
+  wireStudioThemeToggle();
   wireUploadButtons();
   wireBubblePopover();
   wireWallpaperBrightness();
