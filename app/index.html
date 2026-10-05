@@ -568,6 +568,7 @@
         <select id="statusModeSelect">
           <option value="online">online</option>
           <option value="lastSeen">last seen ...</option>
+          <option value="offline">offline (name only)</option>
           <option value="typing">typing... (forced)</option>
         </select>
         <div id="lastSeenField" class="themeSubField">
@@ -2317,6 +2318,9 @@ function drawAttachIconSmall(ctx, cx, cy, r, color){
  * indicator, matching the header. Android never paints a bar: the composer
  * pill and mic float over the wallpaper, edge to edge. */
 function iosBarColor(tokens, chromeMode){
+  // Gen 2 dark: the composer bar is a touch lighter than the header, measured
+  // (36,38,38) vs (29,30,29) in two WABetaInfo 2024 iOS captures.
+  if (chromeMode === 'dark' && state.generation === 'refreshed') return '#242626';
   return chromeMode === 'dark' ? tokens.headerBgDark : tokens.headerBgLight;
 }
 
@@ -2538,8 +2542,20 @@ function drawGlassSurface(ctx, x, y, w, h, radius, mode){
  * the canvas itself), so preview, screenshot and recording stay identical. */
 const glassEdgeSrc = document.createElement('canvas');
 const glassEdgeBlur = document.createElement('canvas');
-function drawTopGlassEdge(ctx, totalTopH, mode){
-  const h = Math.round(totalTopH + 18), pad = 48;
+// Eased opacity ramp: holds `from` until y0, then glides to 0 at y1 with no
+// visible edge (smootherstep), sampled into gradient stops.
+function addEasedFade(grad, h, y0, y1, from, rgb){
+  grad.addColorStop(0, 'rgba(' + rgb + ',' + from + ')');
+  for (let i = 0; i <= 12; i++){
+    const t = i / 12;
+    const e = t * t * t * (t * (t * 6 - 15) + 10);
+    grad.addColorStop(Math.min(1, (y0 + (y1 - y0) * t) / h), 'rgba(' + rgb + ',' + (from * (1 - e)).toFixed(3) + ')');
+  }
+}
+
+function drawTopGlassEdge(ctx, totalTopH, mode, statusBarH){
+  // Fade ends ~40px below the header, still above the first chat item (44px).
+  const h = Math.round(totalTopH + 40), pad = 48;
   for (const c of [glassEdgeSrc, glassEdgeBlur]){
     if (c.width !== CANVAS_W || c.height !== h){ c.width = CANVAS_W; c.height = h; }
   }
@@ -2555,22 +2571,24 @@ function drawTopGlassEdge(ctx, totalTopH, mode){
   bctx.filter = 'none';
   bctx.globalCompositeOperation = 'destination-in';
   const mask = bctx.createLinearGradient(0, 0, 0, h);
-  mask.addColorStop(0, '#000');
-  mask.addColorStop((totalTopH - 24) / h, '#000');
-  mask.addColorStop(1, 'rgba(0,0,0,0)');
+  addEasedFade(mask, h, totalTopH * 0.55, h, 1, '0,0,0');
   bctx.fillStyle = mask;
   bctx.fillRect(0, 0, CANVAS_W, h);
   bctx.globalCompositeOperation = 'source-over';
   ctx.drawImage(glassEdgeBlur, 0, 0);
 
-  const c = mode === 'dark' ? '0,0,0' : '255,255,255';
+  // A light tint in the glass's own tone (picked from the content behind it):
+  // mostly blur, like iOS, not a white fog over a dark photo.
   const wash = ctx.createLinearGradient(0, 0, 0, h);
-  wash.addColorStop(0, 'rgba(' + c + ',.82)');
-  wash.addColorStop(0.35, 'rgba(' + c + ',.55)');
-  wash.addColorStop((totalTopH - 24) / h, 'rgba(' + c + ',.35)');
-  wash.addColorStop(1, 'rgba(' + c + ',0)');
+  addEasedFade(wash, h, statusBarH, h, mode === 'dark' ? 0.4 : 0.45, mode === 'dark' ? '0,0,0' : '255,255,255');
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, CANVAS_W, h);
+
+  // Status bar: kept separate from WhatsApp's glass (creator's choice) as a
+  // solid strip in the theme's chat colour, sampled from WABetaInfo's iOS 26
+  // captures; the header glass starts cleanly below it.
+  ctx.fillStyle = state.theme.chromeMode === 'dark' ? 'rgb(13,13,13)' : 'rgb(241,237,231)';
+  ctx.fillRect(0, 0, CANVAS_W, statusBarH);
 }
 
 function drawFooterBarGlass(ctx, tokens, mode, x, y, w, h, now){
@@ -2633,20 +2651,68 @@ function ellipsize(ctx, text, maxWidth){
   return chars.join('') + '\u2026';
 }
 
+/* Liquid Glass adapts to what's behind it: sample the average brightness under
+ * the header and pick light or dark glass (text, icons, capsules, tint) from
+ * it, like iOS 26, instead of forcing the chrome-mode colours onto any photo.
+ * Throttled (readback is a GPU sync) with hysteresis so scrolling messages
+ * can't make it flicker. */
+const glassToneProbe = document.createElement('canvas');
+glassToneProbe.width = 24; glassToneProbe.height = 6;
+const glassToneCtx = glassToneProbe.getContext('2d', { willReadFrequently: true });
+let glassTone = null, glassToneSampledAt = -1e9;
+function glassToneBehindHeader(ctx, totalTopH){
+  const now = performance.now();
+  if (glassTone && now - glassToneSampledAt < 200) return glassTone;
+  glassToneSampledAt = now;
+  glassToneCtx.clearRect(0, 0, 24, 6);
+  glassToneCtx.drawImage(ctx.canvas, 0, 0, CANVAS_W, totalTopH, 0, 0, 24, 6);
+  const d = glassToneCtx.getImageData(0, 0, 24, 6).data;
+  let lum = 0;
+  for (let i = 0; i < d.length; i += 4) lum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+  lum /= (d.length / 4) * 255;
+  if (lum < 0.42) glassTone = 'dark';
+  else if (lum > 0.55) glassTone = 'light';
+  else if (!glassTone) glassTone = state.theme.chromeMode;
+  return glassTone;
+}
+
+/* Header subtitle presence, 0 (name only) <-> 1 (name + subtitle), moving
+ * linearly over HEADER_SUB_MS; the caller applies ease-in-out, so the name
+ * glides rather than jumps. Keeps the last shown text so "online" can fade out
+ * as the contact goes offline. Instant under prefers-reduced-motion. */
+const HEADER_SUB_MS = 320;
+const headerSubAnim = { vis: null, text: '', at: 0 };
+function stepHeaderSubtitle(subtitle){
+  const now = performance.now();
+  const target = subtitle ? 1 : 0;
+  if (subtitle) headerSubAnim.text = subtitle;
+  if (headerSubAnim.vis === null || prefersReducedMotion){
+    headerSubAnim.vis = target;
+  } else {
+    const step = Math.min(100, now - headerSubAnim.at) / HEADER_SUB_MS;
+    const diff = target - headerSubAnim.vis;
+    headerSubAnim.vis = Math.abs(diff) <= step ? target : headerSubAnim.vis + Math.sign(diff) * step;
+  }
+  headerSubAnim.at = now;
+  return headerSubAnim.vis;
+}
+
 function drawTopChrome(ctx, typingIsContact){
   const tokens = getPlatformTokens();
-  const chromeMode = state.theme.chromeMode;
-  const bg = chromeMode === 'dark' ? tokens.headerBgDark : tokens.headerBgLight;
   const totalTopH = tokens.statusBarH + tokens.headerH;
+  const chromeMode = tokens.glass ? glassToneBehindHeader(ctx, totalTopH) : state.theme.chromeMode;
+  const bg = chromeMode === 'dark' ? tokens.headerBgDark : tokens.headerBgLight;
 
   if (tokens.glass){
-    drawTopGlassEdge(ctx, totalTopH, chromeMode);
+    drawTopGlassEdge(ctx, totalTopH, chromeMode, tokens.statusBarH);
   } else {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, CANVAS_W, totalTopH);
   }
 
-  drawStatusIcons(ctx, tokens, chromeMode, CANVAS_W, tokens.statusBarH);
+  // The iOS status bar is the system's, styled by WhatsApp's light/dark theme
+  // (verified against WABetaInfo's iOS 26 captures), never by the wallpaper.
+  drawStatusIcons(ctx, tokens, state.theme.chromeMode, CANVAS_W, tokens.statusBarH);
 
   const headerCy = tokens.statusBarH + tokens.headerH / 2;
   if (tokens.glass) drawGlassSurface(ctx, 18, headerCy - 53, 106, 106, 53, chromeMode);
@@ -2679,18 +2745,33 @@ function drawTopChrome(ctx, typingIsContact){
   ctx.font = (tokens.headerNameWeight || 600) + ' ' + (tokens.headerNameSize || 40) + 'px ' + tokens.font;
   // Android: the name stops before the video icon (left edge ~745).
   const textWidth = ah ? 715 - textX : CANVAS_W - textX - (state.platform === 'ios' ? 295 : 360);
-  ctx.fillText(ellipsize(ctx, state.contact.name || 'Contact', textWidth), textX, headerCy - (modernHeader ? (ah ? 7 : 6) : 2));
 
-  let subtitle;
+  let subtitle = null;
   // 1:1 chats show "typing..." in the header while the contact types (with the
-  // in-chat bubble too from Gen 2); both stop together.
+  // in-chat bubble too from Gen 2); both stop together. Typing shows even when
+  // the contact is "offline" (last seen hidden), like real WhatsApp.
   if (typingIsContact) subtitle = 'typing\u2026';
   else if (state.contact.statusMode === 'typing') subtitle = 'typing\u2026';
   else if (state.contact.statusMode === 'lastSeen') subtitle = 'last seen ' + (state.contact.lastSeenText || '');
-  else subtitle = 'online';
-  ctx.fillStyle = subColor;
-  ctx.font = (tokens.headerStatusSize || 26) + 'px ' + tokens.font;
-  ctx.fillText(ellipsize(ctx, subtitle, textWidth), textX, headerCy + (ah ? 40 : 32));
+  else if (state.contact.statusMode === 'online') subtitle = 'online';
+  const subVis = stepHeaderSubtitle(subtitle);
+
+  // Name only (offline) sits vertically centred; with a subtitle it rises to
+  // its usual spot. Eased on the canvas, so recordings capture the slide.
+  const nameSize = tokens.headerNameSize || 40;
+  const raisedY = headerCy - (modernHeader ? (ah ? 7 : 6) : 2);
+  const centredY = headerCy + nameSize * 0.36;
+  const e = subVis * subVis * (3 - 2 * subVis);
+  ctx.fillText(ellipsize(ctx, state.contact.name || 'Contact', textWidth), textX, centredY + (raisedY - centredY) * e);
+
+  if (e > 0.01){
+    ctx.save();
+    ctx.globalAlpha = e;
+    ctx.fillStyle = subColor;
+    ctx.font = (tokens.headerStatusSize || 26) + 'px ' + tokens.font;
+    ctx.fillText(ellipsize(ctx, headerSubAnim.text, textWidth), textX, headerCy + (ah ? 40 : 32) + (1 - e) * 10);
+    ctx.restore();
+  }
 
   drawHeaderActionIcons(ctx, tokens, chromeMode, CANVAS_W, headerCy);
 }
