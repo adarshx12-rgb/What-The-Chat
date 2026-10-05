@@ -29,6 +29,7 @@
 | Visitor at 0 credits | Export is watermarked + prompt to sign in |
 | Signed-in free at 0 credits | Export is watermarked + prompt to upgrade |
 | Mid-recording run-out | Watermark appears from that moment on; charge = actual length, capped at balance |
+| Admin | Verified email on `private.admin_emails` → `admin:true`, treated as Pro forever (never charged, never watermarked, billing refuses checkout). List filled by hand in the dashboard, never committed. |
 | Login methods | Google + email magic link |
 | Payments | Razorpay International (Subscriptions) |
 | Support inbox | `support@whatthechat.com` via Cloudflare Email Routing (receive only) |
@@ -419,6 +420,8 @@ npx supabase test db
 ```
 Expected: `credits.test.sql .. ok`, `All tests successful.` (26 assertions).
 
+> **As built (2026-10-06):** the committed migration/test add `private.admin_emails`, `private.is_admin(uuid)`, an `admin` key in every entitlement JSON, adopt Codex's `supabase/security/rls.sql` grants and policy names (`read own profile`, `read own ledger`), and the pgTAP plan is 31. The files in the repo are the source of truth over the SQL above.
+
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -511,6 +514,7 @@ test('chip label', () => {
   assert.equal(core.chipLabel({ credits: 1, pro: false }), '1 credit');
   assert.equal(core.chipLabel({ credits: 20, pro: false }), '20 credits');
   assert.equal(core.chipLabel({ credits: 0, pro: true }), 'Pro');
+  assert.equal(core.chipLabel({ credits: 0, pro: true, admin: true }), 'Admin');
 });
 ```
 
@@ -552,6 +556,7 @@ Expected: FAIL, `Cannot find module '../../assets/credits-core.js'`.
 
   function chipLabel(ent){
     if (!ent) return 'Credits…';
+    if (ent.admin) return 'Admin';
     if (ent.pro) return 'Pro';
     if (ent.offline) return 'Offline';
     return ent.credits + (ent.credits === 1 ? ' credit' : ' credits');
@@ -756,7 +761,7 @@ window.WTC_CONFIG = {
 (function () {
   const core = window.WTCCreditsCore;
   const cfg = window.WTC_CONFIG || {};
-  const OFFLINE = Object.freeze({ credits: 0, pro: false, proUntil: null, isAnonymous: true, email: null, offline: true });
+  const OFFLINE = Object.freeze({ credits: 0, pro: false, admin: false, proUntil: null, isAnonymous: true, email: null, offline: true });
   const LINK_FLAG = 'wtc-google-link';
   const listeners = new Set();
   let sb = null;
@@ -784,6 +789,7 @@ window.WTC_CONFIG = {
     return {
       credits: row.credits | 0,
       pro: !!row.pro,
+      admin: !!row.admin,
       proUntil: row.pro_until || null,
       isAnonymous: !user || !!user.is_anonymous,
       email: (user && user.email) || null,
@@ -1479,7 +1485,9 @@ function renderAccount(ent){
   $('creditsChipText').textContent = WTCCreditsCore.chipLabel(ent);
   $('creditsChip').dataset.empty = String(!!ent && !ent.pro && ent.credits === 0);
   if (!ent) return;
-  $('accountBalance').textContent = ent.pro
+  $('accountBalance').textContent = ent.admin
+    ? 'Admin. Unlimited exports, no payment.'
+    : ent.pro
     ? 'Pro' + (ent.proUntil ? ' until ' + new Date(ent.proUntil).toLocaleDateString() : '')
     : WTCCreditsCore.chipLabel(ent);
   const signedIn = !ent.offline && !ent.isAnonymous;
@@ -1759,7 +1767,8 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const { data: profile } = await admin.from('profiles').select('*').eq('user_id', user.id).single();
-  const isPro = profile?.plan === 'pro' && profile?.pro_until && new Date(profile.pro_until) > new Date();
+  const { data: ent } = await userClient.rpc('ensure_grants');
+  const isPro = !!ent?.pro; // admins are pro too, so they never reach checkout
 
   if (body.action === 'create') {
     if (isPro) return json({ error: 'already_pro' }, 409);
@@ -2058,7 +2067,7 @@ function renderPlan(ent){
   const prices = (window.WTC_CONFIG && window.WTC_CONFIG.prices) || { INR: '₹499', USD: '$8' };
   const signedIn = !!ent && !ent.offline && !ent.isAnonymous;
   $('planCard').hidden = !signedIn || ent.pro;
-  $('proSection').hidden = !signedIn || !ent.pro;
+  $('proSection').hidden = !signedIn || !ent.pro || ent.admin;
   $('currencyToggle').querySelectorAll('.segbtn').forEach((b) => {
     const on = b.dataset.currency === billingCurrency;
     b.classList.toggle('active', on);
@@ -2332,6 +2341,14 @@ npx supabase functions deploy billing
 npx supabase functions deploy razorpay-webhook --no-verify-jwt
 ```
 Expected: both deploy. `curl -X POST https://qmlhbpwbhcdefwbixcrh.supabase.co/functions/v1/razorpay-webhook -d '{}'` → `400 {"error":"bad signature"}`.
+
+- [ ] **Step 4b: Make the creator admin (creator, once)**
+
+In Supabase → SQL Editor, run this with your own sign-in email in lowercase:
+```sql
+insert into private.admin_emails (email) values ('you@example.com');
+```
+Then sign in to the studio with that email (Google or email link). The chip reads **Admin**, and exports are never charged or watermarked. To remove admin: `delete from private.admin_emails where email = '…';`.
 
 - [ ] **Step 5: Production smoke test (Test-mode keys)**
 
