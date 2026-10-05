@@ -3245,7 +3245,49 @@ function draw(ctx, now){
     drawTopChrome(ctx, typingIsContact);
     drawChatArea(ctx, chatY, CANVAS_H - chatY, now);
   }
+  if (exportWatermarkActive(now)) drawWatermark(ctx);
 }
+
+/* ---------------------------------------------------------------------
+ * Export watermark — drawn onto the preview canvas itself, so recordings
+ * and screenshots pick it up with no separate render path (spec #9).
+ * Only shown while an export that isn't covered by credits is in progress.
+ * ------------------------------------------------------------------- */
+const WATERMARK_BOX = { x: 140, y: 1130, w: 800, h: 200 };
+let screenshotWatermark = false;
+
+function exportWatermarkActive(now){
+  return screenshotWatermark;
+}
+
+function drawWatermark(ctx){
+  const { x, y, w, h } = WATERMARK_BOX;
+  ctx.save();
+  ctx.fillStyle = 'rgba(9, 23, 46, 0.62)';
+  roundRectPath(ctx, x, y, w, h, { tl: 36, tr: 36, br: 36, bl: 36 });
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 58px ChatInter, "Segoe UI", sans-serif';
+  ctx.fillText('Made with What The Chat', x + w / 2, y + 78);
+  ctx.font = '500 40px ChatInter, "Segoe UI", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.fillText('whatthechat.com', x + w / 2, y + 144);
+  ctx.restore();
+}
+
+/* After a watermarked export: visitors are asked to sign in, signed-in
+ * free users to upgrade. Task 6 wires the action to the account dialog. */
+function promptAfterWatermark(kind){
+  const ent = WTCCredits.get();
+  const what = kind === 'video' ? 'Out of credits, so the rest of this video has a watermark.' : 'Out of credits, so this screenshot has a watermark.';
+  if (ent && ent.offline) showToast(what + ' Credits need an internet connection.');
+  else if (!ent || ent.isAnonymous) showToast(what + ' Sign in for 40 free credits.', 'Sign in', () => openAccountDialog());
+  else showToast(what, 'Upgrade', () => openAccountDialog());
+}
+
+function openAccountDialog(){}
 
 /* ---------------------------------------------------------------------
  * Animation loop
@@ -3378,13 +3420,18 @@ function downloadBlob(blob, filename){
  * actually on screen. */
 async function saveScreenshot(){
   await window.chatEmojiReady;
+  const verdict = await WTCCredits.spendScreenshot();
+  screenshotWatermark = !verdict.allowed;
   draw(previewCtx, performance.now());
+  // toBlob snapshots the bitmap synchronously, so the flag can drop at once.
   previewCanvas.toBlob((blob) => {
     if (!blob){ showToast('Screenshot failed — try again.'); return; }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     downloadBlob(blob, `whatsapp-chat-${state.platform}-${stamp}.png`);
-    showToast('Screenshot saved');
+    if (verdict.allowed) showToast('Screenshot saved');
+    else promptAfterWatermark('screenshot');
   }, 'image/png');
+  screenshotWatermark = false;
 }
 
 async function convertViaMp4Backend(blob){
