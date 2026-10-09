@@ -4375,6 +4375,17 @@ function renderAccount(ent){
   $('magicLinkForm').querySelector('button[type=submit]').disabled = !canSignIn;
 }
 
+/* The homepage's "Sign in" links here with ?signin=1: open the account
+ * dialog once credits have loaded, and drop the flag from the URL (other
+ * params such as ?project= are kept). */
+function openSignInFromUrl(){
+  const url = new URL(location.href);
+  if (!url.searchParams.has('signin')) return;
+  url.searchParams.delete('signin');
+  history.replaceState(null, '', url.pathname + url.search + url.hash);
+  WTCCredits.ready().then(() => openAccountDialog());
+}
+
 function wireAccountUI(){
   const dialog = $('accountDialog');
   $('creditsChip').addEventListener('click', openAccountDialog);
@@ -5583,6 +5594,7 @@ function init(){
   wireExportSheet();
   WTCCredits.ready();
   wireAccountUI();
+  openSignInFromUrl();
   renderMessageList();
 
   $('addMessageBtn').addEventListener('click', addMessage);

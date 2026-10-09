@@ -43,11 +43,12 @@
   "image": "https://whatthechat.com/assets/app-preview.jpg",
   "applicationCategory": "MultimediaApplication",
   "operatingSystem": "Any (runs in a web browser)",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
-  }
+  "offers": [
+    { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" },
+    { "@type": "Offer", "name": "Pro (monthly)", "price": "8", "priceCurrency": "USD" },
+    { "@type": "Offer", "name": "Pro (yearly)", "price": "64", "priceCurrency": "USD" },
+    { "@type": "Offer", "name": "Credit pack (100 credits)", "price": "2.99", "priceCurrency": "USD" }
+  ]
 }
 </script>
 <script type="application/ld+json">
@@ -220,6 +221,13 @@
     .win-bar .dots i{display:block;width:.5rem;height:.5rem;border:1px solid var(--color-sky);}
     .win-bar .dots i:first-child{background:var(--color-accent);border-color:var(--color-accent);}
 
+    /* pricing */
+    .price-toggle{display:inline-flex;align-self:flex-start;border:1.5px solid var(--color-night);background:var(--color-paper);}
+    .price-toggle button{min-height:2.75rem;padding:0 1rem;font:500 .875rem/1 var(--font-mono);color:var(--color-ink);}
+    .price-toggle button[aria-pressed="true"]{background:var(--color-night);color:var(--color-sky);}
+    .price-featured{box-shadow:5px 5px 0 var(--color-accent);border-color:var(--color-night);}
+    .signin-link{min-height:2.25rem;align-items:center;}
+
     /* projects drawer rows reuse .card */
     .card{background:var(--color-paper);border:1.5px solid var(--color-border);border-radius:3px;
       transition:border-color .15s ease;}
@@ -355,10 +363,12 @@
       <a class="nav-link" href="#demo">Demo</a>
       <a class="nav-link" href="#features">Features</a>
       <a class="nav-link" href="#how-it-works">How It Works</a>
+      <a class="nav-link" href="#pricing">Pricing</a>
       <a class="nav-link" href="#faq">FAQ</a>
     </div>
 
     <div class="flex items-center gap-2">
+      <a href="app/index.html?signin=1" class="nav-link signin-link hidden px-2 md:inline-flex" data-signin-link>Sign in</a>
       <button id="openProjectsBtn" type="button" class="btn btn-secondary hidden h-9 text-sm md:inline-flex"
         aria-haspopup="true" aria-controls="projectsDrawer" aria-expanded="false">
         <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-folder"/></svg>
@@ -381,12 +391,14 @@
       <a class="nav-link px-2 py-3" href="#demo">Demo</a>
       <a class="nav-link px-2 py-3" href="#features">Features</a>
       <a class="nav-link px-2 py-3" href="#how-it-works">How It Works</a>
+      <a class="nav-link px-2 py-3" href="#pricing">Pricing</a>
       <a class="nav-link px-2 py-3" href="#faq">FAQ</a>
       <button id="openProjectsBtnMobile" type="button" class="btn btn-secondary mt-2 w-full"
         aria-haspopup="true" aria-controls="projectsDrawer" aria-expanded="false">
         <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-folder"/></svg>
         Projects
       </button>
+      <a href="app/index.html?signin=1" class="btn btn-secondary mt-2 w-full" data-signin-link>Sign in</a>
       <a href="app/index.html" class="btn btn-dark mt-2 w-full">
         Launch App
         <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-arrow-right"/></svg>
@@ -794,6 +806,80 @@
     </div>
   </section>
 
+  <!-- ============================= PRICING ============================= -->
+  <!-- Prices mirror assets/credits-config.js; amounts charged live in Razorpay
+       and supabase/functions/_shared/razorpay.ts. Keep all three in sync. -->
+  <section id="pricing" class="scroll-mt-16 border-t-[1.5px] border-night px-5 py-20 lg:px-8 lg:py-28" aria-labelledby="pricing-heading">
+    <div class="mx-auto max-w-7xl">
+      <div class="reveal flex flex-col gap-6 md:flex-row md:items-end md:justify-between" data-reveal>
+        <div>
+          <p class="label mb-5 text-muted">Pricing</p>
+          <h2 id="pricing-heading" class="display display-md text-balance text-ink">Free to start. Pro when you go long.</h2>
+          <p class="mt-6 max-w-xl text-base leading-relaxed text-muted">
+            1 screenshot = 1 credit. 3 seconds of video = 1 credit. When credits run out, exports carry a small watermark.
+          </p>
+        </div>
+        <div class="price-toggle" role="group" aria-label="Currency">
+          <button type="button" data-currency="INR" aria-pressed="false">₹ INR</button>
+          <button type="button" data-currency="USD" aria-pressed="true">$ USD</button>
+        </div>
+      </div>
+
+      <div class="mt-12 grid gap-8 lg:grid-cols-3">
+        <article class="reveal win win-shadow flex flex-col" data-reveal aria-labelledby="plan-free">
+          <div class="win-bar"><span>free.plan</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+          <div class="flex flex-1 flex-col p-6">
+            <h3 id="plan-free" class="text-xl font-semibold tracking-tight">Free</h3>
+            <p class="mt-4"><span class="display text-5xl tabular-nums"><span data-inr="₹0" data-usd="$0">$0</span></span></p>
+            <p class="mt-1 text-sm text-muted">No card, no signup to start.</p>
+            <ul class="mt-6 flex flex-1 flex-col gap-3 text-sm text-ink">
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>10 credits the moment you open the studio</span></li>
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Sign in for 30 more, plus a monthly top-up to 10</span></li>
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Videos stay clean for the first 60 seconds</span></li>
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Every editor feature, Android and iOS</span></li>
+          </ul>
+            <a href="app/index.html" class="btn btn-secondary mt-8 w-full">Start free</a>
+          </div>
+        </article>
+
+        <article class="reveal win win-shadow price-featured flex flex-col" data-reveal aria-labelledby="plan-pro">
+          <div class="win-bar"><span>pro.plan</span><span class="mono text-accent">Popular</span></div>
+          <div class="flex flex-1 flex-col p-6">
+            <h3 id="plan-pro" class="text-xl font-semibold tracking-tight">Pro</h3>
+            <p class="mt-4"><span class="display text-5xl tabular-nums" data-inr="₹499" data-usd="$8">$8</span><span class="text-sm text-muted"> / month</span></p>
+            <p class="mt-1 text-sm text-muted">or <span class="font-semibold text-ink" data-inr="₹3,999" data-usd="$64">$64</span> a year, about 2 months free.</p>
+            <ul class="mt-6 flex flex-1 flex-col gap-3 text-sm text-ink">
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Unlimited videos and screenshots</span></li>
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Full-length videos, no 60-second limit</span></li>
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Never watermarked</span></li>
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Cancel any time from the studio</span></li>
+          </ul>
+            <a href="app/index.html?signin=1" class="btn btn-primary mt-8 w-full">Sign in to upgrade</a>
+          </div>
+        </article>
+
+        <article class="reveal win win-shadow flex flex-col" data-reveal aria-labelledby="plan-pack">
+          <div class="win-bar"><span>credits.pack</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+          <div class="flex flex-1 flex-col p-6">
+            <h3 id="plan-pack" class="text-xl font-semibold tracking-tight">Credit pack</h3>
+            <p class="mt-4"><span class="display text-5xl tabular-nums" data-inr="₹149" data-usd="$2.99">$2.99</span><span class="text-sm text-muted"> once</span></p>
+            <p class="mt-1 text-sm text-muted">100 credits, no subscription.</p>
+            <ul class="mt-6 flex flex-1 flex-col gap-3 text-sm text-ink">
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>100 screenshots, or about 5 minutes of video</span></li>
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Bought credits never expire</span></li>
+            <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Best for occasional thumbnails and short clips</span></li>
+          </ul>
+            <a href="app/index.html?signin=1" class="btn btn-secondary mt-8 w-full">Sign in to buy</a>
+          </div>
+        </article>
+      </div>
+
+      <p class="mt-8 text-sm text-muted">
+        Payments are handled securely by Razorpay. See our <a class="underline underline-offset-4" href="refund-policy.html">refund &amp; cancellation policy</a>.
+      </p>
+    </div>
+  </section>
+
   <!-- ============================= FAQ ============================= -->
   <section id="faq" class="scroll-mt-16 border-t-[1.5px] border-night bg-surface px-5 py-20 lg:px-8 lg:py-28" aria-labelledby="faq-heading">
     <div class="mx-auto max-w-4xl">
@@ -920,6 +1006,31 @@
   'use strict';
 
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Pricing currency: rupees in India, dollars elsewhere (same rule as the studio).
+  var currencyButtons = document.querySelectorAll('.price-toggle [data-currency]');
+  function setCurrency(cur){
+    document.querySelectorAll('[data-inr]').forEach(function(el){
+      el.textContent = cur === 'INR' ? el.getAttribute('data-inr') : el.getAttribute('data-usd');
+    });
+    currencyButtons.forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-currency') === cur)); });
+  }
+  currencyButtons.forEach(function(b){
+    b.addEventListener('click', function(){ setCurrency(b.getAttribute('data-currency')); });
+  });
+  var tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+  setCurrency(tz === 'Asia/Kolkata' || tz === 'Asia/Calcutta' ? 'INR' : 'USD');
+
+  // "Sign in" reads "Account" when this browser already has a signed-in
+  // (non-visitor) session. Supabase keeps it in localStorage on this origin.
+  try {
+    var raw = localStorage.getItem('sb-qmlhbpwbhcdefwbixcrh-auth-token');
+    var session = raw ? JSON.parse(raw) : null;
+    if (session && session.user && !session.user.is_anonymous){
+      document.querySelectorAll('[data-signin-link]').forEach(function(a){ a.textContent = 'Account'; });
+    }
+  } catch (e) {}
 
   // sticky nav rule after scroll
   var nav = document.getElementById('siteNav');
