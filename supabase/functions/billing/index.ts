@@ -1,15 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
-import { planIdFor, reusableSubscriptionId } from '../_shared/razorpay.ts';
+import { packOrderFor, planIdFor, reusableSubscriptionId } from '../_shared/razorpay.ts';
+import { corsHeaders } from '../_shared/cors.ts';
 
-const CORS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type',
-  'access-control-allow-methods': 'POST, OPTIONS',
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } });
-}
+// Per-user limit on billing calls (each one can hit the Razorpay API).
+const RATE_LIMIT = 10;
+const RATE_WINDOW_SECONDS = 600;
 
 function razorpayAuth() {
   return 'Basic ' + btoa(`${Deno.env.get('RAZORPAY_KEY_ID')}:${Deno.env.get('RAZORPAY_KEY_SECRET')}`);
@@ -20,6 +15,10 @@ const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE
 });
 
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req.headers.get('origin'), Deno.env.get('ALLOWED_ORIGINS') ?? '');
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } });
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
@@ -31,16 +30,38 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: 'not_signed_in' }, 401);
   if (user.is_anonymous) return json({ error: 'sign_in_required' }, 403);
 
+  const { data: rateOk, error: rateErr } = await admin.rpc('billing_rate_ok', {
+    p_user: user.id, p_limit: RATE_LIMIT, p_window_seconds: RATE_WINDOW_SECONDS,
+  });
+  if (rateErr) { console.error('rate check failed', rateErr.message); return json({ error: 'server_error' }, 500); }
+  if (!rateOk) return json({ error: 'rate_limited' }, 429);
+
   const body = await req.json().catch(() => ({}));
+
+  if (body.action === 'pack') {
+    const order = packOrderFor(body.currency, user.id);
+    const res = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: { authorization: razorpayAuth(), 'content-type': 'application/json' },
+      body: JSON.stringify(order),
+    });
+    const created = await res.json();
+    if (!res.ok) { console.error('razorpay order failed', created); return json({ error: 'razorpay_error' }, 502); }
+    return json({ order_id: created.id, amount: created.amount, currency: created.currency, key_id: Deno.env.get('RAZORPAY_KEY_ID') });
+  }
+
   const { data: profile } = await admin.from('profiles').select('*').eq('user_id', user.id).single();
   const { data: ent } = await userClient.rpc('ensure_grants');
   const isPro = !!ent?.pro; // admins are pro too, so they never reach checkout
 
   if (body.action === 'create') {
     if (isPro) return json({ error: 'already_pro' }, 409);
+    const interval = body.interval === 'year' ? 'year' : 'month';
     const planId = planIdFor(body.currency, {
       usd: Deno.env.get('RAZORPAY_PLAN_USD')!, inr: Deno.env.get('RAZORPAY_PLAN_INR')!,
-    });
+      usdYear: Deno.env.get('RAZORPAY_PLAN_USD_YEARLY'), inrYear: Deno.env.get('RAZORPAY_PLAN_INR_YEARLY'),
+    }, interval);
+    if (!planId) return json({ error: 'plan_unavailable' }, 400);
     const existing = profile?.razorpay_subscription_id;
     if (existing) {
       const prev = await fetch(`https://api.razorpay.com/v1/subscriptions/${existing}`, { headers: { authorization: razorpayAuth() } });
@@ -50,7 +71,7 @@ Deno.serve(async (req) => {
     const res = await fetch('https://api.razorpay.com/v1/subscriptions', {
       method: 'POST',
       headers: { authorization: razorpayAuth(), 'content-type': 'application/json' },
-      body: JSON.stringify({ plan_id: planId, total_count: 120, customer_notify: 1, notes: { user_id: user.id } }),
+      body: JSON.stringify({ plan_id: planId, total_count: interval === 'year' ? 10 : 120, customer_notify: 1, notes: { user_id: user.id } }),
     });
     const sub = await res.json();
     if (!res.ok) { console.error('razorpay create failed', sub); return json({ error: 'razorpay_error' }, 502); }

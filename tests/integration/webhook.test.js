@@ -67,3 +67,44 @@ test('billing: visitors must sign in first, and admins never reach checkout', as
   assert.equal(res.status, 409);
   assert.deepEqual(await res.json(), { error: 'already_pro' });
 });
+
+test('webhook: a paid credit pack adds 100 credits once; a wrong amount adds none', async () => {
+  const { data: created, error } = await admin.auth.admin.createUser({ email: `pack-${Date.now()}@example.com`, email_confirm: true });
+  assert.ifError(error);
+  const userId = created.user.id;
+  const credits = async () => (await admin.from('profiles').select('credits').eq('user_id', userId).single()).data.credits;
+  const order = (id, amountPaid) => JSON.stringify({ event: 'order.paid', payload: { order: { entity: {
+    id, status: 'paid', currency: 'INR', amount_paid: amountPaid, notes: { user_id: userId, kind: 'credit_pack', credits: '100' },
+  } } } });
+
+  const before = await credits();
+  const good = order('order_it_' + Date.now(), 14900);
+  for (let i = 0; i < 2; i++) assert.equal((await post(good, sign(good))).status, 200);
+  assert.equal(await credits(), before + 100);
+
+  const cheap = order('order_it_cheap_' + Date.now(), 100);
+  assert.equal((await post(cheap, sign(cheap))).status, 200);
+  assert.equal(await credits(), before + 100);
+});
+
+// CORS is covered by the Deno unit tests (_shared/razorpay.test.ts): the local
+// gateway rewrites Access-Control-Allow-Origin to '*' on every response, so
+// the function's allowlist can't be observed here (hosted Supabase passes it).
+test('billing: calls are rate-limited per user', async () => {
+
+  const email = `rl-${Date.now()}@example.com`;
+  const { error } = await admin.auth.admin.createUser({ email, password: 'pw-123456!', email_confirm: true });
+  assert.ifError(error);
+  const client = createClient(env.API_URL, env.ANON_KEY, { auth: { persistSession: false } });
+  const { data: signed, error: signErr } = await client.auth.signInWithPassword({ email, password: 'pw-123456!' });
+  assert.ifError(signErr);
+  const call = () => fetch(env.API_URL + '/functions/v1/billing', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + signed.session.access_token, apikey: env.ANON_KEY },
+    body: JSON.stringify({ action: 'nothing' }),
+  });
+  const statuses = [];
+  for (let i = 0; i < 11; i++) statuses.push((await call()).status);
+  assert.deepEqual(statuses.slice(0, 10), Array(10).fill(400));
+  assert.equal(statuses[10], 429);
+});

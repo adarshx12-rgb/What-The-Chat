@@ -35,8 +35,39 @@ export function profileUpdateForEvent(event: any, nowMs: number): { userId: stri
   return null;
 }
 
-export function planIdFor(currency: string, env: { usd: string; inr: string }): string {
+export type PlanEnv = { usd: string; inr: string; usdYear?: string; inrYear?: string };
+
+// Yearly plan ids are optional; returns '' when that plan isn't configured.
+export function planIdFor(currency: string, env: PlanEnv, interval = 'month'): string {
+  if (interval === 'year') return (currency === 'INR' ? env.inrYear : env.usdYear) ?? '';
   return currency === 'INR' ? env.inr : env.usd;
+}
+
+// One-time credit pack. Amounts are in the smallest unit (paise / cents) and
+// must match the prices shown in assets/credits-config.js.
+export const CREDIT_PACK = { credits: 100, amounts: { INR: 14900, USD: 200 } as Record<string, number> };
+
+export function packOrderFor(currency: string, userId: string) {
+  const cur = currency === 'INR' ? 'INR' : 'USD';
+  return {
+    amount: CREDIT_PACK.amounts[cur],
+    currency: cur,
+    notes: { user_id: userId, kind: 'credit_pack', credits: String(CREDIT_PACK.credits) },
+  };
+}
+
+// order.paid webhook -> credits to grant, only when the paid amount matches
+// the pack price for that currency (the notes alone are not trusted).
+// deno-lint-ignore no-explicit-any
+export function packGrantForEvent(event: any): { orderId: string; userId: string; credits: number } | null {
+  if (event?.event !== 'order.paid') return null;
+  const order = event?.payload?.order?.entity;
+  const notes = order?.notes;
+  if (!order || notes?.kind !== 'credit_pack' || typeof notes.user_id !== 'string' || !notes.user_id) return null;
+  if (typeof order.id !== 'string' || order.status !== 'paid') return null;
+  const expected = CREDIT_PACK.amounts[order.currency];
+  if (!expected || order.amount_paid !== expected) return null;
+  return { orderId: order.id, userId: notes.user_id, credits: CREDIT_PACK.credits };
 }
 
 // A subscription the user opened but never paid ('created') on the same plan

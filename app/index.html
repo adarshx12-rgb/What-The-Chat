@@ -817,6 +817,9 @@
   .planCard h3{margin:0;font-size:14px;}
   .planPrice{margin:0;font:600 18px/1.2 var(--studio-mono);}
   .planPrice small{font-size:12px;font-weight:400;color:var(--studio-text-secondary);}
+  .planToggles{display:flex;flex-wrap:wrap;gap:8px;}
+  .planToggles .seg{flex:1 1 auto;}
+  .planToggles .segbtn{white-space:nowrap;flex:1 1 auto;}
   /* Phones: the logo mark alone links home, freeing room for the credits chip. */
   @media (max-width:479.98px){ .brandName{display:none;} .creditsChip{padding:0 8px;} }
 </style>
@@ -858,10 +861,10 @@
       </button>
     </div>
     <p class="accountBalance" id="accountBalance"></p>
-    <p class="helperText">1 screenshot = 1 credit. 3 seconds of video = 1 credit. With no credits left, exports get a watermark.</p>
+    <p class="helperText">1 screenshot = 1 credit. 3 seconds of video = 1 credit. Free videos stay clean for the first 60 seconds. With no credits left, exports get a watermark.</p>
 
     <section id="signInSection" class="accountBlock">
-      <h3>Sign in for 40 free credits a month</h3>
+      <h3>Sign in for 30 free credits, plus a monthly top-up</h3>
       <p class="helperText" id="signInFileNote" hidden>Sign-in works on whatthechat.com, not when the studio is opened as a local file.</p>
       <button type="button" class="btnBlock" id="googleSignInBtn">Continue with Google</button>
       <form id="magicLinkForm" novalidate>
@@ -877,13 +880,24 @@
       <div id="planSlot">
         <div class="planCard" id="planCard">
           <h3>Pro</h3>
-          <p class="helperText">Unlimited videos and screenshots. No watermark.</p>
-          <div class="seg" role="group" aria-label="Currency" id="currencyToggle">
-            <button type="button" class="segbtn" data-currency="INR">₹ INR</button>
-            <button type="button" class="segbtn" data-currency="USD">$ USD</button>
+          <p class="helperText">Unlimited, full-length videos and screenshots. No watermark.</p>
+          <div class="planToggles">
+            <div class="seg" role="group" aria-label="Currency" id="currencyToggle">
+              <button type="button" class="segbtn" data-currency="INR">₹ INR</button>
+              <button type="button" class="segbtn" data-currency="USD">$ USD</button>
+            </div>
+            <div class="seg" role="group" aria-label="Billing period" id="intervalToggle">
+              <button type="button" class="segbtn" data-interval="month">Monthly</button>
+              <button type="button" class="segbtn" data-interval="year">Yearly</button>
+            </div>
           </div>
           <p class="planPrice" id="planPrice"></p>
           <button type="button" class="btnPrimary btnBlock" id="upgradeBtn">Upgrade to Pro</button>
+        </div>
+        <div class="planCard" id="packCard">
+          <h3 id="packTitle">100 credits</h3>
+          <p class="helperText">One-time top-up for a few more screenshots or short clips. Never expires.</p>
+          <button type="button" class="btnBlock" id="packBtn">Buy credits</button>
         </div>
         <div id="proSection" hidden>
           <p id="proUntilText"></p>
@@ -1200,7 +1214,7 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <script src="../assets/credits-config.js"></script>
 <script src="../assets/credits-core.js"></script>
 <script src="../assets/credits.js"></script>
@@ -3353,13 +3367,22 @@ function drawWatermark(ctx){
 }
 
 /* After a watermarked export: visitors are asked to sign in, signed-in
- * free users to upgrade. Task 6 wires the action to the account dialog. */
-function promptAfterWatermark(kind){
+ * free users to upgrade. A video that ran past the free 60 s cap (with
+ * credits left) gets the "Pro unlocks full length" upgrade prompt. */
+function promptAfterWatermark(kind, cappedAtFree){
   const ent = WTCCredits.get();
+  if (cappedAtFree){
+    showToast('Free videos stay clean for 60 s, so the rest has a watermark. Pro unlocks full-length videos.', 'Upgrade', () => openAccountDialog());
+    return;
+  }
   const what = kind === 'video' ? 'Out of credits, so the rest of this video has a watermark.' : 'Out of credits, so this screenshot has a watermark.';
   if (ent && ent.offline) showToast(what + ' Credits need an internet connection.');
-  else if (!ent || ent.isAnonymous) showToast(what + ' Sign in for 40 free credits.', 'Sign in', () => openAccountDialog());
+  else if (!ent || ent.isAnonymous) showToast(what + ' Sign in for 30 free credits.', 'Sign in', () => openAccountDialog());
   else showToast(what, 'Upgrade', () => openAccountDialog());
+}
+
+function watermarkHelperText(ctrl){
+  return ctrl.cappedAtFree ? 'Past the free 60 s. The rest gets a watermark.' : 'Out of credits. The rest gets a watermark.';
 }
 
 
@@ -3565,7 +3588,7 @@ function makeRecorder(kind, canvas){
     mimeType: '',
     recStartWall: 0, recPausedAccum: 0, recPauseStart: 0, recEndWall: 0,
     lastBlob: null, lastFilename: '', lastErrorText: '',
-    coveredMs: Infinity, watermarkStarted: false,
+    coveredMs: Infinity, cappedAtFree: false, watermarkStarted: false,
   };
 
   function announce(text){ $(kind + 'LiveStatus').textContent = text; }
@@ -3597,8 +3620,9 @@ function makeRecorder(kind, canvas){
     const helper = $(kind + 'RecHelper');
     if (s === 'idle') ctrl.refreshReadyHelper();
     else if (s === 'recording') helper.textContent = ctrl.watermarkStarted
-      ? 'Out of credits. The rest gets a watermark.'
-      : (ctrl.coveredMs === Infinity ? 'Recording preview.' : 'Recording. Credits cover ' + formatDuration(ctrl.coveredMs) + '.');
+      ? watermarkHelperText(ctrl)
+      : (ctrl.coveredMs === Infinity ? 'Recording preview.'
+        : 'Recording. ' + (ctrl.cappedAtFree ? 'Free videos stay clean for ' : 'Credits cover ') + formatDuration(ctrl.coveredMs) + '.');
     else if (s === 'paused') helper.textContent = 'Recording paused.';
     else if (s === 'processing') helper.textContent = mp4BackendAvailable ? 'Converting to MP4…' : 'Preparing download…';
     else if (s === 'complete') helper.textContent = 'Recording ready — ' + formatBytes(ctrl.lastBlob ? ctrl.lastBlob.size : 0) + ' · ' + formatDuration(ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum) + '.';
@@ -3617,6 +3641,7 @@ function makeRecorder(kind, canvas){
     const ent = await WTCCredits.refresh();
     if (ctrl.state === 'recording' || ctrl.state === 'paused' || ctrl.state === 'processing') return;
     ctrl.coveredMs = WTCCreditsCore.coveredMs(ent);
+    ctrl.cappedAtFree = WTCCreditsCore.hitFreeCap(ent);
     ctrl.watermarkStarted = false;
     draw(previewCtx, performance.now());
     setNote(kind, '');
@@ -3653,7 +3678,7 @@ function makeRecorder(kind, canvas){
       ctrl.recEndWall = performance.now();
       const recordedMs = ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum;
       WTCCredits.chargeVideo(Math.min(recordedMs, ctrl.coveredMs));
-      if (ctrl.watermarkStarted || ctrl.coveredMs === 0) promptAfterWatermark('video');
+      if (ctrl.watermarkStarted || ctrl.coveredMs === 0) promptAfterWatermark('video', ctrl.watermarkStarted && ctrl.cappedAtFree);
       setState('processing');
       announce('Processing recording.');
       const blob = new Blob(ctrl.chunks, { type: ctrl.mimeType || 'video/webm' });
@@ -3737,7 +3762,7 @@ function updateRecTimers(now){
   if (ctrl.state === 'recording' && !ctrl.watermarkStarted
       && WTCCreditsCore.watermarkActive(ctrl.coveredMs, fullRecElapsedMs(now))){
     ctrl.watermarkStarted = true;
-    $(ctrl.kind + 'RecHelper').textContent = 'Out of credits. The rest gets a watermark.';
+    $(ctrl.kind + 'RecHelper').textContent = watermarkHelperText(ctrl);
   }
 }
 
@@ -4285,18 +4310,37 @@ function defaultCurrency(){
   return (tz === 'Asia/Kolkata' || tz === 'Asia/Calcutta') ? 'INR' : 'USD';
 }
 let billingCurrency = defaultCurrency();
+let billingInterval = 'month';
 
-function renderPlan(ent){
-  const prices = (window.WTC_CONFIG && window.WTC_CONFIG.prices) || { INR: '₹499', USD: '$8' };
-  const signedIn = !!ent && !ent.offline && !ent.isAnonymous;
-  $('planCard').hidden = !signedIn || ent.pro;
-  $('proSection').hidden = !signedIn || !ent.pro || ent.admin;
-  $('currencyToggle').querySelectorAll('.segbtn').forEach((b) => {
-    const on = b.dataset.currency === billingCurrency;
+function billingPrices(){
+  const cfg = window.WTC_CONFIG || {};
+  const fallback = { INR: { month: '₹499', year: '₹3,999', pack: '₹149' }, USD: { month: '$8', year: '$64', pack: '$2' } };
+  const p = (cfg.prices && cfg.prices[billingCurrency]) || fallback[billingCurrency];
+  return typeof p === 'string' ? Object.assign({}, fallback[billingCurrency], { month: p }) : p;
+}
+
+function syncSeg(groupId, attr, value){
+  $(groupId).querySelectorAll('.segbtn').forEach((b) => {
+    const on = b.dataset[attr] === value;
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', String(on));
   });
-  $('planPrice').innerHTML = prices[billingCurrency] + ' <small>/ month</small>';
+}
+
+function renderPlan(ent){
+  const prices = billingPrices();
+  const packCredits = (window.WTC_CONFIG && window.WTC_CONFIG.packCredits) || 100;
+  const signedIn = !!ent && !ent.offline && !ent.isAnonymous;
+  $('planCard').hidden = !signedIn || ent.pro;
+  $('packCard').hidden = !signedIn || ent.pro;
+  $('proSection').hidden = !signedIn || !ent.pro || ent.admin;
+  syncSeg('currencyToggle', 'currency', billingCurrency);
+  syncSeg('intervalToggle', 'interval', billingInterval);
+  const per = document.createElement('small');
+  per.textContent = billingInterval === 'year' ? ' / year · 2 months free' : ' / month';
+  $('planPrice').replaceChildren(document.createTextNode(billingInterval === 'year' ? prices.year : prices.month), per);
+  $('packTitle').textContent = packCredits + ' credits · ' + prices.pack;
+  $('packBtn').textContent = 'Buy ' + packCredits + ' credits';
   if (ent && ent.pro) $('proUntilText').textContent = ent.proUntil
     ? 'Pro is active until ' + new Date(ent.proUntil).toLocaleDateString() + '.'
     : 'Pro is active.';
@@ -4359,12 +4403,36 @@ function wireAccountUI(){
     renderPlan(WTCCredits.get());
   });
 
+  $('intervalToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-interval]');
+    if (!btn) return;
+    billingInterval = btn.dataset.interval;
+    renderPlan(WTCCredits.get());
+  });
+
+  $('packBtn').addEventListener('click', async () => {
+    const btn = $('packBtn');
+    btn.disabled = true;
+    $('billingStatus').textContent = 'Opening checkout…';
+    try {
+      const before = WTCCredits.get().credits;
+      const result = await WTCCredits.buyCreditPack(billingCurrency);
+      $('billingStatus').textContent = result === 'paid'
+        ? (WTCCredits.get().credits > before ? 'Credits added.' : 'Payment received. Credits arrive within a minute.')
+        : '';
+    } catch (err) {
+      $('billingStatus').textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   $('upgradeBtn').addEventListener('click', async () => {
     const btn = $('upgradeBtn');
     btn.disabled = true;
     $('billingStatus').textContent = 'Opening checkout…';
     try {
-      const result = await WTCCredits.startCheckout(billingCurrency);
+      const result = await WTCCredits.startCheckout(billingCurrency, billingInterval);
       $('billingStatus').textContent = result === 'paid'
         ? (WTCCredits.get().pro ? 'Welcome to Pro.' : 'Payment received. Pro turns on within a minute.')
         : '';
@@ -4394,7 +4462,13 @@ function wireAccountUI(){
     }
   });
 
-  WTCCredits.onChange(renderAccount);
+  let lastEnt = WTCCredits.get();
+  WTCCredits.onChange((ent) => {
+    const warning = WTCCreditsCore.lowCreditWarning(lastEnt, ent);
+    lastEnt = ent;
+    renderAccount(ent);
+    if (warning) showToast(warning, ent.isAnonymous ? 'Sign in' : 'Get more', () => openAccountDialog());
+  });
   renderAccount(WTCCredits.get());
 }
 
@@ -5170,15 +5244,76 @@ function imageFromData(src){
   return img;
 }
 
+/* Backups can come from anywhere, so every field is rebuilt from a whitelist:
+ * known keys only, enums checked, strings and lists capped, colours and
+ * numbers validated. Anything malformed falls back to the default. */
+const IMPORT_LIMITS = { messages: 2000, text: 4000, name: 100, lastSeen: 100, id: 64 };
+function pickStr(v, max, fallback){ return typeof v === 'string' ? v.slice(0, max) : fallback; }
+function pickEnum(v, allowed, fallback){ return allowed.includes(v) ? v : fallback; }
+function pickColor(v, fallback){ return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : fallback; }
+function pickNum(v, min, max, fallback){ return typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback; }
+function pickId(v){ return typeof v === 'string' && /^[\w-]{1,64}$/.test(v) ? v : null; }
+
 function deserializeProjectData(data){
-  const contact = { ...data.contact, avatarImg: imageFromData(data.contact.avatarImg) };
-  const theme = { ...data.theme, wallpaperImg: imageFromData(data.theme.wallpaperImg) };
-  const messages = data.messages.map((m) => {
-    const img = m.media ? imageFromData(m.media.img) : null;
-    return { ...m, media: img ? { type: m.media.type, img, duration: m.media.duration } : null };
+  const src = data && typeof data === 'object' ? data : {};
+  const c = src.contact && typeof src.contact === 'object' ? src.contact : {};
+  const contact = {
+    name: pickStr(c.name, IMPORT_LIMITS.name, 'Alex'),
+    avatarImg: imageFromData(c.avatarImg),
+    statusMode: pickEnum(c.statusMode, ['online', 'lastSeen', 'offline', 'typing'], 'online'),
+    lastSeenText: pickStr(c.lastSeenText, IMPORT_LIMITS.lastSeen, ''),
+  };
+  const t = src.theme && typeof src.theme === 'object' ? src.theme : {};
+  const theme = {
+    chromeMode: pickEnum(t.chromeMode, ['light', 'dark'], 'light'),
+    wallpaperType: pickEnum(t.wallpaperType, ['default', 'custom', 'solid', 'gradient'], 'default'),
+    wallpaperImg: imageFromData(t.wallpaperImg),
+    wallpaperSolid: pickColor(t.wallpaperSolid, '#e5ddd5'),
+    wallpaperGradFrom: pickColor(t.wallpaperGradFrom, '#075e54'),
+    wallpaperGradTo: pickColor(t.wallpaperGradTo, '#128c7e'),
+    bubbleColorMe: pickColor(t.bubbleColorMe, '#d9fdd3'),
+    bubbleColorContact: pickColor(t.bubbleColorContact, '#ffffff'),
+    bubbleMeCustomized: t.bubbleMeCustomized === true,
+    bubbleContactCustomized: t.bubbleContactCustomized === true,
+    wallpaperBrightness: pickNum(t.wallpaperBrightness, 0.2, 1, 1),
+    bubblePreset: typeof t.bubblePreset === 'string' && /^[\w-]{1,32}$/.test(t.bubblePreset) ? t.bubblePreset : null,
+  };
+  const rawMessages = (Array.isArray(src.messages) ? src.messages : []).slice(0, IMPORT_LIMITS.messages);
+  // New ids from uid() must never collide with ids already in the project.
+  rawMessages.forEach((m) => { const n = m && /^m(\d{1,9})$/.exec(m.id); if (n) uidCounter = Math.max(uidCounter, +n[1] + 1); });
+  const seen = new Set();
+  const messages = [];
+  rawMessages.forEach((m) => {
+    if (!m || typeof m !== 'object') return;
+    let id = pickId(m.id);
+    if (!id || seen.has(id)) id = uid();
+    seen.add(id);
+    const img = m.media && typeof m.media === 'object' ? imageFromData(m.media.img) : null;
+    messages.push({
+      id,
+      sender: pickEnum(m.sender, ['contact', 'me'], 'contact'),
+      text: pickStr(m.text, IMPORT_LIMITS.text, ''),
+      date: typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : today(),
+      time: typeof m.time === 'string' && /^\d{2}:\d{2}$/.test(m.time) ? m.time : '12:00',
+      status: pickEnum(m.status, ['sent', 'delivered', 'read'], 'read'),
+      deleted: m.deleted === true,
+      replyTo: pickId(m.replyTo),
+      media: img ? { type: pickEnum(m.media.type, ['image', 'video'], 'image'), img, duration: pickNum(m.media.duration, 0, 86400, 0) } : null,
+    });
   });
-  const step = Number.isInteger(data.timeStepEvery) && data.timeStepEvery >= 0 && data.timeStepEvery <= 10 ? data.timeStepEvery : 3;
-  return { contact, platform: data.platform, generation: GENERATIONS.includes(data.generation) ? data.generation : 'classic', timeStepEvery: step, theme, messages, timeline: data.timeline ? { ...data.timeline } : {} };
+  const timeline = {};
+  if (src.timeline && typeof src.timeline === 'object'){
+    messages.forEach((m) => {
+      const d = src.timeline[m.id];
+      if (typeof d === 'number' && Number.isFinite(d) && d >= 0) timeline[m.id] = Math.min(d, 3600000);
+    });
+  }
+  const step = Number.isInteger(src.timeStepEvery) && src.timeStepEvery >= 0 && src.timeStepEvery <= 10 ? src.timeStepEvery : 3;
+  return {
+    contact, theme, messages, timeline, timeStepEvery: step,
+    platform: pickEnum(src.platform, ['android', 'ios'], 'android'),
+    generation: GENERATIONS.includes(src.generation) ? src.generation : 'classic',
+  };
 }
 
 function uidProject(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }

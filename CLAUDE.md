@@ -304,10 +304,15 @@ Plan: `docs/superpowers/plans/2026-10-06-credits-accounts-billing.md` (branch `f
 
 - **Rules:**
   - 1 credit per screenshot, 1 per started 3 s of video (30 s = 10).
-  - Visitors (Supabase anonymous session, no signup) get 20 once; at most 3 visitor grants per IP per day.
-  - Signing in (Google or email magic link) adds 40, then 40 more every month.
-  - Pro is $8/month (₹499 INR), unlimited, never watermarked, via Razorpay Subscriptions.
+  - (Oct 10 2026 plan, migration `20261010120000_credit_plan_and_hardening.sql`; amounts live in `private.app_settings`.)
+  - Visitors (Supabase anonymous session, no signup) get 10 once; at most 2 visitor grants per IP per day.
+  - Signing in (Google or email magic link) adds 30 once; each month the balance is topped up to 10 (no rollover, never removes bought credits).
+  - Sign-in bonus + top-ups go only to the first account per normalized email (Gmail dots/+tags, googlemail) and never to disposable domains (`private.email_claims`, `private.disposable_email_domains`).
+  - Free (non-Pro) videos are clean for at most 60 s (`FREE_CLEAN_SECONDS` in `credits-core.js`), then watermarked with a "Pro unlocks full-length videos" prompt. A toast warns once when the balance drops to 5 or less.
+  - Pro is $8/month or $64/year (₹499 / ₹3,999), unlimited, never watermarked, via Razorpay Subscriptions (yearly needs `RAZORPAY_PLAN_*_YEARLY` secrets).
+  - Credit pack: 100 credits for ₹149 / $2, a one-time Razorpay Order granted by the `order.paid` webhook (`grant_credit_pack`, idempotent per order, amount checked). Price lives in `_shared/razorpay.ts` + `credits-config.js`.
   - Out of credits → exports are watermarked, plus a sign-in (visitor) or upgrade (free) prompt.
+  - Billing function: CORS allowlist (`_shared/cors.ts`; local Kong rewrites it to `*`, so only Deno tests see it) and 10 calls/user/10 min (`billing_rate_ok`). pg_cron `wtc-cleanup-rate-limits` deletes old IP/billing rows daily.
 - **Admin:** a verified email on `private.admin_emails` is treated as Pro forever. The billing function refuses it with `already_pro`, and the chip shows "Admin". The list is filled by hand in the Supabase SQL editor and never committed.
 - **Enforcement is soft by design.** Supabase holds the balance (`ensure_grants`/`spend_credits`, security definer); the browser draws the watermark. A technical user can bypass it in DevTools. That trade-off was accepted over server-side rendering.
 - **Fail closed:** if Supabase is unreachable (plain `file://`, offline, CDN blocked), the studio runs in offline mode: 0 credits, chip "Offline", exports watermarked, no errors. **This changes the old fully-free `file://` behaviour.**

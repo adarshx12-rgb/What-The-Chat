@@ -1,0 +1,5 @@
+Contact: mailto:support@whatthechat.com
+Expires: 2027-10-10T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://whatthechat.com/.well-known/security.txt
+Policy: https://whatthechat.com/contact.html

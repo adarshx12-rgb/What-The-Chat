@@ -1,5 +1,5 @@
 -- Apply as the database administrator AFTER creating the credits schema.
--- This is deliberately separate from migrations: the base schema is still planned.
+-- Re-hardens a live database to match supabase/migrations (safe to re-run).
 -- Never silently skip a missing table or apply inferred ownership to an unknown one.
 begin;
 
@@ -11,7 +11,11 @@ begin
      or to_regclass('public.credit_ledger') is null
      or to_regclass('private.app_settings') is null
      or to_regclass('private.visitor_ip_grants') is null
-     or to_regclass('private.admin_emails') is null then
+     or to_regclass('private.admin_emails') is null
+     or to_regclass('private.email_claims') is null
+     or to_regclass('private.disposable_email_domains') is null
+     or to_regclass('private.credit_pack_orders') is null
+     or to_regclass('private.billing_calls') is null then
     raise exception 'Missing credits tables. Create the planned schema before applying RLS.';
   end if;
 
@@ -21,7 +25,7 @@ begin
     where n.nspname in ('public', 'private') and c.relkind in ('r', 'p')
       and c.oid not in ('public.profiles'::regclass, 'public.credit_ledger'::regclass,
                        'private.app_settings'::regclass, 'private.visitor_ip_grants'::regclass,
-                       'private.admin_emails'::regclass)
+                       'private.admin_emails'::regclass, 'private.email_claims'::regclass, 'private.disposable_email_domains'::regclass, 'private.credit_pack_orders'::regclass, 'private.billing_calls'::regclass)
       and not exists (select 1 from pg_depend d where d.classid = 'pg_class'::regclass
                       and d.objid = c.oid and d.deptype = 'e');
   if unexpected is not null then
@@ -34,8 +38,12 @@ alter table public.credit_ledger enable row level security;
 alter table private.app_settings enable row level security;
 alter table private.visitor_ip_grants enable row level security;
 alter table private.admin_emails enable row level security;
+alter table private.email_claims enable row level security;
+alter table private.disposable_email_domains enable row level security;
+alter table private.credit_pack_orders enable row level security;
+alter table private.billing_calls enable row level security;
 
--- Permissive policies are ORed together: remove older policies on these four
+-- Permissive policies are ORed together: remove older policies on these
 -- reviewed tables so an existing "allow all" cannot bypass the owner check.
 do $$
 declare
@@ -46,7 +54,8 @@ declare
 begin
   for p in select schemaname, tablename, policyname from pg_policies
     where (schemaname = 'public' and tablename in ('profiles', 'credit_ledger'))
-       or (schemaname = 'private' and tablename in ('app_settings', 'visitor_ip_grants', 'admin_emails'))
+       or (schemaname = 'private' and tablename in ('app_settings', 'visitor_ip_grants', 'admin_emails',
+                                                    'email_claims', 'disposable_email_domains', 'credit_pack_orders', 'billing_calls'))
   loop
     execute format('drop policy %I on %I.%I', p.policyname, p.schemaname, p.tablename);
   end loop;
@@ -54,7 +63,7 @@ begin
   -- Table REVOKE does not remove previously granted column privileges.
   for t in select unnest(array['public.profiles'::regclass, 'public.credit_ledger'::regclass,
                               'private.app_settings'::regclass, 'private.visitor_ip_grants'::regclass,
-                              'private.admin_emails'::regclass]) as oid
+                              'private.admin_emails'::regclass, 'private.email_claims'::regclass, 'private.disposable_email_domains'::regclass, 'private.credit_pack_orders'::regclass, 'private.billing_calls'::regclass]) as oid
   loop
     select string_agg(quote_ident(attname), ', ') into columns
       from pg_attribute where attrelid = t.oid and attnum > 0 and not attisdropped;
@@ -70,7 +79,8 @@ begin
 end $$;
 
 revoke all on table public.profiles, public.credit_ledger,
-  private.app_settings, private.visitor_ip_grants, private.admin_emails from public, anon, authenticated;
+  private.app_settings, private.visitor_ip_grants, private.admin_emails,
+  private.email_claims, private.disposable_email_domains, private.credit_pack_orders, private.billing_calls from public, anon, authenticated;
 revoke all on schema private from public, anon, authenticated;
 
 grant usage on schema public to authenticated, service_role;
@@ -85,6 +95,7 @@ create policy "read own ledger" on public.credit_ledger for select to authentica
 -- Trusted RPC owners and Supabase's BYPASSRLS service role retain server access.
 grant usage on schema private to service_role;
 grant select, insert, update, delete on table public.profiles, public.credit_ledger,
-  private.app_settings, private.visitor_ip_grants, private.admin_emails to service_role;
+  private.app_settings, private.visitor_ip_grants, private.admin_emails,
+  private.email_claims, private.disposable_email_domains, private.credit_pack_orders, private.billing_calls to service_role;
 
 commit;

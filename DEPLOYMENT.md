@@ -1,7 +1,10 @@
 # Static site publishing
 
 There is no build step. Publish the root HTML pages (including `refund-policy.html`), `app/index.html`, referenced
-public assets, `robots.txt`, and `sitemap.xml`. Include `.htaccess` on Apache.
+public assets, `robots.txt`, `sitemap.xml` and `.well-known/security.txt`.
+Security headers live in `.htaccess` (Apache, needs `mod_headers`) and `_headers`
+(Cloudflare Pages / Netlify); keep the two in sync. Renew the `Expires` date in
+`security.txt` before 2027-10-10.
 Do not publish the repository metadata, local tooling, `output/`, `growing-giant/`,
 or `server/`. The server directory is an optional local MP4 converter, not the
 website server. Robots exclusions are crawl hints, not access controls.
@@ -66,6 +69,17 @@ Database changes: add a migration in `supabase/migrations/`, test locally with
 `npx supabase db reset && npx supabase test db`, then `npx supabase db push`.
 Functions: `npx supabase functions deploy billing` and
 `npx supabase functions deploy razorpay-webhook --no-verify-jwt`.
+
+Razorpay setup for billing:
+- Plans: monthly `RAZORPAY_PLAN_USD` / `RAZORPAY_PLAN_INR` ($8 / ₹499) and yearly
+  `RAZORPAY_PLAN_USD_YEARLY` / `RAZORPAY_PLAN_INR_YEARLY` ($64 / ₹3,999). Without the
+  yearly secrets, Yearly checkout shows "not available yet".
+- Credit pack: 100 credits for ₹149 / $2, set in `supabase/functions/_shared/razorpay.ts`
+  (`CREDIT_PACK`) and shown from `assets/credits-config.js`. Keep both in sync.
+- Webhook events: `subscription.activated`, `subscription.charged`,
+  `subscription.resumed`, `subscription.cancelled`, `subscription.completed`,
+  `subscription.halted`, and **`order.paid`** (credit packs).
+- Optional secret `ALLOWED_ORIGINS` adds extra CORS origins for the billing function.
 
 Tests: `cd tests && npm install`, then `npm run unit`, `npx playwright test`
 (needs `npx supabase start`), and `npm run integration` (needs

@@ -21,6 +21,7 @@ test('recordingSeconds rounds up and ignores bad input', () => {
 });
 
 test('coveredMs is credits x 3 s, infinite for pro, 0 when loading', () => {
+  assert.equal(core.coveredMs({ credits: 10, pro: false }), 30000);
   assert.equal(core.coveredMs({ credits: 20, pro: false }), 60000);
   assert.equal(core.coveredMs({ credits: 0, pro: false }), 0);
   assert.equal(core.coveredMs({ credits: 0, pro: true }), Infinity);
@@ -41,4 +42,25 @@ test('chip label', () => {
   assert.equal(core.chipLabel({ credits: 20, pro: false }), '20 credits');
   assert.equal(core.chipLabel({ credits: 0, pro: true }), 'Pro');
   assert.equal(core.chipLabel({ credits: 0, pro: true, admin: true }), 'Admin');
+});
+
+test('free clean video is capped at 60 s however many credits there are', () => {
+  assert.equal(core.FREE_CLEAN_SECONDS, 60);
+  assert.equal(core.coveredMs({ credits: 21, pro: false }), 60000);
+  assert.equal(core.coveredMs({ credits: 500, pro: false }), 60000);
+  assert.equal(core.coveredMs({ credits: 500, pro: true }), Infinity);
+  assert.equal(core.hitFreeCap({ credits: 21, pro: false }), true);
+  assert.equal(core.hitFreeCap({ credits: 20, pro: false }), false);
+  assert.equal(core.hitFreeCap({ credits: 500, pro: true }), false);
+  assert.equal(core.hitFreeCap(null), false);
+});
+
+test('low-credit warning fires once when the balance drops to 5 or less', () => {
+  assert.equal(core.lowCreditWarning({ credits: 10, pro: false }, { credits: 5, pro: false }), 'About 15 s of video left (5 credits).');
+  assert.equal(core.lowCreditWarning({ credits: 6, pro: false }, { credits: 1, pro: false }), 'About 3 s of video left (1 credit).');
+  assert.equal(core.lowCreditWarning({ credits: 5, pro: false }, { credits: 4, pro: false }), null);
+  assert.equal(core.lowCreditWarning({ credits: 10, pro: false }, { credits: 0, pro: false }), null);
+  assert.equal(core.lowCreditWarning(null, { credits: 3, pro: false }), null);
+  assert.equal(core.lowCreditWarning({ credits: 10, pro: true }, { credits: 3, pro: true }), null);
+  assert.equal(core.lowCreditWarning({ credits: 10, pro: false }, { credits: 3, pro: false, offline: true }), null);
 });

@@ -120,7 +120,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.min.js" integrity="sha384-aJ9rL4k6lF+91guGvUFVSkpIcge7Zd9EiI4TQDLoK9kFaFJgKHgjEXVvG/qA5COj" crossorigin="anonymous"></script>
 <style type="text/tailwindcss">
   /* Palette: sky #CBE0F8 (page), navy #09172E (ink, window chrome, bands),
      green #20BC59 (the one accent: primary actions + live markers).
@@ -1123,7 +1123,15 @@
     return dbDelete('projects', id).then(renderProjectsList);
   }
 
+  // Backups embed their images, so they can be big, but not unbounded.
+  // Field-level checks happen in the studio's deserializeProjectData().
+  const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
+
   function importBackupFile(file){
+    if (file.size > MAX_BACKUP_BYTES){
+      alert('That backup is too large (over 100 MB).');
+      return Promise.resolve();
+    }
     return file.text().then((text) => {
       let parsed;
       try { parsed = JSON.parse(text); } catch (err){ alert("That file isn't a valid project backup."); return null; }
@@ -1131,7 +1139,7 @@
         alert("That file isn't a valid project backup.");
         return null;
       }
-      return makeProjectRecord((parsed.name || 'Imported project') + ' (imported)', parsed.data);
+      return makeProjectRecord(String(parsed.name || 'Imported project').slice(0, 100) + ' (imported)', parsed.data);
     }).catch(() => { alert("Couldn't read that file."); return null; })
       .then((record) => {
         if (!record) return;

@@ -38,7 +38,7 @@ test('a covered recording charges 1 credit per started 3 s', async ({ page }) =>
   await page.waitForTimeout(4000);
   expect(await watermarkNow(page)).toBe(false);
   await stopAndDownload(page);
-  await expect.poll(async () => (await getProfile(page)).credits).toBe(18);
+  await expect.poll(async () => (await getProfile(page)).credits).toBe(8);
 });
 
 test('pro records unlimited with no watermark and no charge', async ({ page }) => {
@@ -77,9 +77,19 @@ test('a charge that fails at Stop is retried on the next visit', async ({ page }
   await page.route('**/rest/v1/rpc/spend_credits', (r) => r.abort());
   await stopAndDownload(page);
   await page.waitForTimeout(1000);
-  expect((await getProfile(page)).credits).toBe(20);
+  expect((await getProfile(page)).credits).toBe(10);
   await page.unroute('**/rest/v1/rpc/spend_credits');
   await page.reload();
   await page.evaluate(() => WTCCredits.ready());
-  await expect.poll(async () => (await getProfile(page)).credits).toBe(18);
+  await expect.poll(async () => (await getProfile(page)).credits).toBe(8);
+});
+
+test('free recordings stay clean for 60 s at most, even with more credits', async ({ page }) => {
+  await openStudio(page);
+  await setProfile(page, { credits: 500 });
+  await page.click('#fullStartBtn');
+  await expect(page.locator('#fullRecState')).toHaveText('Recording');
+  expect(await page.evaluate(() => fullRecorder.coveredMs)).toBe(60000);
+  await expect(page.locator('#fullRecHelper')).toContainText('Free videos stay clean for');
+  await stopAndDownload(page);
 });

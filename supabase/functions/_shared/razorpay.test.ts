@@ -1,5 +1,6 @@
 import { assertEquals } from 'jsr:@std/assert@1';
-import { planIdFor, profileUpdateForEvent, reusableSubscriptionId, verifySignature } from './razorpay.ts';
+import { CREDIT_PACK, packGrantForEvent, packOrderFor, planIdFor, profileUpdateForEvent, reusableSubscriptionId, verifySignature } from './razorpay.ts';
+import { corsHeaders } from './cors.ts';
 
 const BODY = '{"event":"subscription.activated"}';
 // node -e "require('crypto').createHmac('sha256','whsec_test').update(BODY).digest('hex')"
@@ -52,6 +53,50 @@ Deno.test('planIdFor picks by currency', () => {
   assertEquals(planIdFor('USD', env), 'plan_usd');
   assertEquals(planIdFor('INR', env), 'plan_inr');
   assertEquals(planIdFor('EUR', env), 'plan_usd');
+});
+
+Deno.test('planIdFor picks the yearly plan, or nothing when it is not configured', () => {
+  const env = { usd: 'plan_usd', inr: 'plan_inr', usdYear: 'plan_usd_y', inrYear: 'plan_inr_y' };
+  assertEquals(planIdFor('USD', env, 'year'), 'plan_usd_y');
+  assertEquals(planIdFor('INR', env, 'year'), 'plan_inr_y');
+  assertEquals(planIdFor('INR', { usd: 'a', inr: 'b' }, 'year'), '');
+  assertEquals(planIdFor('INR', env, 'month'), 'plan_inr');
+});
+
+function orderEvent(extra: Record<string, unknown> = {}) {
+  return { event: 'order.paid', payload: { order: { entity: {
+    id: 'order_1', status: 'paid', currency: 'INR', amount_paid: CREDIT_PACK.amounts.INR,
+    notes: { user_id: 'u-1', kind: 'credit_pack', credits: '100' }, ...extra,
+  } } } };
+}
+
+Deno.test('a paid pack order grants the pack credits', () => {
+  assertEquals(packGrantForEvent(orderEvent()), { orderId: 'order_1', userId: 'u-1', credits: CREDIT_PACK.credits });
+  assertEquals(packGrantForEvent(orderEvent({ currency: 'USD', amount_paid: CREDIT_PACK.amounts.USD }))?.credits, CREDIT_PACK.credits);
+});
+
+Deno.test('pack orders with a wrong amount, kind, status or user are ignored', () => {
+  assertEquals(packGrantForEvent(orderEvent({ amount_paid: 100 })), null);
+  assertEquals(packGrantForEvent(orderEvent({ currency: 'EUR' })), null);
+  assertEquals(packGrantForEvent(orderEvent({ status: 'attempted' })), null);
+  assertEquals(packGrantForEvent(orderEvent({ notes: { user_id: 'u-1', kind: 'other' } })), null);
+  assertEquals(packGrantForEvent(orderEvent({ notes: { kind: 'credit_pack' } })), null);
+  assertEquals(packGrantForEvent({ ...orderEvent(), event: 'payment.captured' }), null);
+});
+
+Deno.test('packOrderFor prices by currency and tags the order', () => {
+  const o = packOrderFor('INR', 'u-1');
+  assertEquals(o.amount, CREDIT_PACK.amounts.INR);
+  assertEquals(o.notes, { user_id: 'u-1', kind: 'credit_pack', credits: String(CREDIT_PACK.credits) });
+  assertEquals(packOrderFor('EUR', 'u-1').currency, 'USD');
+});
+
+Deno.test('CORS only echoes allowed origins', () => {
+  assertEquals(corsHeaders('https://whatthechat.com')['access-control-allow-origin'], 'https://whatthechat.com');
+  assertEquals(corsHeaders('http://127.0.0.1:8090')['access-control-allow-origin'], 'http://127.0.0.1:8090');
+  assertEquals(corsHeaders('https://evil.example')['access-control-allow-origin'], 'https://whatthechat.com');
+  assertEquals(corsHeaders(null)['access-control-allow-origin'], 'https://whatthechat.com');
+  assertEquals(corsHeaders('https://staging.example', 'https://staging.example')['access-control-allow-origin'], 'https://staging.example');
 });
 
 Deno.test('an unpaid subscription on the same plan is reused; anything else is not', () => {

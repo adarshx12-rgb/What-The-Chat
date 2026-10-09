@@ -26,7 +26,7 @@ test('a screenshot costs 1 credit and is clean; at 0 credits it is watermarked',
   const clean = await saveShot(page);
   expect(clean.width).toBe(1080);
   expect(clean.height).toBe(1920);
-  expect(await page.evaluate(() => WTCCredits.get().credits)).toBe(19);
+  expect(await page.evaluate(() => WTCCredits.get().credits)).toBe(9);
 
   await setProfile(page, { credits: 0 });
   const marked = await saveShot(page);

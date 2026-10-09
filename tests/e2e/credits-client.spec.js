@@ -1,8 +1,8 @@
 const { test, expect, openStudio, getProfile, setProfile } = require('./fixtures');
 
-test('a new visitor gets an anonymous session with 20 credits', async ({ page }) => {
+test('a new visitor gets an anonymous session with 10 credits', async ({ page }) => {
   const ent = await openStudio(page);
-  expect(ent).toMatchObject({ credits: 20, pro: false, isAnonymous: true, offline: false });
+  expect(ent).toMatchObject({ credits: 10, pro: false, isAnonymous: true, offline: false });
   expect((await getProfile(page)).visitor_grant_done).toBe(true);
 });
 
@@ -12,16 +12,16 @@ test('reloading keeps the same visitor and does not re-grant', async ({ page }) 
   await page.reload();
   const ent = await page.evaluate(() => WTCCredits.ready());
   expect(await page.evaluate(() => WTCCredits.userId())).toBe(id);
-  expect(ent.credits).toBe(20);
+  expect(ent.credits).toBe(10);
 });
 
 test('spendScreenshot and chargeVideo hit the server', async ({ page }) => {
   await openStudio(page);
   const shot = await page.evaluate(() => WTCCredits.spendScreenshot());
   expect(shot.allowed).toBe(true);
-  expect(shot.entitlement.credits).toBe(19);
-  const ent = await page.evaluate(() => WTCCredits.chargeVideo(30000));
-  expect(ent.credits).toBe(9);
+  expect(shot.entitlement.credits).toBe(9);
+  const ent = await page.evaluate(() => WTCCredits.chargeVideo(15000));
+  expect(ent.credits).toBe(4);
 });
 
 test('offline mode: no Supabase means 0 credits, no errors', async ({ page }) => {

@@ -75,3 +75,51 @@ test('admins see Admin and no plan card or cancel button', async ({ page }) => {
   await expect(page.locator('#proSection')).toBeHidden();
   expect(ent).toBeTruthy();
 });
+
+test('yearly billing shows the yearly price and asks for a yearly subscription', async ({ page }) => {
+  let body = null;
+  await page.route('**/functions/v1/billing', (route) => {
+    body = route.request().postDataJSON();
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ subscription_id: 'sub_y', key_id: 'rzp_test_e2e' }) });
+  });
+  await page.route('https://checkout.razorpay.com/v1/checkout.js', (route) => route.fulfill({
+    contentType: 'application/javascript',
+    body: 'window.Razorpay = function (o) { window.__rzp = o; this.open = function () {}; this.on = function () {}; };',
+  }));
+  await signedInStudio(page);
+  await page.click('#creditsChip');
+  await page.click('#currencyToggle [data-currency="INR"]');
+  await page.click('#intervalToggle [data-interval="year"]');
+  await expect(page.locator('#planPrice')).toContainText('₹3,999');
+  await expect(page.locator('#planPrice')).toContainText('/ year');
+  await page.click('#upgradeBtn');
+  await expect.poll(() => body).toMatchObject({ action: 'create', currency: 'INR', interval: 'year' });
+  await expect.poll(() => page.evaluate(() => window.__rzp && window.__rzp.description)).toBe('Pro, yearly');
+});
+
+test('buying a credit pack opens Checkout with the order and waits for the credits', async ({ page }) => {
+  let body = null;
+  await page.route('**/functions/v1/billing', (route) => {
+    body = route.request().postDataJSON();
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ order_id: 'order_e2e', amount: 200, currency: 'USD', key_id: 'rzp_test_e2e' }) });
+  });
+  await page.route('https://checkout.razorpay.com/v1/checkout.js', (route) => route.fulfill({
+    contentType: 'application/javascript',
+    body: 'window.Razorpay = function (o) { window.__rzp = o; this.open = function () {}; this.on = function () {}; };',
+  }));
+  const userId = await signedInStudio(page);
+  await page.click('#creditsChip');
+  await page.click('#currencyToggle [data-currency="USD"]');
+  await expect(page.locator('#packCard')).toBeVisible();
+  await expect(page.locator('#packTitle')).toHaveText('100 credits · $2');
+  await page.click('#packBtn');
+  await expect.poll(() => body).toMatchObject({ action: 'pack', currency: 'USD' });
+  await expect.poll(() => page.evaluate(() => window.__rzp && window.__rzp.order_id)).toBe('order_e2e');
+
+  // Webhook lands (simulated), then Checkout reports success.
+  const before = await page.evaluate(() => WTCCredits.get().credits);
+  await admin.from('profiles').update({ credits: before + 100 }).eq('user_id', userId);
+  await page.evaluate(() => window.__rzp.handler({ razorpay_order_id: 'order_e2e' }));
+  await expect(page.locator('#billingStatus')).toHaveText('Credits added.');
+  await expect(page.locator('#creditsChipText')).toHaveText((before + 100) + ' credits');
+});

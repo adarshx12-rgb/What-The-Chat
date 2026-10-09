@@ -4,5 +4,11 @@
 window.WTC_CONFIG = {
   supabaseUrl: 'https://qmlhbpwbhcdefwbixcrh.supabase.co',
   supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtbGhicHdiaGNkZWZ3Yml4Y3JoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyMjE0MDYsImV4cCI6MjEwNjc5NzQwNn0.Vn-Qk4-_wGJoqdGQ15SzHrG38uSxydEpbF7SEknG3RA',
-  prices: { INR: '₹499', USD: '$8' },
+  // Display prices. The amounts actually charged live in Razorpay (plans) and
+  // supabase/functions/_shared/razorpay.ts (CREDIT_PACK); keep them in sync.
+  prices: {
+    INR: { month: '₹499', year: '₹3,999', pack: '₹149' },
+    USD: { month: '$8', year: '$64', pack: '$2' },
+  },
+  packCredits: 100,
 };

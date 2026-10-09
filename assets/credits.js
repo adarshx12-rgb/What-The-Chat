@@ -240,22 +240,64 @@
     return entitlement;
   }
 
-  async function startCheckout(currency){
+  const BILLING_ERRORS = {
+    already_pro: 'You already have Pro.',
+    plan_unavailable: 'Yearly billing isn’t available yet. Choose monthly.',
+    rate_limited: 'Too many attempts. Wait a few minutes and try again.',
+  };
+
+  async function invokeBilling(body){
     await ready();
     if (!sb) throw new Error('Payments need an internet connection.');
-    const { data, error } = await sb.functions.invoke('billing', { body: { action: 'create', currency } });
+    const { data, error } = await sb.functions.invoke('billing', { body });
     if (error){
       let code = '';
       try { code = (await error.context.json()).error; } catch (e) {}
-      throw new Error(code === 'already_pro' ? 'You already have Pro.' : 'Could not start checkout. Try again.');
+      throw new Error(BILLING_ERRORS[code] || 'Could not start checkout. Try again.');
     }
+    return data;
+  }
+
+  /* One-time credit pack. Credits arrive through the Razorpay webhook, so
+   * after payment we poll until the balance goes up. */
+  async function buyCreditPack(currency){
+    const before = (entitlement && entitlement.credits) | 0;
+    const data = await invokeBilling({ action: 'pack', currency });
+    await loadCheckout();
+    return new Promise((resolve) => {
+      const rzp = new window.Razorpay({
+        key: data.key_id,
+        order_id: data.order_id,
+        amount: data.amount,
+        currency: data.currency,
+        name: 'What The Chat',
+        description: (cfg.packCredits || 100) + ' credits',
+        prefill: { email: (entitlement && entitlement.email) || '' },
+        theme: { color: '#20BC59' },
+        handler: async () => {
+          for (let i = 0; i < 20; i++){
+            const ent = await refresh();
+            if (ent.credits > before) break;
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+          resolve('paid');
+        },
+        modal: { ondismiss: () => resolve('dismissed') },
+      });
+      rzp.open();
+    });
+  }
+
+  async function startCheckout(currency, interval){
+    const yearly = interval === 'year';
+    const data = await invokeBilling({ action: 'create', currency, interval: yearly ? 'year' : 'month' });
     await loadCheckout();
     return new Promise((resolve) => {
       const rzp = new window.Razorpay({
         key: data.key_id,
         subscription_id: data.subscription_id,
         name: 'What The Chat',
-        description: 'Pro, monthly',
+        description: yearly ? 'Pro, yearly' : 'Pro, monthly',
         prefill: { email: (entitlement && entitlement.email) || '' },
         theme: { color: '#20BC59' },
         handler: async () => { await waitForPro(); resolve('paid'); },
@@ -277,7 +319,7 @@
     ready, refresh, get: () => entitlement, onChange,
     spendScreenshot, chargeVideo,
     canSignIn, userId, signInWithGoogle, sendMagicLink, signOut,
-    startCheckout, cancelPlan,
+    startCheckout, buyCreditPack, cancelPlan,
     client: () => sb,
   };
 })();
