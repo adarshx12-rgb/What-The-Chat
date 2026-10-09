@@ -45,7 +45,7 @@ export function planIdFor(currency: string, env: PlanEnv, interval = 'month'): s
 
 // One-time credit pack. Amounts are in the smallest unit (paise / cents) and
 // must match the prices shown in assets/credits-config.js.
-export const CREDIT_PACK = { credits: 100, amounts: { INR: 14900, USD: 200 } as Record<string, number> };
+export const CREDIT_PACK = { credits: 100, amounts: { INR: 14900, USD: 299 } as Record<string, number> };
 
 export function packOrderFor(currency: string, userId: string) {
   const cur = currency === 'INR' ? 'INR' : 'USD';
@@ -75,4 +75,11 @@ export function packGrantForEvent(event: any): { orderId: string; userId: string
 // deno-lint-ignore no-explicit-any
 export function reusableSubscriptionId(sub: any, planId: string): string | null {
   return sub && sub.status === 'created' && sub.plan_id === planId && typeof sub.id === 'string' ? sub.id : null;
+}
+
+// Subscription states that can still charge the customer, so they must be
+// cancelled before an account is deleted.
+const CANCELLABLE = new Set(['created', 'authenticated', 'active', 'pending', 'halted']);
+export function cancellableStatus(status: unknown): boolean {
+  return typeof status === 'string' && CANCELLABLE.has(status);
 }

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(46);
+select plan(51);
 
 -- RLS guard: fails if ANY table in public/private (now or added later) lacks RLS.
 select is(
@@ -132,6 +132,21 @@ select is((select count(*)::int from cron.job where jobname = 'wtc-cleanup-rate-
 insert into private.visitor_ip_grants (ip_hash, day, grants) values ('old', current_date - 5, 1);
 select private.cleanup_rate_limits();
 select is((select count(*)::int from private.visitor_ip_grants where ip_hash = 'old'), 0, 'cleanup removes old visitor IP rows');
+
+-- Account deletion -----------------------------------------------------------
+reset role;
+delete from auth.users where id = '22222222-2222-2222-2222-222222222222';
+select is((select count(*)::int from public.profiles where user_id = '22222222-2222-2222-2222-222222222222'), 0, 'deleting a user removes their profile');
+select is((select count(*)::int from public.credit_ledger where user_id = '22222222-2222-2222-2222-222222222222'), 0, 'deleting a user removes their ledger');
+select is((select count(*)::int from private.email_claims where user_id is null), 1, 'the email claim survives deletion without an owner');
+insert into auth.users (id, email) values ('99999999-9999-9999-9999-999999999993', 'free.user@gmail.com');
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"99999999-9999-9999-9999-999999999993","role":"authenticated","is_anonymous":false}', true);
+select is((public.ensure_grants()->>'credits')::int, 0, 'signing up again after deleting gets no second bonus');
+reset role;
+set local role service_role;
+select is(public.grant_credit_pack('order_late', '22222222-2222-2222-2222-222222222222', 100), false, 'a late pack webhook for a deleted user is ignored, not an error');
+reset role;
 
 select * from finish();
 rollback;

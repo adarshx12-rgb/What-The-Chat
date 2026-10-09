@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1';
-import { CREDIT_PACK, packGrantForEvent, packOrderFor, planIdFor, profileUpdateForEvent, reusableSubscriptionId, verifySignature } from './razorpay.ts';
+import { cancellableStatus, CREDIT_PACK, packGrantForEvent, packOrderFor, planIdFor, profileUpdateForEvent, reusableSubscriptionId, verifySignature } from './razorpay.ts';
 import { corsHeaders } from './cors.ts';
 
 const BODY = '{"event":"subscription.activated"}';
@@ -107,4 +107,9 @@ Deno.test('an unpaid subscription on the same plan is reused; anything else is n
   }
   assertEquals(reusableSubscriptionId(null, 'plan_usd'), null);
   assertEquals(reusableSubscriptionId({ error: { code: 'BAD_REQUEST_ERROR' } }, 'plan_usd'), null);
+});
+
+Deno.test('only subscriptions that can still charge are cancelled before deletion', () => {
+  for (const s of ['created', 'authenticated', 'active', 'pending', 'halted']) assertEquals(cancellableStatus(s), true, s);
+  for (const s of ['cancelled', 'completed', 'expired', undefined, null]) assertEquals(cancellableStatus(s), false, String(s));
 });

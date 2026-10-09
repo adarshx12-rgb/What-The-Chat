@@ -74,7 +74,7 @@ Razorpay setup for billing:
 - Plans: monthly `RAZORPAY_PLAN_USD` / `RAZORPAY_PLAN_INR` ($8 / ₹499) and yearly
   `RAZORPAY_PLAN_USD_YEARLY` / `RAZORPAY_PLAN_INR_YEARLY` ($64 / ₹3,999). Without the
   yearly secrets, Yearly checkout shows "not available yet".
-- Credit pack: 100 credits for ₹149 / $2, set in `supabase/functions/_shared/razorpay.ts`
+- Credit pack: 100 credits for ₹149 / $2.99, set in `supabase/functions/_shared/razorpay.ts`
   (`CREDIT_PACK`) and shown from `assets/credits-config.js`. Keep both in sync.
 - Webhook events: `subscription.activated`, `subscription.charged`,
   `subscription.resumed`, `subscription.cancelled`, `subscription.completed`,

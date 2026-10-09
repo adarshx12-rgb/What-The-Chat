@@ -1,0 +1,15 @@
+# Weekly dependency update PRs. Security alerts themselves are switched on in
+# GitHub: Settings > Code security > Dependabot alerts / security updates.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /tests
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /server
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

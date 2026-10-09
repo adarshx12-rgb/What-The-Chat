@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
-import { packOrderFor, planIdFor, reusableSubscriptionId } from '../_shared/razorpay.ts';
+import { cancellableStatus, packOrderFor, planIdFor, reusableSubscriptionId } from '../_shared/razorpay.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
 // Per-user limit on billing calls (each one can hit the Razorpay API).
@@ -51,6 +51,34 @@ Deno.serve(async (req) => {
   }
 
   const { data: profile } = await admin.from('profiles').select('*').eq('user_id', user.id).single();
+
+  // Self-serve account deletion. A live subscription is cancelled first (no
+  // more charges), then the auth user is deleted; that cascades to profiles
+  // and credit_ledger. Refuses to delete if the cancel fails.
+  if (body.action === 'delete_account') {
+    if (body.confirm !== 'DELETE') return json({ error: 'confirm_required' }, 400);
+    const subId = profile?.razorpay_subscription_id;
+    if (subId) {
+      const res = await fetch(`https://api.razorpay.com/v1/subscriptions/${subId}`, { headers: { authorization: razorpayAuth() } });
+      const sub = res.ok ? await res.json() : null;
+      if (sub && cancellableStatus(sub.status)) {
+        const cancel = await fetch(`https://api.razorpay.com/v1/subscriptions/${subId}/cancel`, {
+          method: 'POST',
+          headers: { authorization: razorpayAuth(), 'content-type': 'application/json' },
+          body: JSON.stringify({ cancel_at_cycle_end: 0 }),
+        });
+        if (!cancel.ok) { console.error('delete: razorpay cancel failed', await cancel.text()); return json({ error: 'razorpay_error' }, 502); }
+      } else if (!res.ok && res.status !== 404) {
+        console.error('delete: razorpay lookup failed', res.status);
+        return json({ error: 'razorpay_error' }, 502);
+      }
+    }
+    const { error } = await admin.auth.admin.deleteUser(user.id);
+    if (error) { console.error('delete: deleteUser failed', error.message); return json({ error: 'server_error' }, 500); }
+    console.log('account deleted', user.id);
+    return json({ ok: true });
+  }
+
   const { data: ent } = await userClient.rpc('ensure_grants');
   const isPro = !!ent?.pro; // admins are pro too, so they never reach checkout
 

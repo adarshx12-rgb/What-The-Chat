@@ -818,6 +818,10 @@
   .planPrice{margin:0;font:600 18px/1.2 var(--studio-mono);}
   .planPrice small{font-size:12px;font-weight:400;color:var(--studio-text-secondary);}
   .planToggles{display:flex;flex-wrap:wrap;gap:8px;}
+  .dangerZone{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--studio-border);}
+  .dangerZone .helperText{margin:0;}
+  .btnDanger{color:#e5484d;}
+  .btnDanger[data-armed="true"]{background:#e5484d;color:#fff;border-color:#e5484d;}
   .planToggles .seg{flex:1 1 auto;}
   .planToggles .segbtn{white-space:nowrap;flex:1 1 auto;}
   /* Phones: the logo mark alone links home, freeing room for the credits chip. */
@@ -906,6 +910,11 @@
         <p class="helperText" id="billingStatus" aria-live="polite"></p>
       </div>
       <button type="button" class="btnBlock" id="signOutBtn">Sign out</button>
+      <div class="dangerZone">
+        <p class="helperText">Deleting your account removes your email, credits and history, and cancels Pro with no further charges. Projects stay in this browser.</p>
+        <button type="button" class="btnBlock btnDanger" id="deleteAccountBtn">Delete account</button>
+        <p class="helperText" id="deleteStatus" aria-live="polite"></p>
+      </div>
     </section>
   </dialog>
 
@@ -4314,7 +4323,7 @@ let billingInterval = 'month';
 
 function billingPrices(){
   const cfg = window.WTC_CONFIG || {};
-  const fallback = { INR: { month: '₹499', year: '₹3,999', pack: '₹149' }, USD: { month: '$8', year: '$64', pack: '$2' } };
+  const fallback = { INR: { month: '₹499', year: '₹3,999', pack: '₹149' }, USD: { month: '$8', year: '$64', pack: '$2.99' } };
   const p = (cfg.prices && cfg.prices[billingCurrency]) || fallback[billingCurrency];
   return typeof p === 'string' ? Object.assign({}, fallback[billingCurrency], { month: p }) : p;
 }
@@ -4439,6 +4448,39 @@ function wireAccountUI(){
     } catch (err) {
       $('billingStatus').textContent = err.message;
     } finally {
+      btn.disabled = false;
+    }
+  });
+
+  let deleteArmed = false;
+  dialog.addEventListener('close', () => {
+    deleteArmed = false;
+    delete $('deleteAccountBtn').dataset.armed;
+    $('deleteAccountBtn').textContent = 'Delete account';
+    $('deleteStatus').textContent = '';
+  });
+  $('deleteAccountBtn').addEventListener('click', async () => {
+    const btn = $('deleteAccountBtn');
+    if (!deleteArmed){
+      deleteArmed = true;
+      btn.dataset.armed = 'true';
+      btn.textContent = 'Yes, delete my account forever';
+      $('deleteStatus').textContent = 'This can’t be undone. Click again to confirm.';
+      return;
+    }
+    btn.disabled = true;
+    $('deleteStatus').textContent = 'Deleting…';
+    try {
+      await WTCCredits.deleteAccount();
+      $('deleteStatus').textContent = '';
+      $('accountDialog').close();
+      showToast('Your account was deleted.');
+    } catch (err) {
+      $('deleteStatus').textContent = err.message;
+    } finally {
+      deleteArmed = false;
+      delete btn.dataset.armed;
+      btn.textContent = 'Delete account';
       btn.disabled = false;
     }
   });

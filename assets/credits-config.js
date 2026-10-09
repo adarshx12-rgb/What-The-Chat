@@ -8,7 +8,7 @@ window.WTC_CONFIG = {
   // supabase/functions/_shared/razorpay.ts (CREDIT_PACK); keep them in sync.
   prices: {
     INR: { month: '₹499', year: '₹3,999', pack: '₹149' },
-    USD: { month: '$8', year: '$64', pack: '$2' },
+    USD: { month: '$8', year: '$64', pack: '$2.99' },
   },
   packCredits: 100,
 };

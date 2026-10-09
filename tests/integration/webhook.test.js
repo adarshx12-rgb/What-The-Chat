@@ -108,3 +108,26 @@ test('billing: calls are rate-limited per user', async () => {
   assert.deepEqual(statuses.slice(0, 10), Array(10).fill(400));
   assert.equal(statuses[10], 429);
 });
+
+test('billing: delete_account needs confirmation, then removes the user and their data', async () => {
+  const email = `del-${Date.now()}@example.com`;
+  const { data: created, error } = await admin.auth.admin.createUser({ email, password: 'pw-123456!', email_confirm: true });
+  assert.ifError(error);
+  const userId = created.user.id;
+  const client = createClient(env.API_URL, env.ANON_KEY, { auth: { persistSession: false } });
+  const { data: signed, error: signErr } = await client.auth.signInWithPassword({ email, password: 'pw-123456!' });
+  assert.ifError(signErr);
+  const call = (body) => fetch(env.API_URL + '/functions/v1/billing', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + signed.session.access_token, apikey: env.ANON_KEY },
+    body: JSON.stringify(body),
+  });
+  assert.equal((await call({ action: 'delete_account' })).status, 400);
+  assert.equal((await admin.auth.admin.getUserById(userId)).data.user.id, userId);
+
+  assert.equal((await call({ action: 'delete_account', confirm: 'DELETE' })).status, 200);
+  const gone = await admin.auth.admin.getUserById(userId);
+  assert.ok(gone.error || !gone.data.user);
+  const { data: rows } = await admin.from('profiles').select('user_id').eq('user_id', userId);
+  assert.equal(rows.length, 0);
+});

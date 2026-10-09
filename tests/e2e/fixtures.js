@@ -28,7 +28,7 @@ const test = base.extend({
     await page.route('**/assets/credits-config.js', (route) => route.fulfill({
       contentType: 'application/javascript',
       body: 'window.WTC_CONFIG = ' + JSON.stringify({
-        supabaseUrl: sb.url, supabaseAnonKey: sb.anonKey, prices: { INR: { month: '₹499', year: '₹3,999', pack: '₹149' }, USD: { month: '$8', year: '$64', pack: '$2' } }, packCredits: 100,
+        supabaseUrl: sb.url, supabaseAnonKey: sb.anonKey, prices: { INR: { month: '₹499', year: '₹3,999', pack: '₹149' }, USD: { month: '$8', year: '$64', pack: '$2.99' } }, packCredits: 100,
       }) + ';',
     }));
     const errors = [];

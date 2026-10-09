@@ -101,7 +101,7 @@ test('buying a credit pack opens Checkout with the order and waits for the credi
   let body = null;
   await page.route('**/functions/v1/billing', (route) => {
     body = route.request().postDataJSON();
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ order_id: 'order_e2e', amount: 200, currency: 'USD', key_id: 'rzp_test_e2e' }) });
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ order_id: 'order_e2e', amount: 299, currency: 'USD', key_id: 'rzp_test_e2e' }) });
   });
   await page.route('https://checkout.razorpay.com/v1/checkout.js', (route) => route.fulfill({
     contentType: 'application/javascript',
@@ -111,7 +111,7 @@ test('buying a credit pack opens Checkout with the order and waits for the credi
   await page.click('#creditsChip');
   await page.click('#currencyToggle [data-currency="USD"]');
   await expect(page.locator('#packCard')).toBeVisible();
-  await expect(page.locator('#packTitle')).toHaveText('100 credits · $2');
+  await expect(page.locator('#packTitle')).toHaveText('100 credits · $2.99');
   await page.click('#packBtn');
   await expect.poll(() => body).toMatchObject({ action: 'pack', currency: 'USD' });
   await expect.poll(() => page.evaluate(() => window.__rzp && window.__rzp.order_id)).toBe('order_e2e');
@@ -122,4 +122,22 @@ test('buying a credit pack opens Checkout with the order and waits for the credi
   await page.evaluate(() => window.__rzp.handler({ razorpay_order_id: 'order_e2e' }));
   await expect(page.locator('#billingStatus')).toHaveText('Credits added.');
   await expect(page.locator('#creditsChipText')).toHaveText((before + 100) + ' credits');
+});
+
+test('delete account asks twice, calls billing, then starts a fresh visitor', async ({ page }) => {
+  let body = null;
+  await page.route('**/functions/v1/billing', (route) => {
+    body = route.request().postDataJSON();
+    route.fulfill({ contentType: 'application/json', body: '{"ok":true}' });
+  });
+  const userId = await signedInStudio(page);
+  await page.click('#creditsChip');
+  await page.click('#deleteAccountBtn');
+  expect(body).toBeNull();
+  await expect(page.locator('#deleteAccountBtn')).toHaveText('Yes, delete my account forever');
+  await page.click('#deleteAccountBtn');
+  await expect.poll(() => body).toEqual({ action: 'delete_account', confirm: 'DELETE' });
+  await expect(page.locator('#toastRegion')).toContainText('Your account was deleted.');
+  await expect.poll(() => page.evaluate(() => WTCCredits.get().isAnonymous)).toBe(true);
+  expect(await page.evaluate(() => WTCCredits.userId())).not.toBe(userId);
 });

@@ -253,7 +253,7 @@
     if (error){
       let code = '';
       try { code = (await error.context.json()).error; } catch (e) {}
-      throw new Error(BILLING_ERRORS[code] || 'Could not start checkout. Try again.');
+      throw new Error(BILLING_ERRORS[code] || (body.action === 'delete_account' ? 'Could not delete the account. Try again or contact us.' : 'Could not start checkout. Try again.'));
     }
     return data;
   }
@@ -313,13 +313,23 @@
     if (error) throw new Error('Could not cancel. Try again or contact us.');
   }
 
+  /* Deletes the signed-in account on the server (email, credits, history;
+   * a live Pro subscription is cancelled), then starts a fresh visitor. */
+  async function deleteAccount(){
+    await invokeBilling({ action: 'delete_account', confirm: 'DELETE' });
+    try { localStorage.removeItem(PRO_CACHE); localStorage.removeItem(PENDING_VIDEO); } catch (e) {}
+    try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
+    try { await startAnonymous(); return await syncGrants(); }
+    catch (e) { return setEntitlement(offlineEntitlement()); }
+  }
+
   function onChange(fn){ listeners.add(fn); return () => listeners.delete(fn); }
 
   window.WTCCredits = {
     ready, refresh, get: () => entitlement, onChange,
     spendScreenshot, chargeVideo,
     canSignIn, userId, signInWithGoogle, sendMagicLink, signOut,
-    startCheckout, buyCreditPack, cancelPlan,
+    startCheckout, buyCreditPack, cancelPlan, deleteAccount,
     client: () => sb,
   };
 })();
