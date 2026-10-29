@@ -228,6 +228,14 @@
     .price-featured{box-shadow:5px 5px 0 var(--color-accent);border-color:var(--color-night);}
     .signin-link{min-height:2.25rem;align-items:center;}
 
+    /* account dialog (sign in without leaving the homepage) */
+    .account-dialog{width:min(26rem, calc(100vw - 2rem));padding:0;margin:auto;}
+    .account-dialog::backdrop{background:rgb(9 23 46 / 55%);}
+    .btn-google{background:#fff;color:#1f1f1f;border:1px solid #747775;font-family:Roboto,"Inter Tight",system-ui,sans-serif;font-weight:500;}
+    .btn-google:hover{background:#f8fafd;}
+    .field{width:100%;height:2.75rem;padding:0 .75rem;background:#fff;color:var(--color-ink);
+      border:1.5px solid var(--color-night);border-radius:3px;font-size:.9375rem;}
+
     /* projects drawer rows reuse .card */
     .card{background:var(--color-paper);border:1.5px solid var(--color-border);border-radius:3px;
       transition:border-color .15s ease;}
@@ -406,6 +414,41 @@
 </header>
 
 <div id="projectsBackdrop" class="projects-backdrop" aria-hidden="true"></div>
+
+<dialog id="accountDialog" class="account-dialog win win-shadow" aria-labelledby="accountTitle">
+  <div class="win-bar"><span>account</span>
+    <button type="button" id="accountClose" class="flex h-6 w-6 items-center justify-center text-sky hover:text-accent" aria-label="Close">
+      <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-close"/></svg>
+    </button>
+  </div>
+  <div class="p-6">
+    <p id="accountLoading" class="text-sm text-muted">Loading…</p>
+
+    <div id="accountSignedOut" hidden>
+      <h2 id="accountTitle" class="text-xl font-semibold tracking-tight">Sign in</h2>
+      <p class="mt-2 text-sm text-muted">Get 10 free credits, plus a monthly top-up to 10.</p>
+      <p id="accountFileNote" class="mt-3 text-sm text-muted" hidden>Sign-in works on textingstudio.com, not when this page is opened as a local file.</p>
+      <button type="button" id="accountGoogle" class="btn btn-google mt-5 w-full"><svg aria-hidden="true" class="h-[18px] w-[18px] flex-shrink-0" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continue with Google</button>
+      <p class="label my-4 text-center text-muted">or</p>
+      <form id="accountEmailForm" novalidate>
+        <label for="accountEmail" class="label text-muted">Email</label>
+        <input type="email" id="accountEmail" class="field mt-1.5" autocomplete="email" required placeholder="you@example.com">
+        <button type="submit" class="btn btn-secondary mt-3 w-full">Email me a sign-in link</button>
+      </form>
+      <p id="accountStatus" class="mt-3 min-h-5 text-sm text-muted" aria-live="polite"></p>
+    </div>
+
+    <div id="accountSignedIn" hidden>
+      <h2 class="text-xl font-semibold tracking-tight">Signed in</h2>
+      <p id="accountWho" class="mt-2 break-all text-sm font-semibold text-ink"></p>
+      <p id="accountPlan" class="mono mt-1 text-muted"></p>
+      <a href="app/index.html" class="btn btn-primary mt-5 w-full">Open the studio
+        <svg aria-hidden="true" class="icon" viewBox="0 0 24 24"><use href="#i-arrow-right"/></svg></a>
+      <a href="app/index.html?signin=1" class="btn btn-secondary mt-3 w-full">Plans and billing</a>
+      <button type="button" id="accountSignOut" class="btn btn-ghost mt-3 w-full">Sign out</button>
+    </div>
+  </div>
+</dialog>
 
 <aside id="projectsDrawer" class="projects-drawer" aria-label="Projects" aria-hidden="true">
   <div class="win-bar !py-3 !px-5">
@@ -807,7 +850,7 @@
             <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Never watermarked</span></li>
             <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Cancel any time from the studio</span></li>
           </ul>
-            <a href="app/index.html?signin=1" class="btn btn-primary mt-8 w-full">Sign in to upgrade</a>
+            <a href="app/index.html?signin=1" class="btn btn-primary mt-8 w-full" data-plan-cta>Sign in to upgrade</a>
           </div>
         </article>
 
@@ -822,7 +865,7 @@
             <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Bought credits never expire</span></li>
             <li class="flex gap-2.5"><svg aria-hidden="true" class="icon h-4 w-4 flex-shrink-0 text-accent-hover" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Best for occasional thumbnails and short clips</span></li>
           </ul>
-            <a href="app/index.html?signin=1" class="btn btn-secondary mt-8 w-full">Sign in to buy</a>
+            <a href="app/index.html?signin=1" class="btn btn-secondary mt-8 w-full" data-plan-cta>Sign in to buy</a>
           </div>
         </article>
       </div>
@@ -973,15 +1016,108 @@
   try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
   setCurrency(tz === 'Asia/Kolkata' || tz === 'Asia/Calcutta' ? 'INR' : 'USD');
 
-  // "Sign in" reads "Account" when this browser already has a signed-in
-  // (non-visitor) session. Supabase keeps it in localStorage on this origin.
-  try {
-    var raw = localStorage.getItem('sb-qmlhbpwbhcdefwbixcrh-auth-token');
-    var session = raw ? JSON.parse(raw) : null;
-    if (session && session.user && !session.user.is_anonymous){
-      document.querySelectorAll('[data-signin-link]').forEach(function(a){ a.textContent = 'Account'; });
+  /* Sign in on the homepage itself. The Supabase client and credits.js load
+   * only when needed (a click, a sign-in return, or a saved session), and in
+   * WTC_AUTH_ONLY mode they never start a visitor session here. The links
+   * keep their studio href as a no-JS fallback. Same Supabase project and
+   * storage origin as the studio, so a sign-in here carries over there. */
+  var AUTH_SCRIPTS = [
+    { src: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js',
+      integrity: 'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok' },
+    { src: 'assets/credits-config.js' }, { src: 'assets/credits-core.js' }, { src: 'assets/credits.js' }
+  ];
+  var authLoad = null;
+  function loadAuth(){
+    if (authLoad) return authLoad;
+    window.WTC_AUTH_ONLY = true;
+    authLoad = AUTH_SCRIPTS.reduce(function(p, s){
+      return p.then(function(){ return new Promise(function(resolve, reject){
+        var el = document.createElement('script');
+        el.src = s.src;
+        if (s.integrity){ el.integrity = s.integrity; el.crossOrigin = 'anonymous'; }
+        el.onload = resolve; el.onerror = function(){ reject(new Error('could not load ' + s.src)); };
+        document.head.appendChild(el);
+      }); });
+    }, Promise.resolve()).then(function(){
+      WTCCredits.onChange(renderAccount);
+      return WTCCredits.ready();
+    });
+    return authLoad;
+  }
+
+  var accountDialog = document.getElementById('accountDialog');
+  var accountStatus = document.getElementById('accountStatus');
+  function signedIn(ent){ return !!ent && !ent.offline && !ent.signedOut && !ent.isAnonymous; }
+
+  function renderAccount(ent){
+    var inside = signedIn(ent);
+    document.getElementById('accountLoading').hidden = !!ent;
+    document.getElementById('accountSignedOut').hidden = !ent || inside;
+    document.getElementById('accountSignedIn').hidden = !inside;
+    document.querySelectorAll('[data-signin-link]').forEach(function(a){ a.textContent = inside ? 'Account' : 'Sign in'; });
+    var canSignIn = !!window.WTCCredits && WTCCredits.canSignIn();
+    document.getElementById('accountFileNote').hidden = !ent || canSignIn;
+    document.getElementById('accountGoogle').disabled = !canSignIn;
+    document.querySelector('#accountEmailForm button').disabled = !canSignIn;
+    if (inside){
+      document.getElementById('accountWho').textContent = ent.email || '';
+      document.getElementById('accountPlan').textContent = ent.admin ? 'Admin. Unlimited exports.'
+        : ent.pro ? 'Pro' + (ent.proUntil ? ' until ' + new Date(ent.proUntil).toLocaleDateString() : '')
+        : WTCCreditsCore.chipLabel(ent);
     }
-  } catch (e) {}
+  }
+
+  function openAccount(){
+    accountStatus.textContent = '';
+    if (!accountDialog.open) accountDialog.showModal();
+    loadAuth().catch(function(){
+      renderAccount(null);
+      document.getElementById('accountLoading').textContent = 'Sign-in is unavailable right now. Try again in a moment.';
+    });
+  }
+
+  document.querySelectorAll('[data-signin-link]').forEach(function(a){
+    a.addEventListener('click', function(e){ e.preventDefault(); openAccount(); });
+  });
+  // Pricing buttons: plans are bought in the studio, so a signed-in person
+  // goes there; everyone else signs in here first.
+  document.querySelectorAll('[data-plan-cta]').forEach(function(a){
+    a.addEventListener('click', function(e){
+      if (window.WTCCredits && signedIn(WTCCredits.get())) return;
+      e.preventDefault(); openAccount();
+    });
+  });
+  document.getElementById('accountClose').addEventListener('click', function(){ accountDialog.close(); });
+  accountDialog.addEventListener('click', function(e){ if (e.target === accountDialog) accountDialog.close(); });
+
+  document.getElementById('accountGoogle').addEventListener('click', function(){
+    accountStatus.textContent = 'Opening Google…';
+    WTCCredits.signInWithGoogle().catch(function(err){
+      accountStatus.textContent = (err && err.message) || 'Could not start Google sign-in.';
+    });
+  });
+  document.getElementById('accountEmailForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var email = document.getElementById('accountEmail').value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ accountStatus.textContent = 'Enter a valid email address.'; return; }
+    accountStatus.textContent = 'Sending…';
+    WTCCredits.sendMagicLink(email).then(function(){
+      accountStatus.textContent = 'Check your email for the sign-in link.';
+    }).catch(function(err){
+      accountStatus.textContent = (err && err.message) || 'Could not send the link. Try again.';
+    });
+  });
+  document.getElementById('accountSignOut').addEventListener('click', function(){
+    WTCCredits.signOut();
+  });
+
+  // Load right away when returning from a sign-in (Google, email link) or
+  // when this browser already has a session, so the nav shows "Account".
+  var authReturn = /[?&#](code|access_token|error_code)=/.test(location.search + location.hash);
+  var hasSession = false;
+  try { hasSession = !!localStorage.getItem('sb-qmlhbpwbhcdefwbixcrh-auth-token'); } catch (e) {}
+  if (authReturn) openAccount();
+  else if (hasSession) loadAuth().catch(function(){});
 
   // sticky nav rule after scroll
   var nav = document.getElementById('siteNav');

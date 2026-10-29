@@ -6,6 +6,10 @@
   const core = window.WTCCreditsCore;
   const cfg = window.WTC_CONFIG || {};
   const OFFLINE = Object.freeze({ credits: 0, pro: false, admin: false, proUntil: null, isAnonymous: true, email: null, offline: true });
+  // The homepage sets WTC_AUTH_ONLY: it signs people in but never starts a
+  // visitor session (those, and their free credits, begin in the studio).
+  const AUTH_ONLY = !!window.WTC_AUTH_ONLY;
+  const SIGNED_OUT = Object.freeze(Object.assign({}, OFFLINE, { offline: false, signedOut: true }));
   const LINK_FLAG = 'wtc-google-link';
   const PENDING_VIDEO = 'wtc-pending-video-ms'; // charges that failed to reach the server
   const PRO_CACHE = 'wtc-pro-until'; // last confirmed Pro expiry, honoured while offline
@@ -168,15 +172,13 @@
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
       });
       await handleOAuthReturnError();
+      if (AUTH_ONLY && !(await sessionUser())){
+        watchAuth();
+        return setEntitlement(SIGNED_OUT);
+      }
       if (!(await sessionUser())) await startAnonymous();
       else await refreshStaleSession();
-      // Re-sync after sign-in/upgrade of the session. Deferred: awaiting other
-      // Supabase calls inside this callback can deadlock the auth client.
-      sb.auth.onAuthStateChange((event) => {
-        if (event === 'SIGNED_IN' || event === 'USER_UPDATED'){
-          setTimeout(() => { syncGrants().catch(() => {}); }, 0);
-        }
-      });
+      watchAuth();
       const ent = await syncGrants();
       await settlePendingCharge();
       return entitlement || ent;
@@ -184,6 +186,21 @@
       console.warn('[credits] offline mode:', e && e.message);
       return setEntitlement(offlineEntitlement());
     }
+  }
+
+  // Re-sync after sign-in/upgrade of the session. Deferred: awaiting other
+  // Supabase calls inside this callback can deadlock the auth client.
+  let watching = false;
+  function watchAuth(){
+    if (watching) return;
+    watching = true;
+    sb.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED'){
+        setTimeout(() => { syncGrants().catch(() => {}); }, 0);
+      } else if (event === 'SIGNED_OUT' && AUTH_ONLY){
+        setEntitlement(SIGNED_OUT);
+      }
+    });
   }
 
   async function settlePendingCharge(){
@@ -281,6 +298,7 @@
     await ready();
     if (!sb) return entitlement;
     await sb.auth.signOut();
+    if (AUTH_ONLY) return setEntitlement(SIGNED_OUT);
     try { await startAnonymous(); return await syncGrants(); }
     catch (e) { return setEntitlement(offlineEntitlement()); }
   }
