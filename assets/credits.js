@@ -96,6 +96,17 @@
     }
   }
 
+  /* The account can change on the server while this browser still holds an
+   * old visitor token: Google got linked to the visitor account, but the trip
+   * back to the studio failed. Refresh the token so the studio (and the
+   * sign-in bonus, which reads the token) see the real account. */
+  async function refreshStaleSession(){
+    const cached = await sessionUser();
+    if (!cached || !cached.is_anonymous) return;
+    const { data } = await sb.auth.getUser();
+    if (data && data.user && !data.user.is_anonymous) await sb.auth.refreshSession();
+  }
+
   async function boot(){
     if (!window.supabase || !cfg.supabaseUrl || !cfg.supabaseAnonKey) return setEntitlement(offlineEntitlement());
     try {
@@ -104,6 +115,7 @@
       });
       await handleOAuthReturnError();
       if (!(await sessionUser())) await startAnonymous();
+      else await refreshStaleSession();
       // Re-sync after sign-in/upgrade of the session. Deferred: awaiting other
       // Supabase calls inside this callback can deadlock the auth client.
       sb.auth.onAuthStateChange((event) => {

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(51);
+select plan(52);
 
 -- RLS guard: fails if ANY table in public/private (now or added later) lacks RLS.
 select is(
@@ -108,6 +108,7 @@ select is((public.ensure_grants()->>'credits')::int, 5, 'second visitor from one
 select set_config('request.headers', '{"x-forwarded-for":"198.51.100.5, 203.0.113.9"}', true);
 select set_config('request.jwt.claims', '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated","is_anonymous":true}', true);
 select is((public.ensure_grants()->>'credits')::int, 0, 'third visitor from one IP on one day gets none');
+select is((select visitor_grant_done from public.profiles where user_id = '55555555-5555-5555-5555-555555555555'), false, 'a visitor over the IP limit can retry another day');
 
 -- Service-role-only functions ------------------------------------------------
 select throws_ok($$ select public.grant_credit_pack('order_x', '22222222-2222-2222-2222-222222222222', 100) $$,

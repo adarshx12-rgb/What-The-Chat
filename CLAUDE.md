@@ -306,7 +306,7 @@ Plan: `docs/superpowers/plans/2026-10-06-credits-accounts-billing.md` (branch `f
 - **Rules:**
   - 1 credit per screenshot, 1 per started 3 s of video (30 s = 10).
   - (Oct 10 2026 plan, migration `20261010120000_credit_plan_and_hardening.sql`; amounts live in `private.app_settings`.)
-  - Visitors (Supabase anonymous session, no signup) get 5 once (was 10 until Oct 30 2026, lowered against incognito/extra-browser farming); at most 2 visitor grants per IP per day.
+  - Visitors (Supabase anonymous session, no signup) get 5 once (was 10 until Oct 30 2026, lowered against incognito/extra-browser farming); at most 10 visitor grants per IP per day (was 2 until Oct 30 2026; raised for CGNAT mobile carriers, and a visitor over the limit is no longer marked done, so they retry another day: migration `20261030130000_visitor_ip_limit.sql`).
   - Signing in (Google or email magic link) adds 10 once (was 30 until Oct 30 2026, migration `20261030120000_lower_free_credits.sql`); each month the balance is topped up to 10 (no rollover, never removes bought credits).
   - Sign-in bonus + top-ups go only to the first account per normalized email (Gmail dots/+tags, googlemail) and never to disposable domains (`private.email_claims`, `private.disposable_email_domains`).
   - Free (non-Pro) videos are clean for at most 60 s (`FREE_CLEAN_SECONDS` in `credits-core.js`), then watermarked with a "Pro unlocks full-length videos" prompt. A toast warns once when the balance drops to 5 or less.
