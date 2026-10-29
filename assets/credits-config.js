@@ -11,4 +11,7 @@ window.WTC_CONFIG = {
     USD: { month: '$8', year: '$64', pack: '$2.99' },
   },
   packCredits: 100,
+  // Cloudflare Turnstile (invisible) site key. Public by design; the secret
+  // key lives only in Supabase (Authentication > Attack Protection).
+  turnstileSiteKey: '0x4AAAAAAFrz__IiOhsFQkSD',
 };

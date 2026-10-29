@@ -68,8 +68,62 @@
     return setEntitlement(await fromRow(data));
   }
 
+  /* Cloudflare Turnstile (invisible): Supabase's captcha protection wants a
+   * fresh single-use token on anonymous sign-in and magic-link requests.
+   * Nothing is shown to the visitor. If Turnstile can't load (blocked, slow,
+   * no site key), the request goes out without a token: Supabase accepts it
+   * while captcha is off, and with captcha on the studio falls back to
+   * offline mode as it would for any other sign-in failure. */
+  const TURNSTILE_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  let turnstileLoad = null;
+
+  function loadTurnstile(){
+    if (window.turnstile) return Promise.resolve(window.turnstile);
+    if (!turnstileLoad){
+      turnstileLoad = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = TURNSTILE_SRC;
+        s.async = true;
+        s.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error('turnstile missing')));
+        s.onerror = () => reject(new Error('turnstile blocked'));
+        document.head.appendChild(s);
+      });
+      turnstileLoad.catch(() => { turnstileLoad = null; }); // allow a retry later
+    }
+    return turnstileLoad;
+  }
+
+  async function captchaToken(){
+    if (!cfg.turnstileSiteKey) return undefined;
+    try {
+      const ts = await loadTurnstile();
+      return await new Promise((resolve, reject) => {
+        const box = document.createElement('div');
+        box.style.cssText = 'position:fixed;width:0;height:0;overflow:hidden;';
+        document.body.appendChild(box);
+        let id = null;
+        const finish = (fn, value) => {
+          clearTimeout(timer);
+          try { if (id !== null) ts.remove(id); } catch (e) {}
+          box.remove();
+          fn(value);
+        };
+        const timer = setTimeout(() => finish(reject, new Error('captcha timeout')), 15000);
+        id = ts.render(box, {
+          sitekey: cfg.turnstileSiteKey,
+          action: 'auth',
+          callback: (token) => finish(resolve, token),
+          'error-callback': () => finish(reject, new Error('captcha failed')),
+        });
+      });
+    } catch (e) {
+      console.warn('[credits] captcha unavailable:', e && e.message);
+      return undefined;
+    }
+  }
+
   async function startAnonymous(){
-    const { error } = await sb.auth.signInAnonymously();
+    const { error } = await sb.auth.signInAnonymously({ options: { captchaToken: await captchaToken() } });
     if (error) throw error;
   }
 
@@ -219,7 +273,7 @@
       if (!error) return;
       if (!/already|exists|registered/i.test(error.message || '')) throw error;
     }
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectUrl() } });
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectUrl(), captchaToken: await captchaToken() } });
     if (error) throw error;
   }
 
