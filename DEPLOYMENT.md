@@ -9,8 +9,8 @@ Do not publish the repository metadata, local tooling, `output/`, `growing-giant
 or `server/`. The server directory is an optional local MP4 converter, not the
 website server. Robots exclusions are crawl hints, not access controls.
 
-The canonical production origin is `https://whatthechat.com`. The homepage uses
-`/`, the studio uses `/app/`, and the information pages use their `.html` paths.
+The canonical production origin is `https://textingstudio.com`. The homepage uses
+`/`, the studio uses `/app/`, and the information pages use extensionless URLs (`/about`, `/privacy-policy` and so on) in canonicals, social tags and the sitemap, because Cloudflare Pages 308-redirects `*.html` to them. Relative links between pages keep `.html` so `file://` still works.
 Keep those URLs consistent across canonicals, social tags, JSON-LD, and the
 sitemap when changing domains. Keep directory-index serving enabled. Project
 query strings are intentionally absent from the studio canonical and sitemap.
@@ -18,7 +18,7 @@ Normal navigation uses relative paths so it also works when opening local files.
 
 ## Contact details
 
-`contact.html` lists `support@whatthechat.com`, received through Cloudflare Email
+`contact.html` lists `support@textingstudio.com`, received through Cloudflare Email
 Routing (receive-only; sign-in emails are sent through Supabase custom SMTP).
 Privacy, terms and refund pages link to this contact page so the address has a
 single place to update.
@@ -37,7 +37,7 @@ The host must permit `AllowOverride FileInfo`. See the official
 [Apache error-document documentation](https://httpd.apache.org/docs/2.4/custom-error.html).
 Other hosts need their equivalent error-document configuration; `.htaccess`
 does not configure Netlify, Vercel, Cloudflare Pages, or a CDN's own error pages.
-No hosting provider has been selected in this repository.
+Hosting is **Cloudflare Pages** (classic Pages project `textingstudio`, production branch `master`, https://textingstudio.pages.dev). Deploy with `npm run deploy` from the repo root (or `npm run deploy:preview`). `scripts/build-site.mjs` copies an allowlist of public files into `dist/` (gitignored) and refuses any file over the 25 MB Pages limit; add new public files to that list. Pages serves `404.html` for missing URLs automatically and applies `_headers`. Pages also 308-redirects `*.html` to extensionless URLs (`/about.html` to `/about`). Wrangler 4.156+ tries to move Pages commands to Workers; the project was created once with `--force` and later commands go straight to Pages, so never pass `--force` again.
 
 Supabase Auth limits are configured locally in `supabase/config.toml`.
 Hosted Auth needs the separate settings and verification described in

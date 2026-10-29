@@ -6,3 +6,12 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), usb=(), serial=(), bluetooth=()
+
+# Keep the *.pages.dev copies (production and every preview deployment) out
+# of search results, so only textingstudio.com gets indexed. Cloudflare-only:
+# the custom domain never matches these rules.
+https://:project.pages.dev/*
+  X-Robots-Tag: noindex
+
+https://:version.:project.pages.dev/*
+  X-Robots-Tag: noindex

@@ -1,6 +1,6 @@
 # Rate limits
 
-What The Chat has three layers of limits. Local values (in this repo) are for
+Texting Studio has three layers of limits. Local values (in this repo) are for
 testing; production values are set by hand in the Supabase dashboard.
 
 ## 1. Supabase Auth (sign-in, anonymous visitors, emails)
@@ -40,7 +40,7 @@ rules below instead.
 - **10 calls per user per 10 minutes** (`public.billing_rate_ok`), checked
   before any Razorpay API call. Over the limit returns HTTP 429.
 - Only signed-in, non-anonymous users can call it.
-- CORS allows only `https://whatthechat.com`, `https://www.whatthechat.com`
+- CORS allows only `https://textingstudio.com`, `https://www.textingstudio.com`
   and the local test server (`127.0.0.1:8090`, `localhost:8090`). Add a
   staging origin with the `ALLOWED_ORIGINS` secret (comma-separated).
 

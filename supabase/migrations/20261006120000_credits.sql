@@ -1,4 +1,4 @@
--- Credits for What The Chat. Clients can only read their own rows; every
+-- Credits for Texting Studio. Clients can only read their own rows; every
 -- balance change goes through the security-definer functions below.
 -- Grants and policy names match supabase/security/rls.sql, so re-running that
 -- hardening script never changes what this migration set up.

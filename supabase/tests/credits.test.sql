@@ -46,10 +46,10 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated","is_anonymous":true}', true);
 select set_config('request.headers', '{"x-forwarded-for":"198.51.100.1, 203.0.113.9"}', true);
 
-select is((public.ensure_grants()->>'credits')::int, 10, 'visitor gets 10 credits');
-select is((public.ensure_grants()->>'credits')::int, 10, 'visitor grant is one-time');
-select is((public.spend_credits('video', 16)->>'charged')::int, 6, '16 s of video costs 6 credits');
-select is((public.spend_credits('video', 600)->>'charged')::int, 4, 'video charge is capped at the balance');
+select is((public.ensure_grants()->>'credits')::int, 5, 'visitor gets 5 credits');
+select is((public.ensure_grants()->>'credits')::int, 5, 'visitor grant is one-time');
+select is((public.spend_credits('video', 7)->>'charged')::int, 3, '7 s of video costs 3 credits');
+select is((public.spend_credits('video', 600)->>'charged')::int, 2, 'video charge is capped at the balance');
 select is((public.spend_credits('screenshot', 1)->>'allowed')::boolean, false, 'screenshot refused at 0 credits');
 select is((public.spend_credits('screenshot', 1)->>'credits')::int, 0, 'balance never goes negative');
 select throws_ok($$ select public.spend_credits('gif', 1) $$, '22023', null, 'unknown kind rejected');
@@ -62,13 +62,13 @@ select is((select count(*)::int from public.credit_ledger where user_id <> '1111
 
 -- Signed-in free ------------------------------------------------------------
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","is_anonymous":false}', true);
-select is((public.ensure_grants()->>'credits')::int, 30, 'sign-up bonus is 30');
-select is((public.spend_credits('screenshot', 1)->>'credits')::int, 29, 'a screenshot costs 1 credit');
+select is((public.ensure_grants()->>'credits')::int, 10, 'sign-up bonus is 10');
+select is((public.spend_credits('screenshot', 1)->>'credits')::int, 9, 'a screenshot costs 1 credit');
 reset role;
-update public.profiles set last_refill_at = now() - interval '32 days'
+update public.profiles set credits = 12, last_refill_at = now() - interval '32 days'
  where user_id = '22222222-2222-2222-2222-222222222222';
 set local role authenticated;
-select is((public.ensure_grants()->>'credits')::int, 29, 'no rollover: refill adds nothing while the balance is 10 or more');
+select is((public.ensure_grants()->>'credits')::int, 12, 'no rollover: refill adds nothing while the balance is 10 or more');
 reset role;
 update public.profiles set credits = 3, last_refill_at = now() - interval '32 days'
  where user_id = '22222222-2222-2222-2222-222222222222';
@@ -104,7 +104,7 @@ select is((public.ensure_grants()->>'admin')::boolean, false, 'unverified listed
 -- The browser controls the FIRST x-forwarded-for entry; only the last one (added by the proxy) counts.
 select set_config('request.headers', '{"x-forwarded-for":"198.51.100.4, 203.0.113.9"}', true);
 select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated","is_anonymous":true}', true);
-select is((public.ensure_grants()->>'credits')::int, 10, 'second visitor from one IP gets credits');
+select is((public.ensure_grants()->>'credits')::int, 5, 'second visitor from one IP gets credits');
 select set_config('request.headers', '{"x-forwarded-for":"198.51.100.5, 203.0.113.9"}', true);
 select set_config('request.jwt.claims', '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated","is_anonymous":true}', true);
 select is((public.ensure_grants()->>'credits')::int, 0, 'third visitor from one IP on one day gets none');

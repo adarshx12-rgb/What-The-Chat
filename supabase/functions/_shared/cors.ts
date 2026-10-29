@@ -2,8 +2,8 @@
 // local test server). Extra origins can be added with ALLOWED_ORIGINS
 // (comma-separated), e.g. for a staging domain.
 export const DEFAULT_ORIGINS = [
-  'https://whatthechat.com',
-  'https://www.whatthechat.com',
+  'https://textingstudio.com',
+  'https://www.textingstudio.com',
   'http://127.0.0.1:8090',
   'http://localhost:8090',
 ];

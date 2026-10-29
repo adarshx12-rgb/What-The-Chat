@@ -6,4 +6,4 @@ Disallow: /growing-giant/
 Disallow: /.git/
 Disallow: /.agents/
 
-Sitemap: https://whatthechat.com/sitemap.xml
+Sitemap: https://textingstudio.com/sitemap.xml

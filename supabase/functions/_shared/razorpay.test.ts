@@ -92,10 +92,10 @@ Deno.test('packOrderFor prices by currency and tags the order', () => {
 });
 
 Deno.test('CORS only echoes allowed origins', () => {
-  assertEquals(corsHeaders('https://whatthechat.com')['access-control-allow-origin'], 'https://whatthechat.com');
+  assertEquals(corsHeaders('https://textingstudio.com')['access-control-allow-origin'], 'https://textingstudio.com');
   assertEquals(corsHeaders('http://127.0.0.1:8090')['access-control-allow-origin'], 'http://127.0.0.1:8090');
-  assertEquals(corsHeaders('https://evil.example')['access-control-allow-origin'], 'https://whatthechat.com');
-  assertEquals(corsHeaders(null)['access-control-allow-origin'], 'https://whatthechat.com');
+  assertEquals(corsHeaders('https://evil.example')['access-control-allow-origin'], 'https://textingstudio.com');
+  assertEquals(corsHeaders(null)['access-control-allow-origin'], 'https://textingstudio.com');
   assertEquals(corsHeaders('https://staging.example', 'https://staging.example')['access-control-allow-origin'], 'https://staging.example');
 });
 

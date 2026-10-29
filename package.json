@@ -1,0 +1,10 @@
+{
+  "name": "texting-studio",
+  "private": true,
+  "description": "Texting Studio website (static, deployed to Cloudflare Pages)",
+  "scripts": {
+    "build": "node scripts/build-site.mjs",
+    "deploy": "npm run build && npx wrangler@4.156.0 pages deploy dist --project-name textingstudio --branch master --commit-dirty=true",
+    "deploy:preview": "npm run build && npx wrangler@4.156.0 pages deploy dist --project-name textingstudio --branch preview --commit-dirty=true"
+  }
+}

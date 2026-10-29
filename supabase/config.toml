@@ -162,7 +162,7 @@ site_url = "http://127.0.0.1:8090/app/index.html"
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # Only the studio (/app/) starts sign-ins, so only it may receive the redirect.
-additional_redirect_urls = ["http://127.0.0.1:8090/**", "http://localhost:8090/**", "https://whatthechat.com/app/**", "https://www.whatthechat.com/app/**"]
+additional_redirect_urls = ["http://127.0.0.1:8090/**", "http://localhost:8090/**", "https://textingstudio.com/app/**", "https://www.textingstudio.com/app/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.

@@ -8,9 +8,9 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
 test('refund policy exists, is canonical and in the sitemap', () => {
   const html = read('refund-policy.html');
-  assert.match(html, /<link rel="canonical" href="https:\/\/whatthechat\.com\/refund-policy\.html">/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/textingstudio\.com\/refund-policy">/);
   assert.match(html, /<h1>Refund &amp; cancellation policy<\/h1>/);
-  assert.match(read('sitemap.xml'), /<loc>https:\/\/whatthechat\.com\/refund-policy\.html<\/loc>/);
+  assert.match(read('sitemap.xml'), /<loc>https:\/\/textingstudio\.com\/refund-policy<\/loc>/);
 });
 
 test('every page links the refund policy', () => {
@@ -29,7 +29,7 @@ test('privacy policy names the new processors', () => {
 test('contact page uses the real support address', () => {
   const html = read('contact.html');
   assert.doesNotMatch(html, /example\.com/);
-  assert.match(html, /href="mailto:support@whatthechat\.com">support@whatthechat\.com<\/a>/);
+  assert.match(html, /href="mailto:support@textingstudio\.com">support@textingstudio\.com<\/a>/);
 });
 
 test('no page ships a secret key', () => {

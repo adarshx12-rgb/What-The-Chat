@@ -3,25 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WhatsApp Chat Story Studio | What The Chat</title>
-<meta name="description" content="Create scripted WhatsApp-style chats in the free What The Chat studio. Customize Android or iOS previews, save screenshots, and record vertical chat videos.">
+<title>WhatsApp Chat Story Editor | Texting Studio</title>
+<meta name="description" content="Create scripted WhatsApp-style chats in the free Texting Studio editor. Customize Android or iOS previews, save screenshots, and record vertical chat videos.">
 <meta name="robots" content="index, follow">
 <meta name="theme-color" content="#09172e">
-<link rel="canonical" href="https://whatthechat.com/app/">
+<link rel="canonical" href="https://textingstudio.com/app/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="What The Chat">
-<meta property="og:url" content="https://whatthechat.com/app/">
-<meta property="og:title" content="WhatsApp Chat Story Studio | What The Chat">
+<meta property="og:site_name" content="Texting Studio">
+<meta property="og:url" content="https://textingstudio.com/app/">
+<meta property="og:title" content="WhatsApp Chat Story Editor | Texting Studio">
 <meta property="og:description" content="Write a scripted chat, customize its look, and export screenshots or cursor-free vertical videos from your browser.">
-<meta property="og:image" content="https://whatthechat.com/assets/app-preview.jpg">
+<meta property="og:image" content="https://textingstudio.com/assets/app-preview.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="750">
-<meta property="og:image:alt" content="What The Chat editor and chat video preview">
+<meta property="og:image:alt" content="Texting Studio editor and chat video preview">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="WhatsApp Chat Story Studio | What The Chat">
+<meta name="twitter:title" content="WhatsApp Chat Story Editor | Texting Studio">
 <meta name="twitter:description" content="Write a scripted chat, customize its look, and export screenshots or cursor-free vertical videos from your browser.">
-<meta name="twitter:image" content="https://whatthechat.com/assets/app-preview.jpg">
-<meta name="twitter:image:alt" content="What The Chat editor and chat video preview">
+<meta name="twitter:image" content="https://textingstudio.com/assets/app-preview.jpg">
+<meta name="twitter:image:alt" content="Texting Studio editor and chat video preview">
 <script>try{if(localStorage.getItem('wtc-studio-theme')==='dark')document.documentElement.dataset.studioTheme='dark';}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -519,7 +519,7 @@
   }
 
   /* =====================================================================
-   * STUDIO THEME — "What The Chat" navy (Oct 2026)
+   * STUDIO THEME — "Texting Studio" navy (Oct 2026)
    * Same system as the homepage: navy #09172E, sky #CBE0F8, green #20BC59;
    * boxed windows with title bars, IBM Plex Mono labels, square corners,
    * hard offset shadows on primary actions only. Shell only — nothing here
@@ -832,12 +832,12 @@
 <div id="app">
 
   <header id="studioHeader">
-    <a class="headerBrand" href="../index.html" aria-label="What The Chat — back to home">
+    <a class="headerBrand" href="../index.html" aria-label="Texting Studio — back to home">
       <span class="brandMark" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
       </span>
       <div class="brandText">
-        <span class="brandName">What The Chat</span>
+        <span class="brandName">Texting Studio</span>
       </div>
     </a>
 
@@ -868,8 +868,8 @@
     <p class="helperText">1 screenshot = 1 credit. 3 seconds of video = 1 credit. Free videos stay clean for the first 60 seconds. With no credits left, exports get a watermark.</p>
 
     <section id="signInSection" class="accountBlock">
-      <h3>Sign in for 30 free credits, plus a monthly top-up</h3>
-      <p class="helperText" id="signInFileNote" hidden>Sign-in works on whatthechat.com, not when the studio is opened as a local file.</p>
+      <h3>Sign in for 10 free credits, plus a monthly top-up</h3>
+      <p class="helperText" id="signInFileNote" hidden>Sign-in works on textingstudio.com, not when the studio is opened as a local file.</p>
       <button type="button" class="btnBlock" id="googleSignInBtn">Continue with Google</button>
       <form id="magicLinkForm" novalidate>
         <label for="magicLinkEmail">Email</label>
@@ -1181,9 +1181,13 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
             Stop
           </button>
+          <button id="fullShareBtn" class="btnPrimary" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Save video
+          </button>
           <button id="fullDownloadAgainBtn" hidden>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download again
+            <span id="fullDownloadAgainLabel">Download again</span>
           </button>
           <button id="fullRetryBtn" hidden>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -3371,10 +3375,10 @@ function drawWatermark(ctx){
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = '700 58px ChatInter, "Segoe UI", sans-serif';
-  ctx.fillText('Made with What The Chat', x + w / 2, y + 78);
+  ctx.fillText('Made with Texting Studio', x + w / 2, y + 78);
   ctx.font = '500 40px ChatInter, "Segoe UI", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.fillText('whatthechat.com', x + w / 2, y + 144);
+  ctx.fillText('textingstudio.com', x + w / 2, y + 144);
   ctx.restore();
 }
 
@@ -3389,7 +3393,7 @@ function promptAfterWatermark(kind, cappedAtFree){
   }
   const what = kind === 'video' ? 'Out of credits, so the rest of this video has a watermark.' : 'Out of credits, so this screenshot has a watermark.';
   if (ent && ent.offline) showToast(what + ' Credits need an internet connection.');
-  else if (!ent || ent.isAnonymous) showToast(what + ' Sign in for 30 free credits.', 'Sign in', () => openAccountDialog());
+  else if (!ent || ent.isAnonymous) showToast(what + ' Sign in for 10 free credits.', 'Sign in', () => openAccountDialog());
   else showToast(what, 'Upgrade', () => openAccountDialog());
 }
 
@@ -3486,8 +3490,16 @@ function layoutComposerInput(){
 let mp4BackendAvailable = false;
 let mp4BackendCheckPromise = null;
 
+// The optional MP4 backend only ever runs on the creator's own machine, so
+// only look for it when the studio itself is local. On the live site the
+// probe would just trigger Chrome's "access devices on your local network"
+// prompt for every visitor.
+const LOCAL_STUDIO = location.protocol === 'file:'
+  || ['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname);
+
 function checkMp4Backend(){
   mp4BackendCheckPromise = (async () => {
+    if (!LOCAL_STUDIO){ mp4BackendAvailable = false; updateBackendIndicators(); return; }
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 1500);
@@ -3511,6 +3523,19 @@ function updateBackendIndicators(){
   el.classList.toggle('connected', mp4BackendAvailable);
   el.hidden = !mp4BackendAvailable;
   if (fullRecorder && fullRecorder.state === 'idle') fullRecorder.refreshReadyHelper();
+}
+
+// Phones only: desktop browsers download fine, and a share sheet there is
+// just an extra step.
+const coarsePointerMQ = window.matchMedia('(pointer:coarse)');
+
+function videoFile(blob, filename){
+  return new File([blob], filename, { type: (blob.type || 'video/mp4').split(';')[0] });
+}
+
+function canShareVideo(blob, filename){
+  if (!coarsePointerMQ.matches || !navigator.canShare || !navigator.share) return false;
+  try { return navigator.canShare({ files: [videoFile(blob, filename)] }); } catch (e) { return false; }
 }
 
 function downloadBlob(blob, filename){
@@ -3601,6 +3626,8 @@ function makeRecorder(kind, canvas){
     recStartWall: 0, recPausedAccum: 0, recPauseStart: 0, recEndWall: 0,
     lastBlob: null, lastFilename: '', lastErrorText: '',
     coveredMs: Infinity, cappedAtFree: false, watermarkStarted: false,
+    stream: null, finalized: false, failedEarly: false, autoPaused: false,
+    wakeLock: null,
   };
 
   function announce(text){ $(kind + 'LiveStatus').textContent = text; }
@@ -3609,7 +3636,25 @@ function makeRecorder(kind, canvas){
     if (ctrl.state !== 'idle') return;
     $(kind + 'RecHelper').textContent = mp4BackendAvailable
       ? 'Exports MP4 via the local backend.'
-      : 'Backend not connected — exports WebM instead.';
+      : LOCAL_STUDIO ? 'Backend not connected — exports WebM instead.'
+      : 'Saves the video to your device.';
+  };
+
+  // Keep the screen on for the whole take (a sleeping phone stops drawing).
+  // Best effort: unsupported browsers just skip it. The browser drops the
+  // lock whenever the page is hidden; reacquireWakeLock() takes it back.
+  async function acquireWakeLock(){
+    if (ctrl.wakeLock || !('wakeLock' in navigator)) return;
+    try {
+      ctrl.wakeLock = await navigator.wakeLock.request('screen');
+      ctrl.wakeLock.addEventListener('release', () => { ctrl.wakeLock = null; });
+    } catch (e) { ctrl.wakeLock = null; }
+  }
+  function releaseWakeLock(){
+    if (ctrl.wakeLock){ ctrl.wakeLock.release().catch(() => {}); ctrl.wakeLock = null; }
+  }
+  ctrl.reacquireWakeLock = function(){
+    if (ctrl.state === 'recording' || ctrl.state === 'paused') acquireWakeLock();
   };
 
   function setButtons(){
@@ -3618,7 +3663,9 @@ function makeRecorder(kind, canvas){
     $(kind + 'PauseBtn').hidden = s !== 'recording';
     $(kind + 'ResumeBtn').hidden = s !== 'paused';
     $(kind + 'StopBtn').hidden = !(s === 'recording' || s === 'paused');
+    $(kind + 'ShareBtn').hidden = !(s === 'complete' && ctrl.lastBlob && ctrl.shareable);
     $(kind + 'DownloadAgainBtn').hidden = !(s === 'complete' && ctrl.lastBlob);
+    $(kind + 'DownloadAgainLabel').textContent = ctrl.downloaded ? 'Download again' : 'Download';
     $(kind + 'RetryBtn').hidden = s !== 'error';
 
     const dot = $(kind + 'RecDot');
@@ -3635,9 +3682,11 @@ function makeRecorder(kind, canvas){
       ? watermarkHelperText(ctrl)
       : (ctrl.coveredMs === Infinity ? 'Recording preview.'
         : 'Recording. ' + (ctrl.cappedAtFree ? 'Free videos stay clean for ' : 'Credits cover ') + formatDuration(ctrl.coveredMs) + '.');
-    else if (s === 'paused') helper.textContent = 'Recording paused.';
+    else if (s === 'paused') helper.textContent = ctrl.autoPaused ? 'Paused while you were away — tap Resume to continue.' : 'Recording paused.';
     else if (s === 'processing') helper.textContent = mp4BackendAvailable ? 'Converting to MP4…' : 'Preparing download…';
-    else if (s === 'complete') helper.textContent = 'Recording ready — ' + formatBytes(ctrl.lastBlob ? ctrl.lastBlob.size : 0) + ' · ' + formatDuration(ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum) + '.';
+    else if (s === 'complete') helper.textContent = (ctrl.failedEarly ? 'Recording stopped early — saved what was recorded: ' : 'Recording ready — ')
+      + formatBytes(ctrl.lastBlob ? ctrl.lastBlob.size : 0) + ' · ' + formatDuration(ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum)
+      + (ctrl.shareable && !ctrl.saved ? '. Tap Save video to keep it.' : '.');
     else if (s === 'error') helper.textContent = ctrl.lastErrorText || 'Recording failed. Try again.';
   }
 
@@ -3658,6 +3707,8 @@ function makeRecorder(kind, canvas){
     draw(previewCtx, performance.now());
     setNote(kind, '');
     ctrl.lastBlob = null;
+    ctrl.shareable = false; ctrl.downloaded = false; ctrl.saved = false;
+    ctrl.finalized = false; ctrl.failedEarly = false; ctrl.autoPaused = false;
     let stream;
     try {
       stream = canvas.captureStream(30);
@@ -3679,78 +3730,162 @@ function makeRecorder(kind, canvas){
         ctrl.mimeType = '';
       }
     } catch (e) {
-      ctrl.lastErrorText = "This browser can't record canvas video.";
-      setState('error');
-      announce('Recording failed to start.');
+      failToStart();
       return;
     }
+    ctrl.stream = stream;
     ctrl.chunks = [];
     ctrl.mediaRecorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) ctrl.chunks.push(ev.data); };
-    ctrl.mediaRecorder.onstop = async () => {
-      ctrl.recEndWall = performance.now();
-      const recordedMs = ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum;
-      WTCCredits.chargeVideo(Math.min(recordedMs, ctrl.coveredMs));
-      if (ctrl.watermarkStarted || ctrl.coveredMs === 0) promptAfterWatermark('video', ctrl.watermarkStarted && ctrl.cappedAtFree);
-      setState('processing');
-      announce('Processing recording.');
+    // A recorder that dies mid-take (out of memory, the OS killing the
+    // encoder, the canvas track ending) still saves whatever it captured.
+    ctrl.mediaRecorder.onerror = () => failMidTake();
+    stream.getVideoTracks().forEach((t) => t.addEventListener('ended', () => failMidTake()));
+    ctrl.mediaRecorder.onstop = () => finalize();
+    try {
+      ctrl.mediaRecorder.start(1000);
+    } catch (e) {
+      stopStreamTracks();
+      failToStart();
+      return;
+    }
+    ctrl.recStartWall = performance.now();
+    ctrl.recPausedAccum = 0;
+    setState('recording');
+    acquireWakeLock();
+    announce('Recording started.');
+  };
+
+  function failToStart(){
+    ctrl.lastErrorText = "This browser can't record canvas video.";
+    releaseWakeLock();
+    setState('error');
+    announce('Recording failed to start.');
+  }
+
+  function failMidTake(){
+    if (ctrl.finalized || !(ctrl.state === 'recording' || ctrl.state === 'paused')) return;
+    ctrl.failedEarly = true;
+    const mr = ctrl.mediaRecorder;
+    if (mr && mr.state !== 'inactive'){
+      try { mr.stop(); return; } catch (e) {}
+    }
+    finalize(); // a dead recorder may never fire its stop event
+  }
+
+  function stopStreamTracks(){
+    // Only the canvas video track: the audio track belongs to the shared
+    // notification-sound node and is reused by the next take.
+    if (ctrl.stream) ctrl.stream.getVideoTracks().forEach((t) => t.stop());
+    ctrl.stream = null;
+  }
+
+  // Hands the finished file over. On phones the share sheet is the way into
+  // the gallery ("Save video"), and it needs a fresh tap, so the Save video
+  // button does it; everywhere else the file downloads straight away.
+  function deliver(blob, filename){
+    ctrl.lastBlob = blob;
+    ctrl.lastFilename = filename;
+    ctrl.shareable = canShareVideo(blob, filename);
+    if (!ctrl.shareable){
+      downloadBlob(blob, filename);
+      ctrl.downloaded = ctrl.saved = true;
+    }
+    setState('complete');
+  }
+
+  async function finalize(){
+    if (ctrl.finalized) return;
+    ctrl.finalized = true;
+    if (ctrl.state === 'paused') ctrl.recPausedAccum += performance.now() - ctrl.recPauseStart;
+    ctrl.recEndWall = performance.now();
+    releaseWakeLock();
+    stopStreamTracks();
+    if (!ctrl.chunks.length){
+      ctrl.lastErrorText = 'Recording failed before anything was saved. Try again.';
+      setState('error');
+      announce('Recording failed.');
+      return;
+    }
+    const recordedMs = Math.max(0, ctrl.recEndWall - ctrl.recStartWall - ctrl.recPausedAccum);
+    WTCCredits.chargeVideo(Math.min(recordedMs, ctrl.coveredMs));
+    if (ctrl.watermarkStarted || ctrl.coveredMs === 0) promptAfterWatermark('video', ctrl.watermarkStarted && ctrl.cappedAtFree);
+    setState('processing');
+    announce('Processing recording.');
+    try {
       const blob = new Blob(ctrl.chunks, { type: ctrl.mimeType || 'video/webm' });
       await mp4BackendCheckPromise;
       if (mp4BackendAvailable){
         try {
           const mp4Blob = await convertViaMp4Backend(blob);
-          ctrl.lastBlob = mp4Blob;
-          ctrl.lastFilename = `whatsapp-chat-${kind}-${Date.now()}.mp4`;
-          downloadBlob(mp4Blob, ctrl.lastFilename);
           setNote(kind, '');
-          setState('complete');
-          announce('Recording ready. Downloaded as MP4.');
+          deliver(mp4Blob, `whatsapp-chat-${kind}-${Date.now()}.mp4`);
+          announce(ctrl.downloaded ? 'Recording ready. Downloaded as MP4.' : 'Recording ready. Tap Save video.');
           return;
         } catch (err) {
           setNote(kind, err.code === 'rate_limit_exceeded'
             ? 'MP4 conversion limit reached — downloaded the original recording. ' + (err.retryAfter ? `Try converting again in ${err.retryAfter} seconds.` : 'Try converting again later.')
             : 'MP4 conversion failed — downloaded the original recording instead.');
         }
-      } else {
+      } else if (LOCAL_STUDIO){
         setNote(kind, 'MP4 backend not connected — downloaded the raw recording instead.');
       }
       const ext = (ctrl.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
-      ctrl.lastBlob = blob;
-      ctrl.lastFilename = `whatsapp-chat-${kind}-${Date.now()}.${ext}`;
-      downloadBlob(blob, ctrl.lastFilename);
-      setState('complete');
-      announce('Recording ready. Downloaded as ' + ext.toUpperCase() + '.');
-    };
-    ctrl.mediaRecorder.start(1000);
-    ctrl.recStartWall = performance.now();
-    ctrl.recPausedAccum = 0;
-    setState('recording');
-    announce('Recording started.');
-  };
+      deliver(blob, `whatsapp-chat-${kind}-${Date.now()}.${ext}`);
+      announce(ctrl.downloaded ? 'Recording ready. Downloaded as ' + ext.toUpperCase() + '.' : 'Recording ready. Tap Save video.');
+    } catch (e) {
+      ctrl.lastErrorText = 'Could not prepare the video. Try again.';
+      setState('error');
+      announce('Recording failed.');
+    }
+  }
 
-  ctrl.pause = function(){
+  // auto = paused because the page went to the background (see the
+  // visibilitychange handler in init()); the creator resumes by hand.
+  ctrl.pause = function(auto){
     if (ctrl.state !== 'recording') return;
-    if (ctrl.mediaRecorder.state === 'recording') ctrl.mediaRecorder.pause();
+    if (ctrl.mediaRecorder.state === 'recording'){
+      try { ctrl.mediaRecorder.pause(); } catch (e) {}
+    }
     ctrl.recPauseStart = performance.now();
+    ctrl.autoPaused = auto === true;
     setState('paused');
-    announce('Recording paused.');
+    announce(ctrl.autoPaused ? 'Recording paused while the studio was in the background.' : 'Recording paused.');
   };
 
   ctrl.resume = function(){
     if (ctrl.state !== 'paused') return;
-    if (ctrl.mediaRecorder.state === 'paused') ctrl.mediaRecorder.resume();
+    if (ctrl.mediaRecorder.state === 'paused'){
+      try { ctrl.mediaRecorder.resume(); } catch (e) {}
+    }
     ctrl.recPausedAccum += performance.now() - ctrl.recPauseStart;
+    ctrl.autoPaused = false;
     setState('recording');
+    acquireWakeLock();
     announce('Recording resumed.');
   };
 
   ctrl.stop = function(){
     if (!(ctrl.state === 'recording' || ctrl.state === 'paused')) return;
-    try { ctrl.mediaRecorder.stop(); } catch (e) {}
+    try { ctrl.mediaRecorder.stop(); } catch (e) { failMidTake(); }
+  };
+
+  ctrl.share = async function(){
+    if (!ctrl.lastBlob) return;
+    try {
+      await navigator.share({ files: [videoFile(ctrl.lastBlob, ctrl.lastFilename)] });
+      ctrl.saved = true;
+      setButtons();
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // closed the share sheet
+      ctrl.downloadAgain();
+    }
   };
 
   ctrl.downloadAgain = function(){
     if (!ctrl.lastBlob) return;
     downloadBlob(ctrl.lastBlob, ctrl.lastFilename);
+    ctrl.downloaded = ctrl.saved = true;
+    setButtons();
   };
 
   setButtons();
@@ -3844,6 +3979,16 @@ function startReplay(){
   setReplayButtons();
 }
 
+// Set when the page going to the background paused the replay, so resuming
+// the recording resumes it too (see resumeAfterBackground).
+let replayAutoPaused = false;
+
+function resumeAfterBackground(){
+  const resumeReplayToo = replayAutoPaused && replayState === 'paused';
+  fullRecorder.resume();
+  if (resumeReplayToo) resumeReplay();
+}
+
 function pauseReplay(){
   if (replayState !== 'playing') return;
   replayPauseStart = performance.now();
@@ -3853,6 +3998,7 @@ function pauseReplay(){
 
 function resumeReplay(){
   if (replayState !== 'paused') return;
+  replayAutoPaused = false;
   replayPausedAccum += performance.now() - replayPauseStart;
   replayState = 'playing';
   setReplayButtons();
@@ -3860,6 +4006,7 @@ function resumeReplay(){
 
 function stopReplay(){
   if (replayState === 'idle') return;
+  replayAutoPaused = false;
   replayState = 'idle';
   replayNextIndex = 0;
   setReplayButtons();
@@ -5606,8 +5753,9 @@ function init(){
 
   $('fullStartBtn').addEventListener('click', () => fullRecorder.start());
   $('fullPauseBtn').addEventListener('click', () => fullRecorder.pause());
-  $('fullResumeBtn').addEventListener('click', () => fullRecorder.resume());
+  $('fullResumeBtn').addEventListener('click', () => resumeAfterBackground());
   $('fullStopBtn').addEventListener('click', () => fullRecorder.stop());
+  $('fullShareBtn').addEventListener('click', () => fullRecorder.share());
   $('fullDownloadAgainBtn').addEventListener('click', () => fullRecorder.downloadAgain());
   $('fullRetryBtn').addEventListener('click', () => fullRecorder.start());
 
@@ -5670,6 +5818,22 @@ function init(){
   // refresh right after an edit reliably picks up the latest state too.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') persistCurrentProject().catch(() => {});
+  });
+
+  // Phones stop drawing in the background (app switch, a call, the lock
+  // screen), so a take that kept running would record a frozen frame and
+  // the replay clock would jump ahead on return. Pause both instead and let
+  // the creator pick up where they left off.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden'){
+      if (fullRecorder.state === 'recording') fullRecorder.pause(true);
+      if (replayState === 'playing'){ pauseReplay(); replayAutoPaused = true; }
+      return;
+    }
+    fullRecorder.reacquireWakeLock();
+    if (fullRecorder.state === 'paused' && fullRecorder.autoPaused){
+      showToast('Recording paused while you were away.', 'Resume', () => resumeAfterBackground());
+    }
   });
   window.addEventListener('pagehide', () => { persistCurrentProject().catch(() => {}); });
 }

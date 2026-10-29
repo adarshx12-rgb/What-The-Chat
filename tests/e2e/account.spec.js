@@ -16,7 +16,7 @@ async function latestMailLink(address){
 
 test('chip shows the balance and opens the account dialog', async ({ page }) => {
   await openStudio(page);
-  await expect(page.locator('#creditsChipText')).toHaveText('10 credits');
+  await expect(page.locator('#creditsChipText')).toHaveText('5 credits');
   await page.click('#creditsChip');
   await expect(page.locator('#accountDialog')).toBeVisible();
   await expect(page.locator('#signInSection')).toBeVisible();
@@ -31,10 +31,10 @@ test('chip updates after spending', async ({ page }) => {
   await expect(page.locator('#creditsChipText')).toHaveText('1 credit');
 });
 
-test('magic link converts the visitor and adds the 30 bonus once', async ({ page }) => {
+test('magic link converts the visitor and adds the 10 bonus once', async ({ page }) => {
   await openStudio(page);
   const visitorId = await page.evaluate(() => WTCCredits.userId());
-  await page.evaluate(() => WTCCredits.spendScreenshot()); // 9 left
+  await page.evaluate(() => WTCCredits.spendScreenshot()); // 4 left
   const email = `visitor-${Date.now()}@example.com`;
   await page.click('#creditsChip');
   await page.fill('#magicLinkEmail', email);
@@ -44,7 +44,7 @@ test('magic link converts the visitor and adds the 30 bonus once', async ({ page
   await page.goto(await latestMailLink(email));
   await expect.poll(() => page.evaluate(() => WTCCredits.get() && WTCCredits.get().email)).toBe(email);
   expect(await page.evaluate(() => WTCCredits.userId())).toBe(visitorId);
-  await expect(page.locator('#creditsChipText')).toHaveText('39 credits');
+  await expect(page.locator('#creditsChipText')).toHaveText('14 credits');
   await page.click('#creditsChip');
   await expect(page.locator('#accountSection')).toBeVisible();
   await expect(page.locator('#accountEmail')).toHaveText(email);
@@ -67,13 +67,13 @@ test('sign out starts a fresh visitor session', async ({ page }) => {
   const before = await page.evaluate(() => WTCCredits.userId());
   await page.evaluate(() => WTCCredits.signOut());
   expect(await page.evaluate(() => WTCCredits.userId())).not.toBe(before);
-  await expect(page.locator('#creditsChipText')).toHaveText('10 credits');
+  await expect(page.locator('#creditsChipText')).toHaveText('5 credits');
 });
 
 test('on a 390px phone the header still fits the chip and every button', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 860 });
   await openStudio(page);
-  await expect(page.locator('#creditsChipText')).toHaveText('10 credits');
+  await expect(page.locator('#creditsChipText')).toHaveText('5 credits');
   const rights = await page.evaluate(() => ['creditsChip', 'studioThemeBtn', 'openProjectsBtn']
     .map((id) => Math.round(document.getElementById(id).getBoundingClientRect().right)));
   for (const r of rights) expect(r).toBeLessThanOrEqual(390);

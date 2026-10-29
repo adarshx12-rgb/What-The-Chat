@@ -20,3 +20,9 @@ tests/playwright-report/
 
 # Local Edge Function secrets
 supabase/functions/.env*
+
+# Cloudflare Pages build output (npm run build)
+/dist/
+
+# Wrangler local cache
+/.wrangler/

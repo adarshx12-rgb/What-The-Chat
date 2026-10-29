@@ -1,4 +1,4 @@
-/* What The Chat — accounts and credits (Supabase).
+/* Texting Studio — accounts and credits (Supabase).
  * Every visitor gets an anonymous Supabase session so credits live on the
  * server. If Supabase is unreachable or unconfigured, the studio runs in
  * offline mode: 0 credits, and exports are watermarked (fail closed). */
@@ -178,7 +178,7 @@
   }
 
   function requireSignInAvailable(){
-    if (!canSignIn()) throw new Error('Sign-in works on whatthechat.com, not on a local file.');
+    if (!canSignIn()) throw new Error('Sign-in works on textingstudio.com, not on a local file.');
   }
 
   async function signInWithGoogle(){
@@ -270,7 +270,7 @@
         order_id: data.order_id,
         amount: data.amount,
         currency: data.currency,
-        name: 'What The Chat',
+        name: 'Texting Studio',
         description: (cfg.packCredits || 100) + ' credits',
         prefill: { email: (entitlement && entitlement.email) || '' },
         theme: { color: '#20BC59' },
@@ -296,7 +296,7 @@
       const rzp = new window.Razorpay({
         key: data.key_id,
         subscription_id: data.subscription_id,
-        name: 'What The Chat',
+        name: 'Texting Studio',
         description: yearly ? 'Pro, yearly' : 'Pro, monthly',
         prefill: { email: (entitlement && entitlement.email) || '' },
         theme: { color: '#20BC59' },

@@ -2,7 +2,7 @@
 
 ## Reporting a problem
 
-Email **support@whatthechat.com** (also in `/.well-known/security.txt`).
+Email **support@textingstudio.com** (also in `/.well-known/security.txt`).
 Please don't open a public GitHub issue for a security bug.
 
 ## What is protected, and where
@@ -27,9 +27,9 @@ design. A unit test fails if a page ships a secret key.
 `supabase/config.toml` only configures the local stack. Mirror these in the
 hosted project:
 
-- **Authentication > URL Configuration:** Site URL `https://whatthechat.com/app/`;
-  redirect URLs only `https://whatthechat.com/app/**` and
-  `https://www.whatthechat.com/app/**`.
+- **Authentication > URL Configuration:** Site URL `https://textingstudio.com/app/`;
+  redirect URLs only `https://textingstudio.com/app/**` and
+  `https://www.textingstudio.com/app/**`.
 - **Authentication > Email:** confirm email ON, secure email change ON,
   OTP / magic link expiry **900 s**, resend interval 60 s.
 - **Authentication > Passwords:** minimum length 10, letters + digits (the

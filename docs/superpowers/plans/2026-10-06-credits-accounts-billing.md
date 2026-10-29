@@ -32,8 +32,8 @@
 | Admin | Verified email on `private.admin_emails` → `admin:true`, treated as Pro forever (never charged, never watermarked, billing refuses checkout). List filled by hand in the dashboard, never committed. |
 | Login methods | Google + email magic link |
 | Payments | Razorpay International (Subscriptions) |
-| Support inbox | `support@whatthechat.com` via Cloudflare Email Routing (receive only) |
-| Sign-in email sending | Custom SMTP (Resend) from `no-reply@whatthechat.com`; Cloudflare can't send |
+| Support inbox | `support@textingstudio.com` via Cloudflare Email Routing (receive only) |
+| Sign-in email sending | Custom SMTP (Resend) from `no-reply@textingstudio.com`; Cloudflare can't send |
 | Supabase project | URL `https://qmlhbpwbhcdefwbixcrh.supabase.co`, anon key given in chat (public, safe to commit) |
 
 ## Global Constraints
@@ -117,7 +117,7 @@ Set these keys. Each one already exists in the generated file, so edit it in pla
 ```toml
 [auth]
 site_url = "http://127.0.0.1:8080/app/index.html"
-additional_redirect_urls = ["http://127.0.0.1:8080/**", "http://localhost:8080/**", "https://whatthechat.com/**"]
+additional_redirect_urls = ["http://127.0.0.1:8080/**", "http://localhost:8080/**", "https://textingstudio.com/**"]
 enable_anonymous_sign_ins = true
 enable_manual_linking = true
 
@@ -229,7 +229,7 @@ Expected: FAIL. `private.app_settings` / `public.ensure_grants` do not exist.
 - [ ] **Step 5: Write the migration** `supabase/migrations/20261006120000_credits.sql`
 
 ```sql
--- Credits for What The Chat. Clients can only read their own rows; every
+-- Credits for Texting Studio. Clients can only read their own rows; every
 -- balance change goes through the security-definer functions below.
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
@@ -452,7 +452,7 @@ git commit -m "feat(credits): schema, RLS and credit RPCs with pgTAP tests"
 
 ```json
 {
-  "name": "what-the-chat-tests",
+  "name": "texting-studio-tests",
   "private": true,
   "scripts": {
     "unit": "node --test unit/",
@@ -526,7 +526,7 @@ Expected: FAIL, `Cannot find module '../../assets/credits-core.js'`.
 - [ ] **Step 4: Write `assets/credits-core.js`**
 
 ```js
-/* What The Chat — credit math shared by the studio and the unit tests.
+/* Texting Studio — credit math shared by the studio and the unit tests.
  * Must match public.spend_credits in supabase/migrations (1 credit per
  * started 3 seconds of video, 1 per screenshot). */
 (function (root, factory) {
@@ -754,7 +754,7 @@ window.WTC_CONFIG = {
 - [ ] **Step 6: Write `assets/credits.js`**
 
 ```js
-/* What The Chat — accounts and credits (Supabase).
+/* Texting Studio — accounts and credits (Supabase).
  * Every visitor gets an anonymous Supabase session so credits live on the
  * server. If Supabase is unreachable or unconfigured, the studio runs in
  * offline mode: 0 credits, and exports are watermarked (fail closed). */
@@ -895,7 +895,7 @@ window.WTC_CONFIG = {
   }
 
   function requireSignInAvailable(){
-    if (!canSignIn()) throw new Error('Sign-in works on whatthechat.com, not on a local file.');
+    if (!canSignIn()) throw new Error('Sign-in works on textingstudio.com, not on a local file.');
   }
 
   async function signInWithGoogle(){
@@ -1077,10 +1077,10 @@ function drawWatermark(ctx){
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = '700 58px ChatInter, "Segoe UI", sans-serif';
-  ctx.fillText('Made with What The Chat', x + w / 2, y + 78);
+  ctx.fillText('Made with Texting Studio', x + w / 2, y + 78);
   ctx.font = '500 40px ChatInter, "Segoe UI", sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.fillText('whatthechat.com', x + w / 2, y + 144);
+  ctx.fillText('textingstudio.com', x + w / 2, y + 144);
   ctx.restore();
 }
 
@@ -1427,7 +1427,7 @@ Expected: FAIL, `#creditsChipText` not found.
 
     <section id="signInSection" class="accountBlock">
       <h3>Sign in for 40 free credits a month</h3>
-      <p class="helperText" id="signInFileNote" hidden>Sign-in works on whatthechat.com, not when the studio is opened as a local file.</p>
+      <p class="helperText" id="signInFileNote" hidden>Sign-in works on textingstudio.com, not when the studio is opened as a local file.</p>
       <button type="button" class="btnBlock" id="googleSignInBtn">Continue with Google</button>
       <form id="magicLinkForm" novalidate>
         <label for="magicLinkEmail">Email</label>
@@ -2001,7 +2001,7 @@ Expected: FAIL, `#planCard` not found.
       const rzp = new window.Razorpay({
         key: data.key_id,
         subscription_id: data.subscription_id,
-        name: 'What The Chat',
+        name: 'Texting Studio',
         description: 'Pro, monthly',
         prefill: { email: (entitlement && entitlement.email) || '' },
         theme: { color: '#20BC59' },
@@ -2166,9 +2166,9 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
 test('refund policy exists, is canonical and in the sitemap', () => {
   const html = read('refund-policy.html');
-  assert.match(html, /<link rel="canonical" href="https:\/\/whatthechat\.com\/refund-policy\.html">/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/textingstudio\.com\/refund-policy\.html">/);
   assert.match(html, /<h1>Refund &amp; cancellation policy<\/h1>/);
-  assert.match(read('sitemap.xml'), /<loc>https:\/\/whatthechat\.com\/refund-policy\.html<\/loc>/);
+  assert.match(read('sitemap.xml'), /<loc>https:\/\/textingstudio\.com\/refund-policy\.html<\/loc>/);
 });
 
 test('every page links the refund policy', () => {
@@ -2187,7 +2187,7 @@ test('privacy policy names the new processors', () => {
 test('contact page uses the real support address', () => {
   const html = read('contact.html');
   assert.doesNotMatch(html, /example\.com/);
-  assert.match(html, /href="mailto:support@whatthechat\.com">support@whatthechat\.com<\/a>/);
+  assert.match(html, /href="mailto:support@textingstudio\.com">support@textingstudio\.com<\/a>/);
 });
 
 test('no page ships the service role key', () => {
@@ -2202,12 +2202,12 @@ Run: `cd tests && npm run unit`. Expected: FAIL on the refund-policy tests.
 - [ ] **Step 2: Create `refund-policy.html`**
 
 Copy `terms-and-conditions.html` exactly, then change only these:
-- `<title>`, `og:title`, `twitter:title` → `Refund &amp; Cancellation Policy | What The Chat`
-- `description`, `og:description`, `twitter:description` → `How What The Chat Pro subscriptions renew, how to cancel, and when refunds are given for unused or duplicate charges.`
-- canonical / `og:url` / JSON-LD `@id` and `url` → `https://whatthechat.com/refund-policy.html`; JSON-LD `name` → `Refund & Cancellation Policy | What The Chat`
-- breadcrumb current page → `Refund &amp; cancellation`; eyebrow → `Billing`; `<h1>Refund &amp; cancellation policy</h1>`; intro → `This policy covers What The Chat Pro, the paid monthly plan.`
+- `<title>`, `og:title`, `twitter:title` → `Refund &amp; Cancellation Policy | Texting Studio`
+- `description`, `og:description`, `twitter:description` → `How Texting Studio Pro subscriptions renew, how to cancel, and when refunds are given for unused or duplicate charges.`
+- canonical / `og:url` / JSON-LD `@id` and `url` → `https://textingstudio.com/refund-policy.html`; JSON-LD `name` → `Refund & Cancellation Policy | Texting Studio`
+- breadcrumb current page → `Refund &amp; cancellation`; eyebrow → `Billing`; `<h1>Refund &amp; cancellation policy</h1>`; intro → `This policy covers Texting Studio Pro, the paid monthly plan.`
 - side nav links → `#subscription` Subscriptions, `#cancel` Cancelling, `#refunds` Refunds, `#free` Free credits, `#delivery` Delivery, `#contact` Contact
-- window-bar label → `What The Chat / Refund &amp; cancellation`
+- window-bar label → `Texting Studio / Refund &amp; cancellation`
 - document body sections:
 
 ```html
@@ -2232,7 +2232,7 @@ Add a section after the existing data sections (keep the side-nav in sync with a
 Add a section (and side-nav link `#credits`):
 
 ```html
-<section id="credits"><h2>Credits and Pro</h2><p>Exports use credits: 1 per screenshot and 1 per started 3 seconds of video. Visitors receive 20 free credits; signed-in accounts receive 40 when they first sign in and 40 each month after that. When credits run out, exports carry a What The Chat watermark. Pro removes the limit and the watermark while your subscription is active. Credits have no cash value. We may change free credit amounts for future grants. Billing, cancellation and refunds are covered by our <a href="refund-policy.html">refund &amp; cancellation policy</a>.</p></section>
+<section id="credits"><h2>Credits and Pro</h2><p>Exports use credits: 1 per screenshot and 1 per started 3 seconds of video. Visitors receive 20 free credits; signed-in accounts receive 40 when they first sign in and 40 each month after that. When credits run out, exports carry a Texting Studio watermark. Pro removes the limit and the watermark while your subscription is active. Credits have no cash value. We may change free credit amounts for future grants. Billing, cancellation and refunds are covered by our <a href="refund-policy.html">refund &amp; cancellation policy</a>.</p></section>
 ```
 
 - [ ] **Step 5: Add the refund link to every footer and the studio**
@@ -2241,14 +2241,14 @@ In each footer `<nav aria-label="Footer">`, add `<a href="refund-policy.html">Re
 
 - [ ] **Step 5b: Replace the placeholder support address in `contact.html`**
 
-The support inbox is `support@whatthechat.com`, delivered by Cloudflare Email Routing (Task 10). On line ~39, replace the HTML comment, the placeholder link and the "temporary placeholder" paragraph:
+The support inbox is `support@textingstudio.com`, delivered by Cloudflare Email Routing (Task 10). On line ~39, replace the HTML comment, the placeholder link and the "temporary placeholder" paragraph:
 
 ```html
 <!-- Replace this placeholder with your public support address before launch. --><p><a class="button" href="mailto:support@example.com">support@example.com</a></p><p>This is a temporary placeholder address. Support by email will be available once our contact details are updated.</p>
 ```
 with:
 ```html
-<p><a class="button" href="mailto:support@whatthechat.com">support@whatthechat.com</a></p><p>We usually reply within two working days. For billing questions, include the email on your account.</p>
+<p><a class="button" href="mailto:support@textingstudio.com">support@textingstudio.com</a></p><p>We usually reply within two working days. For billing questions, include the email on your account.</p>
 ```
 Then remove the "Contact details" placeholder paragraph from `DEPLOYMENT.md` (it says `contact.html` uses `support@example.com`).
 
@@ -2257,7 +2257,7 @@ Then remove the "Contact details" placeholder paragraph from `DEPLOYMENT.md` (it
 Add after the terms entry:
 
 ```xml
-  <url><loc>https://whatthechat.com/refund-policy.html</loc></url>
+  <url><loc>https://textingstudio.com/refund-policy.html</loc></url>
 ```
 
 - [ ] **Step 7: Run tests and commit**
@@ -2297,35 +2297,35 @@ Expected: `Applying migration 20261006120000_credits.sql... Finished`. `seed.sql
   - Authorized redirect URI: `https://qmlhbpwbhcdefwbixcrh.supabase.co/auth/v1/callback`.
   - Paste the Client ID and Secret into Supabase.
 - **Authentication → URL Configuration:**
-  - Site URL `https://whatthechat.com/app/`
-  - Redirect URLs `https://whatthechat.com/**`, `http://127.0.0.1:8080/**`, `http://localhost:8080/**`
+  - Site URL `https://textingstudio.com/app/`
+  - Redirect URLs `https://textingstudio.com/**`, `http://127.0.0.1:8080/**`, `http://localhost:8080/**`
 - **Authentication → Rate Limits:** keep the anonymous sign-in limit at 30/hour per IP.
 
 - [ ] **Step 2b: Email — receiving with Cloudflare, sending with an SMTP provider (creator)**
 
 Cloudflare Email Routing only **receives and forwards** mail. It cannot send, so Supabase's sign-in links need a separate sending service. Supabase's built-in mailer is for testing only: a few emails per hour, which would break magic-link sign-in at launch.
 
-1. **Receiving (Cloudflare Email Routing).** This needs `whatthechat.com`'s DNS on Cloudflare.
+1. **Receiving (Cloudflare Email Routing).** This needs `textingstudio.com`'s DNS on Cloudflare.
    - Go to Email → Email Routing → enable it. Cloudflare adds its MX + SPF records itself.
    - Add a destination address (your personal inbox) and confirm it.
-   - Create a custom address `support@whatthechat.com` → forward to that inbox.
-   - Send a test mail to `support@whatthechat.com` and check it arrives.
+   - Create a custom address `support@textingstudio.com` → forward to that inbox.
+   - Send a test mail to `support@textingstudio.com` and check it arrives.
 2. **Sending (Resend; free tier is 3,000 emails/month and 100/day).**
-   - Sign up, then Domains → add `whatthechat.com`. Use the subdomain option `send.whatthechat.com` if offered, so it doesn't clash with Cloudflare's root MX/SPF.
+   - Sign up, then Domains → add `textingstudio.com`. Use the subdomain option `send.textingstudio.com` if offered, so it doesn't clash with Cloudflare's root MX/SPF.
    - Add the shown DKIM/SPF/MX records in Cloudflare DNS as **DNS only** (grey cloud), then click Verify.
    - Do **not** add a second SPF record on the root domain. If Resend asks for root SPF, merge its `include:` into Cloudflare's existing `v=spf1 … ~all` record.
    - Create an API key.
 3. **Supabase → Authentication → Emails → SMTP Settings:** enable custom SMTP with these values:
    - host `smtp.resend.com`, port `465`
    - user `resend`, password = the Resend API key
-   - sender `no-reply@whatthechat.com`, sender name `What The Chat`
+   - sender `no-reply@textingstudio.com`, sender name `Texting Studio`
    - Then raise **Rate Limits → emails per hour** to 100.
-4. **Supabase → Authentication → Emails → Templates:** set the Magic Link and Change Email subjects to "Your What The Chat sign-in link". The body keeps `{{ .ConfirmationURL }}`.
-5. **Replies from Gmail** show your personal address, because Cloudflare can't send. That's fine to start with. To reply *as* `support@whatthechat.com`, add it in Gmail → Settings → Accounts → "Send mail as", using Resend's SMTP (same host and credentials as above).
+4. **Supabase → Authentication → Emails → Templates:** set the Magic Link and Change Email subjects to "Your Texting Studio sign-in link". The body keeps `{{ .ConfirmationURL }}`.
+5. **Replies from Gmail** show your personal address, because Cloudflare can't send. That's fine to start with. To reply *as* `support@textingstudio.com`, add it in Gmail → Settings → Accounts → "Send mail as", using Resend's SMTP (same host and credentials as above).
 
 - [ ] **Step 3: Razorpay dashboard (creator)**
 
-1. **Account & Settings → International payments:** request activation. Razorpay reviews the website: privacy, terms, refund policy and contact pages. Use `support@whatthechat.com` (Task 9 Step 5b) as the support email on the Razorpay account too, and make sure Step 2b's forwarding works first, since Razorpay may email it.
+1. **Account & Settings → International payments:** request activation. Razorpay reviews the website: privacy, terms, refund policy and contact pages. Use `support@textingstudio.com` (Task 9 Step 5b) as the support email on the Razorpay account too, and make sure Step 2b's forwarding works first, since Razorpay may email it.
 2. **Subscriptions → Plans:** create two monthly plans: `Pro USD` $8 and `Pro INR` ₹499. Copy both plan IDs.
 3. **Account & Settings → API Keys:** generate keys (start in Test mode).
 4. **Account & Settings → Webhooks:** add `https://qmlhbpwbhcdefwbixcrh.supabase.co/functions/v1/razorpay-webhook`.
@@ -2355,7 +2355,7 @@ Then sign in to the studio with that email (Google or email link). The chip read
 On the deployed site (or `npx http-server . -p 8080` with the real config):
 - chip shows 20 credits;
 - sign in with Google → 60 credits (20 + 40), same user ID as the visitor;
-- in a private window, sign in with the email link → the email arrives from `no-reply@whatthechat.com` within a minute (not in spam);
+- in a private window, sign in with the email link → the email arrives from `no-reply@textingstudio.com` within a minute (not in spam);
 - Upgrade → pay with a Razorpay test card → chip shows Pro within a minute;
 - Cancel → "stays active until…".
 

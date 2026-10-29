@@ -1,4 +1,4 @@
-/* What The Chat — credit math shared by the studio and the unit tests.
+/* Texting Studio — credit math shared by the studio and the unit tests.
  * Must match public.spend_credits in supabase/migrations (1 credit per
  * started 3 seconds of video, 1 per screenshot). Free videos are clean for
  * at most 60 s; past that (or past the balance) the rest is watermarked. */

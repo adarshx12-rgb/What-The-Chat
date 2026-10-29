@@ -1,4 +1,4 @@
--- What The Chat: monitoring queries. Paste one block at a time into the
+-- Texting Studio: monitoring queries. Paste one block at a time into the
 -- Supabase SQL editor (it runs as postgres, so private tables are visible).
 -- Read-only. Nothing here exposes emails or raw IP addresses.
 

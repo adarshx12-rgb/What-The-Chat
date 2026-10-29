@@ -1,5 +1,5 @@
 {
-  "name": "what-the-chat-tests",
+  "name": "texting-studio-tests",
   "private": true,
   "scripts": {
     "unit": "node --test unit/*.test.js",

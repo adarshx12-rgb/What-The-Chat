@@ -1,5 +1,5 @@
-Contact: mailto:support@whatthechat.com
+Contact: mailto:support@textingstudio.com
 Expires: 2027-10-10T00:00:00.000Z
 Preferred-Languages: en
-Canonical: https://whatthechat.com/.well-known/security.txt
-Policy: https://whatthechat.com/contact.html
+Canonical: https://textingstudio.com/.well-known/security.txt
+Policy: https://textingstudio.com/contact
