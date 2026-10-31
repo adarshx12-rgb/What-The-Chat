@@ -1507,7 +1507,7 @@ function getPlatformTokens(){
     padTop: BUBBLE_PAD_TOP, padBottom: BUBBLE_PAD_BOTTOM, chatPadX: CHAT_PAD_X,
     gapSame: BUBBLE_GAP, gapGroup: BUBBLE_GAP + GROUP_GAP_EXTRA,
     dateChipH: 46, dateFont: '600 24px', dateRadius: 10,
-    avatarR: 40, statusTimeSize: state.platform === 'ios' ? 42 : 36, composerFont: 38 };
+    avatarR: 40, statusTimeSize: state.platform === 'ios' ? 44 : 36, composerFont: 38 };
   if (state.generation === 'classic') return { ...base,
     avatarR: 50,
     headerNameSize: state.platform === 'ios' ? 44 : 46,
@@ -2198,20 +2198,34 @@ function drawChargingBolt(ctx, cx, cy, h, color, outline){
   ctx.restore();
 }
 
-// Keep the clock's visible digits centred on the system icons. Canvas's
-// "middle" baseline centres the font's em box, which varies by platform/font.
+// System clocks use stable digit spacing and a vertically centred time colon.
+// Lay these out explicitly: canvas doesn't expose font-variant-numeric, and
+// browsers without canvas letterSpacing must produce the same recording.
+// Measure all digits for one baseline so changing 1:11 to 8:08 cannot move it.
 function drawStatusClock(ctx, tokens, x, cy, align = 'left'){
   const isIOS = state.platform === 'ios';
   const clock = statusClockText();
   ctx.save();
   ctx.font = (isIOS ? '600 ' : '500 ') + tokens.statusTimeSize + 'px ' + tokens.font;
-  ctx.textAlign = align;
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  if ('letterSpacing' in ctx) ctx.letterSpacing = isIOS ? '-0.75px' : '0px';
-  const metrics = ctx.measureText(clock);
-  const ascent = metrics.actualBoundingBoxAscent;
-  const descent = metrics.actualBoundingBoxDescent;
-  ctx.fillText(clock, x, Math.round(cy + (ascent - descent) / 2));
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  if ('fontKerning' in ctx) ctx.fontKerning = 'none';
+  const digits = ctx.measureText('0123456789');
+  const colon = ctx.measureText(':');
+  const digitW = ctx.measureText('0').width;
+  const colonW = tokens.statusTimeSize * (isIOS ? 0.23 : 0.25);
+  const tracking = isIOS ? -0.6 : 0;
+  const width = (clock.length - 1) * digitW + colonW + (clock.length - 1) * tracking;
+  const baseline = cy + (digits.actualBoundingBoxAscent - digits.actualBoundingBoxDescent) / 2;
+  const colonBaseline = cy + (colon.actualBoundingBoxAscent - colon.actualBoundingBoxDescent) / 2;
+  let cursor = align === 'center' ? x - width / 2 : x;
+  for (const char of clock){
+    const isColon = char === ':';
+    const cellW = isColon ? colonW : digitW;
+    ctx.fillText(char, cursor + cellW / 2, isColon ? colonBaseline : baseline);
+    cursor += cellW + tracking;
+  }
   ctx.restore();
 }
 
@@ -2594,12 +2608,19 @@ function mediaLabel(media){
   return media.type === 'video' ? 'Video' : 'Photo';
 }
 
-/* ---------- Voice call messages (m.call = { missed }) ----------
- * WhatsApp's in-chat call bubble: a round icon, "Voice call" and the
- * duration (the message text) or a missed-call line, with the time and no
- * ticks. Only Gen 2/3: Gen 1 (pre-2024) showed calls differently, so call
- * messages are hidden there and the editor button is disabled. */
-const CALL_ICON_D = 104, CALL_ICON_GAP = 24, CALL_BUBBLE_H = 172, CALL_MIN_W = 400;
+/* ---------- Voice/video call messages ----------
+ * The inset call card, icon and timestamp share one measured layout.
+ * Gen 1 deliberately keeps call cards hidden. Reference captures and
+ * remaining platform/version differences are recorded in CHAT-UI-AUDIT.md. */
+function getCallTokens(tokens){
+  const ios = state.platform === 'ios';
+  return { pad: ios ? 34 : 32, iconD: ios ? 120 : 112, gap: 24,
+    height: ios ? 192 : 188, inset: 10,
+    radius: Math.max(20, tokens.bubbleRadius - 10),
+    titleSize: 44, subSize: 40, timeSize: ios ? 32 : tokens.tsFontSize,
+    titleY: 76, subY: ios ? 138 : 132, timeY: ios ? 150 : 146,
+    minWidth: ios ? 520 : 480, actionH: 98 };
+}
 function callShown(m){ return !!(m && m.call) && state.generation !== 'classic'; }
 function callTexts(m){
   const missed = !!m.call.missed;
@@ -2609,38 +2630,45 @@ function callTexts(m){
   if (missed) return { title: name, sub: 'No answer', red: false };
   return { title: name, sub: formatCallDuration(m.call), red: false };
 }
-/* WhatsApp-style call length: "45 min", "1 hr", "1 hr 20 min". 0 hours is
- * never shown; a call is at least 1 minute. */
+// Short calls show seconds. Older projects without seconds keep their
+// minute-based duration; iOS abbreviations are invariant, Android pluralizes.
 function formatCallDuration(call){
   const h = Math.max(0, Math.min(99, Math.floor(call.h || 0)));
-  let min = Math.max(0, Math.min(59, Math.floor(call.min || 0)));
-  if (!h && !min) min = 1;
-  if (!h) return min + ' min';
-  return min ? h + ' hr ' + min + ' min' : h + ' hr';
+  const min = Math.max(0, Math.min(59, Math.floor(call.min || 0)));
+  const sec = Math.max(0, Math.min(59, Math.floor(call.sec || 0)));
+  const unit = (n, label) => n + ' ' + label + (state.platform === 'android' && n > 1 ? 's' : '');
+  if (!h && !min) return sec ? sec + ' sec' : (call.sec === undefined ? '1 min' : '1 sec');
+  if (!h) return unit(min, 'min');
+  return unit(h, 'hr') + (min ? ' ' + unit(min, 'min') : '');
 }
 // Older call messages stored a free-text duration in m.text ("2 min", "1 hour").
 function parseCallText(text){
   const s = String(text || '').toLowerCase();
-  const h = /(\d+)\s*h/.exec(s), mm = /(\d+)\s*m/.exec(s);
-  let hours = h ? +h[1] : 0, mins = mm ? +mm[1] : 0;
-  if (!h && !mm){ const n = /(\d+)/.exec(s); mins = n ? +n[1] : 2; }
+  const h = /(\d+)\s*h/.exec(s), mm = /(\d+)\s*m/.exec(s), ss = /(\d+)\s*s/.exec(s);
+  let hours = h ? +h[1] : 0, mins = mm ? +mm[1] : 0, secs = ss ? +ss[1] : 0;
+  if (!h && !mm && !ss){ const n = /(\d+)/.exec(s); mins = n ? +n[1] : 2; }
+  mins += Math.floor(secs / 60); secs %= 60;
   hours += Math.floor(mins / 60); mins %= 60;
-  return { h: Math.min(99, hours), min: mins };
+  return { h: Math.min(99, hours), min: mins, sec: secs };
 }
 function callLabel(m){ return callTexts(m).title; }
 
 function drawCallIcon(ctx, cx, cy, d, dark, red, outgoing, video){
   ctx.save();
-  ctx.fillStyle = dark ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.06)';
+  ctx.fillStyle = dark ? 'rgba(255,255,255,.09)' : 'rgba(255,255,255,.8)';
   ctx.beginPath(); ctx.arc(cx, cy, d / 2, 0, Math.PI * 2); ctx.fill();
-  const color = red ? '#f15c6d' : (dark ? '#aebac1' : '#667781');
-  const s = d * 0.46;
+  const color = red ? (dark ? '#f15c6d' : '#ff0055') : (dark ? '#b9c2c8' : (state.platform === 'ios' ? '#0b0b0b' : '#4b5358'));
+  const s = d * 0.48;
   if (video){
-    // Camera with the direction arrow drawn on its body, like WhatsApp's video call log icon.
-    drawMaterialSymbol(ctx, 'videocam', cx, cy, s * 1.1, color);
-    ctx.fillStyle = dark ? '#2a3942' : '#ffffff';
-    const bx = cx - s * 0.12, by = cy, L2 = s * 0.3, dir = outgoing ? 1 : -1;
-    ctx.strokeStyle = dark ? 'rgba(0,0,0,.55)' : '#ffffff'; ctx.lineWidth = Math.max(3, d * 0.04);
+    // Filled camera with a contrasting direction arrow (not the outlined
+    // header icon). The arrow remains legible on both light and dark cards.
+    ctx.fillStyle = color;
+    roundRectPath(ctx, cx - s * 0.48, cy - s * 0.32, s * 0.64, s * 0.64, {tl:5,tr:5,br:5,bl:5}); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx + s * 0.2, cy - s * 0.15);
+    ctx.lineTo(cx + s * 0.42, cy - s * 0.3); ctx.lineTo(cx + s * 0.42, cy + s * 0.3);
+    ctx.lineTo(cx + s * 0.2, cy + s * 0.15); ctx.closePath(); ctx.fill();
+    const bx = cx - s * 0.16, by = cy, L2 = s * 0.3, dir = outgoing ? 1 : -1;
+    ctx.strokeStyle = dark ? '#263238' : '#ffffff'; ctx.lineWidth = Math.max(3, d * 0.04);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     const tip = [bx + dir * L2 / 2, by - dir * L2 / 2], tail = [bx - dir * L2 / 2, by + dir * L2 / 2], H = L2 * 0.6;
     ctx.beginPath(); ctx.moveTo(tail[0], tail[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
@@ -2648,7 +2676,7 @@ function drawCallIcon(ctx, cx, cy, d, dark, red, outgoing, video){
     ctx.restore();
     return;
   }
-  drawMaterialSymbol(ctx, 'call', cx - s * 0.06, cy + s * 0.06, s, color);
+  drawPhoneCallIcon(ctx, cx - s * 0.06, cy + s * 0.06, s / 24, color);
   // Direction arrow at the handset's top right: up-right for a call you
   // made, down-left for one you received.
   const ax = cx + s * 0.2, ay = cy - s * 0.2, L = s * 0.36;
@@ -2658,6 +2686,53 @@ function drawCallIcon(ctx, cx, cy, d, dark, red, outgoing, video){
   ctx.strokeStyle = color; ctx.lineWidth = Math.max(3, d * 0.045); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.beginPath(); ctx.moveTo(tail[0], tail[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(tip[0] + hx * H, tip[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(tip[0], tip[1] + hy * H); ctx.stroke();
+  ctx.restore();
+}
+
+function callActionText(m){
+  if (state.generation !== 'current' || m.sender !== 'me' || !m.call.missed) return '';
+  return m.call.video ? 'Record video message' : 'Record voice message';
+}
+
+function measureCallCard(ctx, tokens, m){
+  const layout = getCallTokens(tokens), text = callTexts(m), action = callActionText(m);
+  const textX = layout.pad + layout.iconD + layout.gap;
+  ctx.font = '600 ' + layout.titleSize + 'px ' + tokens.font;
+  const titleW = ctx.measureText(text.title).width;
+  ctx.font = layout.subSize + 'px ' + tokens.font;
+  const subW = ctx.measureText(text.sub).width;
+  ctx.font = layout.timeSize + 'px ' + tokens.font;
+  const timeW = ctx.measureText(to12h(m.time || '00:00')).width;
+  ctx.font = '500 40px ' + tokens.font;
+  const actionW = action ? ctx.measureText(action).width + layout.pad * 2 : 0;
+  const w = Math.min(MAX_BUBBLE_W, Math.max(layout.minWidth, textX + Math.max(titleW, subW + 24 + timeW) + layout.pad, actionW));
+  return { ...layout, text, action, textX, w, h: layout.height + (action ? layout.actionH : 0) };
+}
+
+function drawCallCard(ctx, tokens, chromeMode, m, card, x, y){
+  const dark = chromeMode === 'dark', ios = state.platform === 'ios';
+  ctx.save();
+  ctx.fillStyle = dark ? 'rgba(0,0,0,.09)' : 'rgba(0,0,0,.025)';
+  const r = card.radius;
+  roundRectPath(ctx, x + card.inset, y + card.inset, card.w - card.inset * 2, card.height - card.inset * 2, {tl:r,tr:r,br:r,bl:r}); ctx.fill();
+  drawCallIcon(ctx, x + card.pad + card.iconD / 2, y + card.height / 2, card.iconD, dark, card.text.red, m.sender === 'me', !!m.call.video);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = '600 ' + card.titleSize + 'px ' + tokens.font;
+  ctx.fillStyle = dark ? '#e9edef' : (ios ? '#0b0b0b' : '#111b21');
+  ctx.fillText(card.text.title, x + card.textX, y + card.titleY);
+  ctx.font = card.subSize + 'px ' + tokens.font;
+  ctx.fillStyle = dark ? '#aebac1' : (ios ? '#8a8a8e' : '#667781');
+  ctx.fillText(card.text.sub, x + card.textX, y + card.subY);
+  ctx.font = card.timeSize + 'px ' + tokens.font;
+  ctx.textAlign = 'right';
+  ctx.fillText(to12h(m.time || '00:00'), x + card.w - card.pad, y + card.timeY);
+  if (card.action){
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.08)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x + card.inset, y + card.height); ctx.lineTo(x + card.w - card.inset, y + card.height); ctx.stroke();
+    ctx.fillStyle = dark ? '#71d9a1' : '#008069'; ctx.font = '500 40px ' + tokens.font;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(card.action, x + card.w / 2, y + card.height + card.actionH / 2);
+  }
   ctx.restore();
 }
 
@@ -2730,7 +2805,7 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
     const textSize = emojiCount > 0 && emojiCount <= 3 ? [0, 96, 80, 64][emojiCount] : MSG_FONT_SIZE;
     const textLineHeight = textSize > MSG_FONT_SIZE ? Math.ceil(textSize * 1.3) : LINE_HEIGHT;
     const font = textSize + 'px ' + tokens.font;
-    let lines, h, w, quote = null, media = null;
+    let lines, h, w, quote = null, media = null, callCard = null;
     if (m.deleted){
       const delText = m.sender === 'me' ? 'You deleted this message' : 'This message was deleted';
       lines = [delText];
@@ -2744,17 +2819,10 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
       const delInlineW = contentW + ctx.measureText(to12h(m.time || '00:00')).width + 20 + BUBBLE_PAD_X * 2;
       if (delInlineW <= MAX_BUBBLE_W){ w = Math.max(w, delInlineW); h -= TS_ROW_H; }
     } else if (m.call){
-      const ct = callTexts(m);
-      ctx.font = '600 ' + MSG_FONT_SIZE + 'px ' + tokens.font;
-      const titleW = ctx.measureText(ct.title).width;
-      ctx.font = Math.round(MSG_FONT_SIZE * 0.92) + 'px ' + tokens.font;
-      const subW = ctx.measureText(ct.sub).width;
-      ctx.font = TS_FONT_SIZE + 'px ' + tokens.font;
-      const tsW = ctx.measureText(to12h(m.time || '00:00')).width;
-      const textW = Math.max(titleW, subW + 28 + tsW);
+      callCard = measureCallCard(ctx, tokens, m);
       lines = [];
-      w = Math.max(CALL_MIN_W, Math.min(MAX_BUBBLE_W, BUBBLE_PAD_X * 2 + CALL_ICON_D + CALL_ICON_GAP + textW));
-      h = CALL_BUBBLE_H;
+      w = callCard.w;
+      h = callCard.h;
     } else {
       quote = buildQuoteInfo(ctx, tokens, m);
       if (m.media){
@@ -2794,7 +2862,7 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
     const firstInGroup = i === 0 || state.messages[i - 1].sender !== m.sender || state.messages[i - 1].date !== m.date;
     const nextMsg = i + 1 < visibleCount ? state.messages[i + 1] : null;
     const lastInGroup = !nextMsg || nextMsg.sender !== m.sender || nextMsg.date !== m.date;
-    blocks.push({ type: 'bubble', msg: m, y, h, w, lines, quote, media, firstInGroup, lastInGroup,
+    blocks.push({ type: 'bubble', msg: m, y, h, w, lines, quote, media, callCard, firstInGroup, lastInGroup,
       textSize, textLineHeight, emojiCount });
     const nextSameSender = state.messages[i + 1] && state.messages[i + 1].sender === m.sender && i + 1 < visibleCount;
     y += h + (nextSameSender ? tokens.gapSame : tokens.gapGroup);
@@ -2953,17 +3021,8 @@ function drawChatArea(ctx, originY, height, now){
       drawNoEntryIcon(ctx, iconCx, iconCy, DEL_ICON_R, delColor);
       ctx.fillText(b.lines[0], bx + BUBBLE_PAD_X + DEL_ICON_R * 2 + DEL_ICON_GAP, textStartY);
     } else if (m.call){
-      const ct = callTexts(m);
-      const dark = chromeMode === 'dark';
-      const icx = bx + BUBBLE_PAD_X + CALL_ICON_D / 2, icy = y + bh / 2;
-      drawCallIcon(ctx, icx, icy, CALL_ICON_D, dark, ct.red, isMe, !!m.call.video);
-      const tx = bx + BUBBLE_PAD_X + CALL_ICON_D + CALL_ICON_GAP;
-      ctx.font = '600 ' + MSG_FONT_SIZE + 'px ' + tokens.font;
-      ctx.fillStyle = dark ? '#e9edef' : '#111b21';
-      ctx.fillText(ct.title, tx, y + bh / 2 - 8);
-      ctx.font = Math.round(MSG_FONT_SIZE * 0.92) + 'px ' + tokens.font;
-      ctx.fillStyle = dark ? 'rgba(233,237,239,.6)' : 'rgba(17,27,33,.55)';
-      ctx.fillText(ct.sub, tx, y + bh - BUBBLE_PAD_BOTTOM - 10);
+      drawCallCard(ctx, tokens, chromeMode, m, b.callCard, bx, y);
+      continue; // Call timestamps belong inside the card; never draw delivery ticks.
     } else if (b.media){
       const mediaX = bx + (bw - b.media.w) / 2;
       let mediaY = y + b.media.topPad;
@@ -3844,6 +3903,43 @@ function draw(ctx, now){
     drawChatArea(ctx, chatY, CANVAS_H - chatY, now);
   }
   if (exportWatermarkActive(now)) drawWatermark(ctx);
+  drawStatusBarBlackout(ctx);
+  copyExportCrop();
+}
+
+/* ---------------------------------------------------------------------
+ * Status bar left out (state.statusBar.hidden). The preview dims the status
+ * bar strip with a translucent black band, and recordings and screenshots
+ * are cropped to start just below it, so the band itself is never exported.
+ * The recorder captures a second canvas (exportCropCanvas) that each draw
+ * copies the area below the strip into; its height is fixed for the whole
+ * take (ctrl.cropTop, chosen at Start), and the toggle is locked meanwhile.
+ * ------------------------------------------------------------------- */
+const exportCropCanvas = document.createElement('canvas');
+const exportCropCtx = exportCropCanvas.getContext('2d');
+let exportCropTopActive = 0; // > 0 while a cropped take is running
+// Even height so H.264 encoders accept the frame size.
+function exportCropTop(){ return state.statusBar.hidden ? Math.round(getPlatformTokens().statusBarH / 2) * 2 : 0; }
+function prepareExportCrop(top){
+  exportCropCanvas.width = CANVAS_W;
+  exportCropCanvas.height = CANVAS_H - top;
+}
+function copyExportCrop(){
+  const top = exportCropTopActive;
+  if (!top) return;
+  exportCropCtx.drawImage(previewCanvas, 0, top, CANVAS_W, CANVAS_H - top, 0, 0, CANVAS_W, CANVAS_H - top);
+}
+function drawStatusBarBlackout(ctx){
+  if (!state.statusBar.hidden) return;
+  const h = getPlatformTokens().statusBarH;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(0, 0, CANVAS_W, h);
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.font = '600 26px ChatInter, "Segoe UI", sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('Not recorded', 48, h / 2);
+  ctx.restore();
 }
 
 /* ---------------------------------------------------------------------
@@ -4084,7 +4180,14 @@ async function saveScreenshot(){
   screenshotWatermark = !verdict.allowed;
   draw(previewCtx, performance.now());
   // toBlob snapshots the bitmap synchronously, so the flag can drop at once.
-  previewCanvas.toBlob((blob) => {
+  const shotTop = exportCropTop();
+  let shotCanvas = previewCanvas;
+  if (shotTop){
+    shotCanvas = document.createElement('canvas');
+    shotCanvas.width = CANVAS_W; shotCanvas.height = CANVAS_H - shotTop;
+    shotCanvas.getContext('2d').drawImage(previewCanvas, 0, shotTop, CANVAS_W, CANVAS_H - shotTop, 0, 0, CANVAS_W, CANVAS_H - shotTop);
+  }
+  shotCanvas.toBlob((blob) => {
     if (!blob){ showToast('Screenshot failed — try again.'); return; }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     downloadBlob(blob, `whatsapp-chat-${state.platform}-${stamp}.png`);
@@ -4092,6 +4195,13 @@ async function saveScreenshot(){
     else promptAfterWatermark('screenshot');
   }, 'image/png');
   screenshotWatermark = false;
+}
+
+// "45 seconds", "1 minute", "56 minutes" for the converter's Retry-After.
+function formatRetryWait(seconds){
+  if (seconds < 60) return seconds + (seconds === 1 ? ' second' : ' seconds');
+  const m = Math.ceil(seconds / 60);
+  return m + (m === 1 ? ' minute' : ' minutes');
 }
 
 async function convertViaMp4Backend(blob){
@@ -4247,8 +4357,16 @@ function makeRecorder(kind, canvas){
     ctrl.shareable = false; ctrl.downloaded = false; ctrl.saved = false;
     ctrl.finalized = false; ctrl.failedEarly = false; ctrl.autoPaused = false;
     let stream;
+    ctrl.cropTop = exportCropTop();
+    let source = canvas;
+    if (ctrl.cropTop){
+      prepareExportCrop(ctrl.cropTop);
+      exportCropTopActive = ctrl.cropTop;
+      copyExportCrop();
+      source = exportCropCanvas;
+    }
     try {
-      stream = canvas.captureStream(30);
+      stream = source.captureStream(30);
       // Merge in the notification-sound audio track (see playNotifSound)
       // so it's genuinely baked into the recorded file, not just audible
       // live — must happen before the MediaRecorder is constructed below,
@@ -4294,6 +4412,7 @@ function makeRecorder(kind, canvas){
 
   function failToStart(){
     ctrl.lastErrorText = "This browser can't record canvas video.";
+    exportCropTopActive = 0;
     releaseWakeLock();
     setState('error');
     announce('Recording failed to start.');
@@ -4314,6 +4433,7 @@ function makeRecorder(kind, canvas){
     // notification-sound node and is reused by the next take.
     if (ctrl.stream) ctrl.stream.getVideoTracks().forEach((t) => t.stop());
     ctrl.stream = null;
+    exportCropTopActive = 0;
   }
 
   // Hands the finished file over. On phones the share sheet is the way into
@@ -4366,7 +4486,7 @@ function makeRecorder(kind, canvas){
           return;
         } catch (err) {
           setNote(kind, err.code === 'rate_limit_exceeded'
-            ? 'MP4 conversion limit reached — downloaded the original recording. ' + (err.retryAfter ? `Try converting again in ${err.retryAfter} seconds.` : 'Try converting again later.')
+            ? 'MP4 conversion limit reached — downloaded the original recording. ' + (err.retryAfter ? 'Try converting again in ' + formatRetryWait(err.retryAfter) + '.' : 'Try converting again later.')
             : 'MP4 conversion failed — downloaded the original recording instead.');
         }
       } else if (LOCAL_STUDIO){
@@ -5097,7 +5217,7 @@ function syncStatusBarControls(){
   const btn = $('statusBarToggle');
   btn.innerHTML = iconSvg(sb.hidden ? 'statusBarOff' : 'statusBar', 18);
   btn.setAttribute('aria-pressed', String(sb.hidden));
-  const label = sb.hidden ? 'Show the phone status bar' : 'Hide the phone status bar';
+  const label = sb.hidden ? 'Include the status bar in recordings' : 'Leave the status bar out of recordings';
   btn.setAttribute('aria-label', label);
   btn.title = label;
 }
@@ -5111,7 +5231,11 @@ function wireStatusBarControls(){
   $('sbBattery').addEventListener('input', (e) => { sb().battery = Number(e.target.value); $('sbBatteryOut').textContent = e.target.value + '%'; });
   $('sbCharging').addEventListener('change', (e) => { sb().charging = e.target.checked; });
   $('sbDrain').addEventListener('change', (e) => { sb().drain = e.target.checked; });
-  $('statusBarToggle').addEventListener('click', () => { sb().hidden = !sb().hidden; syncStatusBarControls(); });
+  $('statusBarToggle').addEventListener('click', () => {
+    // The take's frame size is fixed at Start, so this can't change mid-take.
+    if (anyRecorderActive()){ showToast('Stop the recording to change the status bar.'); return; }
+    sb().hidden = !sb().hidden; syncStatusBarControls();
+  });
   syncStatusBarControls();
 }
 
@@ -5881,8 +6005,8 @@ function renderMessageList(){
     sendBtn.disabled = !m.text.trim() && !m.media && !m.call;
     sendBtn.addEventListener('click', () => sendMessage(m));
     if (m.call){
-      // A call's message box is its duration: hours + minutes fields, so the
-      // bubble always reads "45 min" / "1 hr 20 min" like WhatsApp.
+      // Seconds support short calls; longer calls use WhatsApp's compact
+      // minute/hour display. Keep duration fields in the existing editor row.
       textarea.hidden = true;
       const dur = document.createElement('div');
       dur.className = 'callDuration';
@@ -5895,7 +6019,7 @@ function renderMessageList(){
           const input = document.createElement('input');
           input.type = 'number'; input.min = '0'; input.max = String(max); input.step = '1'; input.inputMode = 'numeric';
           input.value = String(m.call[key] || 0);
-          input.setAttribute('aria-label', label === 'hr' ? 'Call hours' : 'Call minutes');
+          input.setAttribute('aria-label', { h: 'Call hours', min: 'Call minutes', sec: 'Call seconds' }[key]);
           input.addEventListener('input', () => {
             const v = parseInt(input.value, 10);
             m.call[key] = Number.isFinite(v) ? Math.max(0, Math.min(max, v)) : 0;
@@ -5908,6 +6032,7 @@ function renderMessageList(){
         };
         dur.appendChild(field('h', 'hr', 99));
         dur.appendChild(field('min', 'min', 59));
+        dur.appendChild(field('sec', 'sec', 59));
       }
       composeRow.insertBefore(dur, textarea);
     }
@@ -6083,10 +6208,10 @@ function renderMessageList(){
         callBtn.innerHTML = iconSvg(icon) + ' ' + label;
         callBtn.disabled = classic;
         callBtn.title = classic
-          ? 'Call bubbles came with the 2024 WhatsApp design. Switch to Gen 2 or Gen 3.'
-          : 'Turn this message into a ' + label.toLowerCase() + '. Type the duration in the message box.';
+          ? 'Call bubbles are available in Gen 2 and Gen 3. Switch generations to add a call.'
+          : 'Turn this message into a ' + label.toLowerCase() + ' and set its duration.';
         callBtn.addEventListener('click', () => {
-          m.call = { missed: false, video, h: 0, min: 2 };
+          m.call = { missed: false, video, h: 0, min: 2, sec: 0 };
           renderMessageList();
         });
         mediaWrap.appendChild(callBtn);
@@ -6190,7 +6315,8 @@ function serializeProjectData(){
     messages: (tourRealMessages || state.messages).map((m) => ({
       ...m,
       media: m.media ? { type: m.media.type, img: m.media.img ? m.media.img.src : null, duration: m.media.duration } : null,
-      call: m.call ? { missed: !!m.call.missed, video: !!m.call.video, h: m.call.h || 0, min: m.call.min || 0 } : null,
+      call: m.call ? { missed: !!m.call.missed, video: !!m.call.video, h: m.call.h || 0,
+        min: m.call.min || (!m.call.h && m.call.sec === undefined ? 1 : 0), sec: m.call.sec || 0 } : null,
     })),
     timeline: { ...state.timeline },
   };
@@ -6260,8 +6386,10 @@ function deserializeProjectData(data){
       deleted: m.deleted === true,
       replyTo: pickId(m.replyTo),
       media: img ? { type: pickEnum(m.media.type, ['image', 'video'], 'image'), img, duration: pickNum(m.media.duration, 0, 86400, 0) } : null,
-      call: !img && m.call && typeof m.call === 'object' ? (Number.isFinite(m.call.min) || Number.isFinite(m.call.h)
-        ? { missed: m.call.missed === true, video: m.call.video === true, h: Math.round(pickNum(m.call.h, 0, 99, 0)), min: Math.round(pickNum(m.call.min, 0, 59, 0)) }
+      call: !img && m.call && typeof m.call === 'object' ? (Number.isFinite(m.call.min) || Number.isFinite(m.call.h) || Number.isFinite(m.call.sec)
+        ? { missed: m.call.missed === true, video: m.call.video === true, h: Math.round(pickNum(m.call.h, 0, 99, 0)),
+            min: Math.round(pickNum(m.call.min, 0, 59, 0)) || (!m.call.h && m.call.sec === undefined ? 1 : 0),
+            sec: Math.round(pickNum(m.call.sec, 0, 59, 0)) }
         : { missed: m.call.missed === true, video: m.call.video === true, ...parseCallText(m.text) }) : null,
     });
   });
@@ -6825,7 +6953,7 @@ function init(){
   });
 
   // Refresh line measurements once the embedded fonts are available.
-  Promise.all([window.chatEmojiReady, ...['44px ChatRoboto', '500 36px ChatRoboto', '44px ChatInter', '600 42px ChatInter'].map((f) => document.fonts.load(f))])
+  Promise.all([window.chatEmojiReady, ...['44px ChatRoboto', '500 36px ChatRoboto', '44px ChatInter', '600 44px ChatInter'].map((f) => document.fonts.load(f))])
     .then(() => wrapCache.clear(), () => wrapCache.clear());
   requestAnimationFrame(loop);
   checkMp4Backend();
