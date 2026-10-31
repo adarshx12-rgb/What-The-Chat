@@ -361,7 +361,7 @@
   .fieldsRow input,.fieldsRow select,.replyRow select{height:32px;font-size:12.5px;}
   .fieldsRow input[type=date],.fieldsRow input[type=time]{padding:0 8px;font-variant-numeric:tabular-nums;}
   .delRow{margin-top:10px;padding-top:10px;border-top:1px solid var(--studio-border);font-size:12px;color:var(--studio-text-secondary);
-    display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);flex-wrap:wrap;}
+    display:flex;align-items:center;justify-content:flex-start;gap:var(--space-2);flex-wrap:wrap;}
   .delRow label{margin:0;font-size:12px;color:var(--studio-text-secondary);font-weight:400;cursor:pointer;}
   .delCheckWrap{display:flex;align-items:center;flex-shrink:0;}
   .mediaWrap{display:flex;align-items:center;gap:var(--space-2);min-width:0;}
@@ -371,6 +371,15 @@
     border:1px solid var(--studio-border);flex-shrink:0;background:var(--studio-surface-hover);}
   .mediaTag{font-size:12px;color:var(--studio-text-secondary);white-space:nowrap;}
   .mediaWrap button.small{width:28px;height:28px;}
+  /* The buttons and "Mark as deleted" wrap as one row of items. */
+  .mediaWrap{display:contents;}
+  .delCheckWrap{margin-left:4px;}
+  .callKind{width:auto;min-width:0;padding-top:2px;padding-bottom:2px;}
+  .callNote{font-size:11px;color:var(--studio-text-tertiary);}
+  .callDuration{flex:1 1 auto;display:flex;align-items:center;gap:var(--space-2);min-height:40px;flex-wrap:wrap;}
+  .callDurField{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:13px;color:var(--studio-text-secondary);cursor:text;}
+  .callDurField input{width:64px;text-align:right;font-variant-numeric:tabular-nums;}
+  .callDurNote{font-size:12px;color:var(--studio-text-tertiary);}
 
   #addMessageBtn{margin-top:10px;border-style:dashed;background:transparent;box-shadow:none;color:var(--studio-text-secondary);}
   #addMessageBtn:hover{color:var(--studio-text);background:var(--studio-surface-hover);}
@@ -387,9 +396,23 @@
   #chatScrollArea.can-scroll{touch-action:pan-x pinch-zoom;cursor:grab;}
   #chatScrollArea.dragging{cursor:grabbing;}
   #chatScrollArea:focus-visible{outline:2px solid var(--studio-accent);outline-offset:-3px;}
-  #chatLatestBtn{position:absolute;z-index:1;min-height:36px;padding:6px 12px;
-    border-radius:18px;background:var(--studio-surface);color:var(--studio-text);
-    box-shadow:0 2px 8px rgb(0 0 0 / 25%);font-size:12px;}
+  /* Post-recording player (#fullTakePlayer): the take you just recorded, with
+     a faint pattern laid over it as a DOM layer, so screen grabs of this
+     player carry it while the downloaded file stays clean. */
+  .takePlayer{margin:var(--space-2) 0;}
+  .takeFrame{position:relative;width:min(100%,190px);aspect-ratio:9/16;margin:0 auto;background:#000;overflow:hidden;}
+  .takeFrame video{display:block;width:100%;height:100%;object-fit:contain;}
+  .takePlayer .takeNote{margin:6px 0 0;font-size:11.5px;text-align:center;color:var(--studio-text-tertiary);}
+  .takeWm{position:absolute;inset:0;z-index:1;pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='120'%3E%3Cg transform='rotate(-28 95 60)' font-family='Inter Tight,Arial,sans-serif' font-size='17' font-weight='700'%3E%3Ctext x='95' y='66' text-anchor='middle' fill='%23808080' fill-opacity='.2' stroke='%23ffffff' stroke-opacity='.08' stroke-width='.6'%3ETexting Studio%3C/text%3E%3C/g%3E%3C/svg%3E");
+    background-size:190px 120px;background-repeat:repeat;}
+  .takeWm{background-size:120px 76px;}
+
+  /* Invisible hit target over the canvas-drawn scroll-down button. */
+  #chatLatestBtn{position:absolute;z-index:1;min-height:0;padding:0;border:0;border-radius:50%;
+    background:transparent;box-shadow:none;color:transparent;cursor:pointer;}
+  #chatLatestBtn:hover{background:transparent;}
+  #chatLatestBtn:focus-visible{outline:2px solid var(--studio-accent);outline-offset:2px;}
 
   /* Real, focusable input capturing keystrokes for the live "Me" composer —
      kept functionally real (so IME/mobile keyboards work) but visually
@@ -449,16 +472,28 @@
   }
   /* Sound toggle: top-left of the stage gutter, beside the phone. Hidden when
      the preview is docked (the stage collapses to zero height there). */
-  #soundToggle{position:absolute;top:var(--space-4);left:var(--space-4);z-index:5;
-    width:36px;height:36px;padding:0;justify-content:center;}
-  #soundToggle[aria-pressed="true"]{color:var(--studio-text-tertiary);}
-  @media (max-width:1199px){ #soundToggle{width:44px;height:44px;} }
-  /* No side gutter on phones: sit in flow above the preview instead of on it */
+  /* Stage tools (sound, status bar): top-left of the stage gutter, beside the
+     phone, stacked. Hidden when the preview is docked. */
+  #stageTools{position:absolute;top:var(--space-4);left:var(--space-4);z-index:5;
+    display:flex;flex-direction:column;gap:var(--space-2);}
+  #stageTools button{width:36px;height:36px;padding:0;justify-content:center;}
+  #stageTools button[aria-pressed="true"]{color:var(--studio-text-tertiary);}
+  @media (max-width:1199px){ #stageTools button{width:44px;height:44px;} }
+  /* No side gutter on phones: sit in a row above the preview instead of on it */
   @media (max-width:767px){
     #phoneStage:not(.docked){flex-direction:column;align-items:center;}
-    #soundToggle{position:static;order:-1;align-self:flex-start;margin-bottom:var(--space-2);}
+    #stageTools{position:static;order:-1;align-self:flex-start;flex-direction:row;margin-bottom:var(--space-2);}
   }
-  #phoneStage.docked #soundToggle{display:none;}
+  #phoneStage.docked #stageTools{display:none;}
+  .statusBarBlock{margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--studio-border);}
+  .statusBarHeading{margin:0 0 6px;font:500 10.5px/1.2 var(--studio-mono, ui-monospace, monospace);text-transform:uppercase;letter-spacing:.07em;color:var(--studio-text-secondary);}
+  .statusRow{display:flex;gap:var(--space-2);margin-bottom:var(--space-2);}
+  .statusRow > div{flex:1 1 0;min-width:0;}
+  .statusRow select,.statusRow input{width:100%;}
+  #sbBattery{width:100%;}
+  #sbBatteryOut{font-variant-numeric:tabular-nums;color:var(--studio-text-secondary);margin-left:4px;}
+  .statusChecks{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:var(--space-2);}
+  .checkLabel{display:inline-flex;align-items:center;margin:0;font-weight:400;cursor:pointer;}
   .toast{background:var(--studio-surface-raised);border:1px solid var(--studio-border-strong);
     color:var(--studio-text);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);
     display:flex;align-items:center;gap:var(--space-3);box-shadow:var(--shadow-float);
@@ -800,9 +835,9 @@
     font:500 12px/1 var(--studio-mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
   .creditsDot{width:8px;height:8px;border-radius:50%;background:var(--studio-accent);}
   .creditsChip[data-empty="true"] .creditsDot{background:#e5484d;}
-  #accountDialog{width:min(420px, calc(100vw - 32px));padding:20px;border:1.5px solid var(--studio-shadow);
+  #accountDialog,#creditLimitDialog{width:min(420px, calc(100vw - 32px));padding:20px;border:1.5px solid var(--studio-shadow);
     background:var(--studio-bg);color:var(--studio-text);box-shadow:6px 6px 0 var(--studio-shadow);}
-  #accountDialog::backdrop{background:rgba(9,23,46,.45);}
+  #accountDialog::backdrop,#creditLimitDialog::backdrop{background:rgba(9,23,46,.45);}
   .accountHead{display:flex;align-items:center;justify-content:space-between;gap:12px;}
   .accountHead h2{margin:0;font-size:16px;}
   .accountBalance{margin:12px 0 0;font:600 20px/1.3 var(--studio-mono);font-variant-numeric:tabular-nums;}
@@ -827,7 +862,7 @@
   /* The account dialog is a white window like the homepage's, in both studio
      themes: it redefines the studio tokens locally, so every button, input
      and segmented control inside picks up the light palette. */
-  #accountDialog{
+  #accountDialog,#creditLimitDialog{
     --studio-bg:#ffffff; --studio-surface:#f4f8fd; --studio-surface-raised:#ffffff;
     --studio-surface-hover:#eef4fb; --studio-input:#ffffff;
     --studio-border:#d3dfee; --studio-border-strong:#09172e;
@@ -845,6 +880,37 @@
   #googleSignInBtn svg{width:18px;height:18px;flex-shrink:0;}
   /* Phones: the logo mark alone links home, freeing room for the credits chip. */
   @media (max-width:479.98px){ .brandName{display:none;} .creditsChip{padding:0 8px;} }
+
+  .creditLimitTitle{margin:0 0 8px;font-size:17px;}
+  .creditLimitBody{margin:0;font-size:14px;line-height:1.5;color:var(--studio-text);}
+  .creditLimitActions{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+  .creditLimitActions button{width:100%;height:40px;}
+  #creditLimitDialog .creditLimitLink{height:32px;background:transparent;border-color:transparent;
+    text-decoration:underline;text-underline-offset:3px;color:var(--studio-text-secondary);}
+
+  /* First-run tour: a dimmed screen with a green outlined "hole" over the feature
+     and a small card beside it. Above the docked preview, export badge and toasts. */
+  #tourRoot{position:fixed;inset:0;z-index:2000;}
+  .tourHole{position:fixed;border:2px solid var(--studio-accent);border-radius:8px;
+    box-shadow:0 0 0 200vmax rgba(9,23,46,.62);pointer-events:none;
+    transition:top .22s ease,left .22s ease,width .22s ease,height .22s ease;}
+  .tourCard{position:fixed;width:min(300px,calc(100vw - 24px));padding:14px 16px 12px;
+    background:var(--studio-page);color:var(--studio-page-ink);
+    border:1.5px solid var(--studio-page-ink);box-shadow:4px 4px 0 var(--studio-page-ink);
+    transition:top .22s ease,left .22s ease;}
+  .tourStep{margin:0 0 4px;font:500 11px/1.2 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.06em;color:var(--studio-page-muted);}
+  .tourTitle{margin:0 0 6px;font:600 17px/1.25 "Inter Tight",ChatInter,system-ui,sans-serif;color:inherit;}
+  .tourBody{margin:0;font-size:14px;line-height:1.45;color:var(--studio-page-ink);}
+  .tourActions{display:flex;align-items:center;gap:8px;margin-top:12px;}
+  .tourSpacer{flex:1;}
+  .tourCard .tourSkip,.tourCard .tourBack{height:34px;padding:0 10px;background:transparent;
+    border:1px solid transparent;color:var(--studio-page-ink);font-weight:500;}
+  .tourCard .tourSkip{color:var(--studio-page-muted);padding-left:0;}
+  .tourCard .tourSkip:hover,.tourCard .tourBack:hover{text-decoration:underline;text-underline-offset:3px;background:transparent;}
+  .tourCard .tourNext{height:34px;padding:0 16px;}
+  .tourCard button:focus-visible{outline:2px solid var(--studio-page-ink);outline-offset:2px;}
+  @media (prefers-reduced-motion:reduce){ .tourHole,.tourCard{transition:none;} }
 </style>
 </head>
 <body>
@@ -869,12 +935,43 @@
       <button type="button" class="creditsChip" id="creditsChip" aria-haspopup="dialog" aria-controls="accountDialog">
         <span class="creditsDot" aria-hidden="true"></span><span id="creditsChipText">Credits…</span>
       </button>
+      <button type="button" class="small" id="tourBtn" aria-label="Show the studio tour" title="Show the studio tour">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+      </button>
       <button type="button" class="small" id="studioThemeBtn" aria-pressed="false"></button>
       <button type="button" class="small" id="openProjectsBtn" title="Projects">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       </button>
     </div>
   </header>
+
+  <!-- First-run tour (DOM only, never drawn on the canvas, so recordings are unaffected). -->
+  <div id="tourRoot" hidden>
+    <div class="tourHole" id="tourHole" aria-hidden="true"></div>
+    <div class="tourCard" id="tourCard" role="dialog" aria-modal="true" aria-labelledby="tourTitle" aria-describedby="tourBody">
+      <p class="tourStep" id="tourStep">1 / 5</p>
+      <h2 class="tourTitle" id="tourTitle"></h2>
+      <p class="tourBody" id="tourBody"></p>
+      <div class="tourActions">
+        <button type="button" class="tourSkip" id="tourSkipBtn">Skip</button>
+        <span class="tourSpacer"></span>
+        <button type="button" class="tourBack" id="tourBackBtn">Back</button>
+        <button type="button" class="tourNext btnPrimary" id="tourNextBtn">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shown when a running recording reaches the end of its clean coverage.
+       The take is paused first, so no watermarked frame is recorded unasked. -->
+  <dialog id="creditLimitDialog" aria-labelledby="creditLimitTitle" aria-describedby="creditLimitBody">
+    <h2 id="creditLimitTitle" class="creditLimitTitle">Recording paused</h2>
+    <p id="creditLimitBody" class="creditLimitBody"></p>
+    <div class="creditLimitActions">
+      <button type="button" class="btnPrimary" id="creditLimitStopBtn">Stop and save</button>
+      <button type="button" id="creditLimitContinueBtn">Continue with watermark</button>
+      <button type="button" class="creditLimitLink" id="creditLimitUpgradeBtn"></button>
+    </div>
+  </dialog>
 
   <dialog id="accountDialog" aria-labelledby="accountTitle">
     <div class="accountHead">
@@ -965,6 +1062,50 @@
           <option value="current">Gen 3 &middot; 2026 rollout</option>
         </select>
         <p class="helperText" id="generationHelp"></p>
+        <div class="statusBarBlock">
+          <p class="statusBarHeading">Status bar</p>
+          <div class="statusRow">
+            <div>
+              <label for="sbClockMode">Clock</label>
+              <select id="sbClockMode">
+                <option value="chat">Follows the chat</option>
+                <option value="fixed">Fixed time</option>
+              </select>
+            </div>
+            <div id="sbFixedTimeWrap">
+              <label for="sbFixedTime">Time</label>
+              <input type="time" id="sbFixedTime" value="03:00">
+            </div>
+          </div>
+          <div class="statusRow">
+            <div>
+              <label for="sbSignal">Signal</label>
+              <select id="sbSignal">
+                <option value="4">Full</option>
+                <option value="3">3 bars</option>
+                <option value="2">2 bars</option>
+                <option value="1">1 bar</option>
+                <option value="0">No signal</option>
+              </select>
+            </div>
+            <div>
+              <label for="sbNetwork">Network</label>
+              <select id="sbNetwork">
+                <option value="5G">5G</option>
+                <option value="4G">4G</option>
+                <option value="LTE">LTE</option>
+                <option value="wifi">Wi-Fi</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+          </div>
+          <label for="sbBattery">Battery <output id="sbBatteryOut" for="sbBattery">82%</output></label>
+          <input type="range" id="sbBattery" min="1" max="100" step="1" value="82">
+          <div class="statusChecks">
+            <label class="checkLabel"><input type="checkbox" id="sbCharging">Charging</label>
+            <label class="checkLabel"><input type="checkbox" id="sbDrain">Drains while recording</label>
+          </div>
+        </div>
       </section>
       <div id="editorFields">
       <section id="panelContent" class="editorSection">
@@ -1121,14 +1262,18 @@
         <div id="chatScrollArea" tabindex="0" role="region" aria-label="Chat preview messages"
           aria-describedby="chatScrollHelp"></div>
         <span id="chatScrollHelp" class="visually-hidden">Scroll or drag to review messages. Use arrow keys, Page Up, Page Down, Home, or End when focused. Scrolling changes the preview and recorded video.</span>
-        <button type="button" id="chatLatestBtn" hidden>Latest messages &darr;</button>
+        <button type="button" id="chatLatestBtn" hidden aria-label="Scroll to latest messages" title="Scroll to latest messages"></button>
         <span class="dockResize" aria-hidden="true" title="Drag to resize"></span>
         <input type="text" id="composerInput" class="composerInput" autocomplete="off"
           autocapitalize="sentences" spellcheck="true" maxlength="500"
           aria-label="Type a live message to send as yourself">
       </div>
-      <button type="button" id="soundToggle" class="small" aria-pressed="false"
-        aria-label="Mute message sound" title="Mute message sound"></button>
+      <div id="stageTools">
+        <button type="button" id="soundToggle" class="small" aria-pressed="false"
+          aria-label="Mute message sound" title="Mute message sound"></button>
+        <button type="button" id="statusBarToggle" class="small" aria-pressed="false"
+          aria-label="Hide the phone status bar" title="Hide the phone status bar"></button>
+      </div>
       <div id="toastRegion" aria-live="polite"></div>
     </main>
 
@@ -1186,6 +1331,14 @@
           <span class="recTimer" id="fullRecTimer">00:00</span>
         </div>
         <p class="recHelper" id="fullRecHelper">Exports MP4 via the local backend.</p>
+        <div class="takePlayer" id="fullTakePlayer" hidden>
+          <div class="takeFrame">
+            <video id="fullTakeVideo" controls playsinline preload="metadata" disablepictureinpicture
+              controlslist="nodownload noremoteplayback" aria-label="The video you just recorded"></video>
+            <div class="takeWm" id="fullTakeWm" aria-hidden="true"></div>
+          </div>
+          <p class="takeNote" id="fullTakeNote">Preview only. Your saved video has no pattern.</p>
+        </div>
         <div class="rec-buttons">
           <button id="fullStartBtn" class="btnPrimary">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="9"/></svg>
@@ -1234,6 +1387,7 @@
         <a href="../privacy-policy.html">Privacy policy</a>
         <a href="../terms-and-conditions.html">Terms &amp; conditions</a>
         <a href="../refund-policy.html">Refunds</a>
+        <a href="../shipping-policy.html">Shipping &amp; delivery</a>
         <a href="../contact.html">Contact us</a>
       </nav>
     </aside>
@@ -1353,9 +1507,9 @@ function getPlatformTokens(){
     padTop: BUBBLE_PAD_TOP, padBottom: BUBBLE_PAD_BOTTOM, chatPadX: CHAT_PAD_X,
     gapSame: BUBBLE_GAP, gapGroup: BUBBLE_GAP + GROUP_GAP_EXTRA,
     dateChipH: 46, dateFont: '600 24px', dateRadius: 10,
-    avatarR: 40, statusTimeSize: 30, composerFont: 38 };
+    avatarR: 40, statusTimeSize: state.platform === 'ios' ? 42 : 36, composerFont: 38 };
   if (state.generation === 'classic') return { ...base,
-    avatarR: 50, statusTimeSize: state.platform === 'ios' ? 44 : 36,
+    avatarR: 50,
     headerNameSize: state.platform === 'ios' ? 44 : 46,
     headerNameWeight: 500,
     headerStatusSize: 32, composerFont: 46,
@@ -1405,7 +1559,7 @@ function getPlatformTokens(){
     datePadX: ios ? (current ? 66 : 52) : null,
     dateBg: ios ? { light: '#ffffff', dark: '#171717' } : null,
     dateText: ios ? { light: '#000000', dark: '#ffffff' } : null,
-    avatarR: 48, statusTimeSize: ios ? 46 : 38,
+    avatarR: 48,
     composerFont: ios ? 40 : 50,
     ...(ios && !current ? { headerH: 168 } : {}),
     headerNameSize: ios ? 40 : 46,
@@ -1418,7 +1572,12 @@ function getPlatformTokens(){
  * ------------------------------------------------------------------- */
 let uidCounter = 1;
 function uid(){ return 'm' + (uidCounter++); }
-function today(){ return new Date().toISOString().slice(0,10); }
+// Local calendar date, not UTC: toISOString() is a day behind in India until
+// 5:30 AM, which made "Today" dividers show a full date after midnight.
+function today(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 
 const seedId1 = uid(), seedId2 = uid(), seedId3 = uid(), seedId4 = uid();
 
@@ -1427,6 +1586,7 @@ const state = {
   platform: 'android',
   generation: 'current',
   timeStepEvery: 3, // new messages bump the clock 1 min every N messages; 0 = never
+  statusBar: { hidden: false, clockMode: 'chat', fixedTime: '03:00', battery: 82, charging: false, drain: false, signal: 4, network: '5G' },
   theme: {
     chromeMode: 'light',
     wallpaperType: 'default',
@@ -1471,6 +1631,7 @@ function resetPreview(){
   chatScroll.target = 0;
   chatScroll.max = 0;
   chatScroll.followLatest = true;
+  chatScroll.velocity = 0;
   lastRevealWallTime = null;
 }
 
@@ -1508,6 +1669,22 @@ function revealUpTo(msgId){
   }
 }
 
+/* Starting a recording with messages already written: show them all at once as
+ * existing chat history (no pings, no timeline entries), scrolled to the latest,
+ * so the take opens on the full conversation and can be scrolled through.
+ * Messages added after this still reveal one by one. Play still restarts from
+ * empty (startReplay resets the preview), so Record → Play keeps working. */
+function revealScriptForRecording(){
+  if (replayState === 'playing' || replayState === 'paused') return;
+  let last = -1;
+  state.messages.forEach((m, i) => { if (m.deleted || m.media || callShown(m) || (m.text && m.text.trim())) last = i; });
+  if (last + 1 <= previewState.revealedCount) return;
+  previewState.revealedCount = last + 1;
+  typingArmedId = null;
+  chatScroll.followLatest = true;
+  scrollOffsetCurrent = Number.MAX_SAFE_INTEGER; // jump, don't animate; clamped on the next draw
+}
+
 /* The scripted "me" message that's next in line to be revealed, if any. When
  * it exists, the phone's composer mirrors this message's text/reply-target
  * live instead of acting as a free-typing field — so choosing a reply target
@@ -1516,7 +1693,7 @@ function revealUpTo(msgId){
  * the same message (see syncComposerMirrorMode / handleComposerSendAction). */
 function getPendingComposerMessage(){
   const m = state.messages[previewState.revealedCount];
-  return (m && m.sender === 'me' && !m.deleted) ? m : null;
+  return (m && m.sender === 'me' && !m.deleted && !m.call) ? m : null;
 }
 
 /* Extra footer height needed for the pre-send reply banner (see
@@ -1825,8 +2002,9 @@ const NOTIF_SFX_VOLUME = 0.3332; // two 30% cuts + a 15% cut + a 20% cut from th
 
 // Creator-controlled mute (#soundToggle). Silences the ping everywhere,
 // including the recorded audio track, since the recording mirrors what plays.
-let notifMuted = false;
-try { notifMuted = localStorage.getItem('wa-notif-muted') === '1'; } catch (e) {}
+// Off by default: sound plays only after the creator turns it on (remembered).
+let notifMuted = true;
+try { notifMuted = localStorage.getItem('wa-notif-muted') !== '0'; } catch (e) {}
 
 function playNotifSound(){
   if (notifMuted || !notifAudioBuffer || !notifAudioCtx) return;
@@ -1952,86 +2130,212 @@ function drawDefaultAvatar(ctx, cx, cy, r){
   ctx.restore();
 }
 
+/* ---------- Phone status bar (per project: state.statusBar) ----------
+ * clockMode 'chat' shows the time of the latest message on screen (so the
+ * clock moves with the story); 'fixed' shows fixedTime. Battery can drain
+ * 1% per 10 s while recording. hidden drops the clock and icons but keeps
+ * the camera cutout. All canvas, so it's in recordings and screenshots. */
+const STATUS_BAR_DEFAULTS = { hidden: false, clockMode: 'chat', fixedTime: '03:00', battery: 82,
+  charging: false, drain: false, signal: 4, network: '5G' };
+const STATUS_NETWORKS = ['5G', '4G', 'LTE', 'wifi', 'none'];
+const BATTERY_DRAIN_MS = 10000;
+
+function clock12(hhmm){
+  const [h, m] = String(hhmm || '03:00').split(':').map(Number);
+  let h12 = (h || 0) % 12; if (h12 === 0) h12 = 12;
+  return h12 + ':' + String(m || 0).padStart(2, '0');
+}
+
+function statusClockText(){
+  const sb = state.statusBar;
+  if (sb.clockMode === 'chat'){
+    const shown = (m) => m && m.time && (m.deleted || m.media || callShown(m) || (m.text && m.text.trim()));
+    const { visibleCount } = computeVisibleState();
+    for (let i = visibleCount - 1; i >= 0; i--) if (shown(state.messages[i])) return clock12(state.messages[i].time);
+    const first = state.messages.find(shown); // nothing sent yet: the story's start time
+    if (first) return clock12(first.time);
+  }
+  return clock12(sb.fixedTime);
+}
+
+function statusBatteryLevel(){
+  const sb = state.statusBar;
+  let level = sb.battery;
+  const s = fullRecorder.state;
+  if (sb.drain && !sb.charging && (s === 'recording' || s === 'paused')){
+    level -= Math.floor(fullRecElapsedMs(performance.now()) / BATTERY_DRAIN_MS);
+  }
+  return Math.max(1, Math.min(100, level));
+}
+
+// A Material symbol drawn dim, with `frac` of it solid (battery fills from
+// the bottom, signal from the left), the way Android shows levels.
+function drawMaterialLevel(ctx, name, cx, cy, size, color, frac, axis, solidColor){
+  ctx.save(); ctx.globalAlpha *= 0.3; drawMaterialSymbol(ctx, name, cx, cy, size, color); ctx.restore();
+  if (frac <= 0) return;
+  ctx.save();
+  if (frac < 1){
+    const x0 = cx - size / 2, y0 = cy - size / 2, s = size / 960;
+    ctx.beginPath();
+    if (axis === 'y'){ const top = y0 + (880 - frac * 720) * s; ctx.rect(x0, top, size, y0 + size - top); }
+    else ctx.rect(x0, y0, (80 + frac * 800) * s, size);
+    ctx.clip();
+  }
+  drawMaterialSymbol(ctx, name, cx, cy, size, solidColor || color);
+  ctx.restore();
+}
+
+// Outlined so it reads on both the filled and the empty part of the battery.
+function drawChargingBolt(ctx, cx, cy, h, color, outline){
+  const pts = [[0.12, -0.5], [-0.3, 0.07], [-0.02, 0.07], [-0.12, 0.5], [0.3, -0.07], [0.02, -0.07]];
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => { if (i) ctx.lineTo(cx + x * h, cy + y * h); else ctx.moveTo(cx + x * h, cy + y * h); });
+  ctx.closePath();
+  if (outline){ ctx.strokeStyle = outline; ctx.lineWidth = Math.max(2, h * 0.16); ctx.lineJoin = 'round'; ctx.stroke(); }
+  ctx.fill();
+  ctx.restore();
+}
+
+// Keep the clock's visible digits centred on the system icons. Canvas's
+// "middle" baseline centres the font's em box, which varies by platform/font.
+function drawStatusClock(ctx, tokens, x, cy, align = 'left'){
+  const isIOS = state.platform === 'ios';
+  const clock = statusClockText();
+  ctx.save();
+  ctx.font = (isIOS ? '600 ' : '500 ') + tokens.statusTimeSize + 'px ' + tokens.font;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'alphabetic';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = isIOS ? '-0.75px' : '0px';
+  const metrics = ctx.measureText(clock);
+  const ascent = metrics.actualBoundingBoxAscent;
+  const descent = metrics.actualBoundingBoxDescent;
+  ctx.fillText(clock, x, Math.round(cy + (ascent - descent) / 2));
+  ctx.restore();
+}
+
 function drawStatusIcons(ctx, tokens, chrome, w, statusBarH){
   const isIOS = state.platform === 'ios';
-  const color = chrome === 'dark' ? tokens.headerTextDark : tokens.headerTextLight;
+  const sb = state.statusBar;
+  const dark = chrome === 'dark';
+  // iOS draws the status bar in pure black / white, never the header tint.
+  const color = isIOS ? (dark ? '#ffffff' : '#000000') : (dark ? tokens.headerTextDark : tokens.headerTextLight);
+  const level = statusBatteryLevel();
+  const bars = Math.max(0, Math.min(4, sb.signal));
+  const net = sb.network;
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  if (!tokens.androidModern){
-    ctx.font = '600 ' + (tokens.statusTimeSize || 36) + 'px ' + tokens.font;
-    ctx.fillText('9:41', isIOS ? 112 : 40, statusBarH / 2);
-  }
 
   if (tokens.androidModern){
     // Measured status bars (both native 1080px captures): grey #606060 clock
-    // and icons in light mode, clock baseline 48px down at x=78, icon cluster
-    // ending 76px from the right edge. Gen 2 shows wifi + signal + battery;
-    // the Gen 3 capture shows a 5G label + signal + battery.
-    const fg = chrome === 'dark' ? '#c4c7c5' : '#606060';
-    ctx.fillStyle = fg;
-    ctx.textBaseline = 'alphabetic';
-    ctx.font = '400 38px ' + tokens.font;
-    ctx.fillText('9:41', 78, 48);
-    drawMaterialSymbol(ctx, 'battery', w - 86, 34, 40, fg);
-    drawMaterialSymbol(ctx, 'signal', w - 133, 35, 39, fg);
-    if (state.generation === 'current'){
-      ctx.textAlign = 'right';
-      ctx.fillText('5G', w - 163, 47);
-      ctx.textAlign = 'left';
-    } else {
-      drawMaterialSymbol(ctx, 'wifi', w - 177, 38, 40, fg);
+    // and icons in light mode, clock at x=78, icon cluster
+    // ending 76px from the right edge: network (5G label or Wi-Fi), signal, battery.
+    if (!sb.hidden){
+      const fg = dark ? '#c4c7c5' : '#606060';
+      ctx.fillStyle = fg;
+      ctx.textBaseline = 'alphabetic';
+      ctx.font = '400 38px ' + tokens.font;
+      drawStatusClock(ctx, tokens, 78, 34);
+      const low = level <= 15 && !sb.charging;
+      drawMaterialLevel(ctx, 'battery', w - 86, 34, 40, fg, level / 100, 'y', low ? '#d93025' : fg);
+      if (sb.charging) drawChargingBolt(ctx, w - 86, 37, 22, dark ? '#1b1b1b' : '#ffffff', fg);
+      drawMaterialLevel(ctx, 'signal', w - 133, 35, 39, fg, bars / 4, 'x');
+      if (net === 'wifi') drawMaterialSymbol(ctx, 'wifi', w - 177, 38, 40, fg);
+      else if (net !== 'none'){
+        ctx.fillStyle = fg; ctx.textAlign = 'right';
+        ctx.fillText(net, w - 163, 47);
+        ctx.textAlign = 'left';
+      }
     }
     ctx.fillStyle = '#0b0b0b'; ctx.beginPath(); ctx.arc(w / 2, 34, 17, 0, Math.PI * 2); ctx.fill();
     return;
   }
 
-  const midY = statusBarH / 2;
+  // iOS: the clock and icons share the Dynamic Island's centre line (y 64);
+  // the notch era centres them in the strip.
+  const islandEra = isIOS && tokens.notch && state.generation !== 'classic';
+  const midY = islandEra ? 64 : statusBarH / 2;
+  const dim = (on) => { ctx.globalAlpha = on ? 1 : 0.3; };
 
-  if (isIOS){
-    // iOS cluster, right-aligned: signal dots, wifi arc, pill battery with a nub, no % label
-    const battW = 64, battH = 30;
-    const battX = w - 88 - battW;
-    ctx.lineWidth = 2.5;
-    roundRectPath(ctx, battX, midY - battH / 2, battW, battH, { tl: 6, tr: 6, br: 6, bl: 6 });
-    ctx.stroke();
-    ctx.fillRect(battX + battW + 3, midY - 5, 3, 10);
-    const pad = 3;
-    roundRectPath(ctx, battX + pad, midY - battH / 2 + pad, (battW - pad * 2) * 0.8, battH - pad * 2, { tl: 2, tr: 2, br: 2, bl: 2 });
-    ctx.fill();
+  if (!sb.hidden){
+    ctx.font = '600 ' + (tokens.statusTimeSize || 36) + 'px ' + tokens.font;
+    if (isIOS){
+      // Like a real iPhone: centred in the space left of the island/notch,
+      // with compact system-sized type rather than header-sized text.
+      const earW = w / 2 - (islandEra ? 156 : 205);
+      drawStatusClock(ctx, tokens, earW / 2 + (islandEra ? 6 : 0), midY, 'center');
+    } else drawStatusClock(ctx, tokens, 40, midY);
 
-    const wifiCx = battX - 46;
-    drawWifiIcon(ctx, wifiCx, midY + 15, 36, color, false);
-
-    const sigX = wifiCx - 90;
-    for (let i = 0; i < 4; i++){
-      const bh = 12 + i * 7;
-      roundRectPath(ctx, sigX + i * 14, midY + 14 - bh, 9, bh, { tl: 2, tr: 2, br: 2, bl: 2 });
+    if (isIOS){
+      // iOS cluster, right-aligned: signal bars, Wi-Fi or a network label, pill battery with a nub, no % label
+      const battW = 64, battH = 30;
+      const battX = w - 88 - battW;
+      ctx.lineWidth = 2.5;
+      ctx.save(); ctx.globalAlpha = 0.45;
+      roundRectPath(ctx, battX, midY - battH / 2, battW, battH, { tl: 6, tr: 6, br: 6, bl: 6 });
+      ctx.stroke();
+      ctx.fillRect(battX + battW + 3, midY - 5, 3, 10);
+      ctx.restore();
+      const pad = 3;
+      ctx.save();
+      ctx.fillStyle = sb.charging ? '#34c759' : (level <= 20 ? '#ff3b30' : color);
+      roundRectPath(ctx, battX + pad, midY - battH / 2 + pad, Math.max(4, (battW - pad * 2) * level / 100), battH - pad * 2, { tl: 2, tr: 2, br: 2, bl: 2 });
       ctx.fill();
-    }
-  } else {
-    // Android cluster: signal bars, wifi arc, battery %, outlined battery — Material-style, left-to-right
-    const battW = 42, battH = 20;
-    const battX = w - 108 - battW;
-    ctx.lineWidth = 2.5;
-    roundRectPath(ctx, battX, midY - battH / 2, battW, battH, { tl: 3, tr: 3, br: 3, bl: 3 });
-    ctx.stroke();
-    ctx.fillRect(battX + battW, midY - 4, 4, 8);
-    const pad = 3;
-    ctx.fillRect(battX + pad, midY - battH / 2 + pad, (battW - pad * 2) * 0.82, battH - pad * 2);
+      ctx.restore();
+      if (sb.charging) drawChargingBolt(ctx, battX + battW / 2, midY, 24, dark ? '#000000' : '#ffffff', color);
 
-    ctx.font = '500 24px ' + tokens.font;
-    ctx.textAlign = 'right';
-    ctx.fillText('82%', battX - 20, midY + 1);
-    ctx.textAlign = 'left';
+      const wifiCx = battX - 46;
+      if (net === 'wifi') drawWifiIcon(ctx, wifiCx, midY + 15, 36, color, false);
+      else if (net !== 'none'){
+        ctx.font = '600 28px ' + tokens.font; ctx.textAlign = 'right';
+        ctx.fillText(net, battX - 16, midY + 1);
+        ctx.textAlign = 'left';
+      }
 
-    // Android order: Wi-Fi, mobile signal, battery %, battery.
-    const sigX = battX - 128;
-    drawWifiIcon(ctx, sigX - 32, midY + 11, 28, color, true);
-    for (let i = 0; i < 4; i++){
-      const bh = 8 + i * 6;
-      ctx.fillRect(sigX + i * 12, midY + 8 - bh, 8, bh);
+      const sigX = wifiCx - 90;
+      for (let i = 0; i < 4; i++){
+        const bh = 12 + i * 7;
+        dim(i < bars);
+        roundRectPath(ctx, sigX + i * 14, midY + 14 - bh, 9, bh, { tl: 2, tr: 2, br: 2, bl: 2 });
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else {
+      // Android cluster: Wi-Fi or a network label, signal bars, battery %, outlined battery
+      const battW = 42, battH = 20;
+      const battX = w - 108 - battW;
+      ctx.lineWidth = 2.5;
+      roundRectPath(ctx, battX, midY - battH / 2, battW, battH, { tl: 3, tr: 3, br: 3, bl: 3 });
+      ctx.stroke();
+      ctx.fillRect(battX + battW, midY - 4, 4, 8);
+      const pad = 3;
+      ctx.save();
+      if (level <= 15 && !sb.charging) ctx.fillStyle = '#ff5252';
+      ctx.fillRect(battX + pad, midY - battH / 2 + pad, (battW - pad * 2) * level / 100, battH - pad * 2);
+      ctx.restore();
+      if (sb.charging) drawChargingBolt(ctx, battX + battW / 2, midY, 20, dark ? '#000000' : '#075e54', color);
+
+      ctx.font = '500 24px ' + tokens.font;
+      ctx.textAlign = 'right';
+      ctx.fillText(level + '%', battX - 20, midY + 1);
+      ctx.textAlign = 'left';
+
+      const sigX = battX - 128;
+      if (net === 'wifi') drawWifiIcon(ctx, sigX - 32, midY + 11, 28, color, true);
+      else if (net !== 'none'){
+        ctx.font = '500 22px ' + tokens.font; ctx.textAlign = 'right';
+        ctx.fillText(net, sigX - 10, midY + 1);
+        ctx.textAlign = 'left';
+      }
+      for (let i = 0; i < 4; i++){
+        const bh = 8 + i * 6;
+        dim(i < bars);
+        ctx.fillRect(sigX + i * 12, midY + 8 - bh, 8, bh);
+      }
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -2159,7 +2463,28 @@ function drawHeaderActionIcons(ctx, tokens, chrome, w, cy){
  * Layout + main draw
  * ------------------------------------------------------------------- */
 let scrollOffsetCurrent = 0;
-const chatScroll = { target: 0, max: 0, followLatest: true };
+const chatScroll = { target: 0, max: 0, followLatest: true, velocity: 0, dragging: false, lastTick: 0 };
+
+/* Fling momentum after a touch drag: exponential decay (~325ms time constant,
+ * the feel of native phone scrolling), stopping at either end. */
+function tickChatMomentum(now){
+  const dt = Math.min(50, Math.max(0, now - (chatScroll.lastTick || now)));
+  chatScroll.lastTick = now;
+  if (!chatScroll.velocity || chatScroll.dragging) return;
+  if (prefersReducedMotion){ chatScroll.velocity = 0; return; }
+  const before = scrollOffsetCurrent;
+  scrollChatTo(scrollOffsetCurrent + chatScroll.velocity * dt);
+  chatScroll.velocity *= Math.exp(-dt / 325);
+  if (Math.abs(chatScroll.velocity) < 0.02 || scrollOffsetCurrent === before) chatScroll.velocity = 0;
+}
+
+// True while the chat is moving, so phones repaint every frame instead of the
+// battery-saving ~30fps (scrolling at 30fps looked choppy).
+function chatScrollMoving(){
+  const target = chatScroll.followLatest ? chatScroll.max : chatScroll.target;
+  return chatScroll.dragging || !!chatScroll.velocity || Math.abs(target - scrollOffsetCurrent) >= 0.5
+    || (scrollDownBtnAlpha > 0 && scrollDownBtnAlpha < 1);
+}
 
 function getChatViewport(){
   const tokens = getPlatformTokens();
@@ -2188,6 +2513,7 @@ function wireChatScrolling(){
     const delta = e.deltaMode === 1 ? e.deltaY * 20 * canvasScale()
       : e.deltaMode === 2 ? e.deltaY * getChatViewport().height
       : e.deltaY * canvasScale();
+    chatScroll.velocity = 0;
     scrollChatTo(scrollOffsetCurrent + delta);
   }, { passive: false });
 
@@ -2198,7 +2524,9 @@ function wireChatScrolling(){
     e.stopPropagation();
     if (e.pointerType === 'mouse') e.preventDefault();
     area.focus({ preventScroll: true });
-    drag = { id: e.pointerId, y: e.clientY };
+    chatScroll.velocity = 0; // a touch stops any fling, like a real phone
+    drag = { id: e.pointerId, y: e.clientY, samples: [{ t: e.timeStamp, y: e.clientY }] };
+    chatScroll.dragging = true;
     area.setPointerCapture(e.pointerId);
     area.classList.add('dragging');
   });
@@ -2207,10 +2535,20 @@ function wireChatScrolling(){
     e.stopPropagation();
     scrollChatTo(scrollOffsetCurrent + (drag.y - e.clientY) * canvasScale());
     drag.y = e.clientY;
+    drag.samples.push({ t: e.timeStamp, y: e.clientY });
+    while (drag.samples.length > 2 && e.timeStamp - drag.samples[0].t > 100) drag.samples.shift();
   });
   const endDrag = (e) => {
     if (!drag || drag.id !== e.pointerId) return;
+    // Fling: carry on at the finger's speed over its last ~100ms, then decay
+    // (tickChatMomentum). Mouse drags stop dead, as on desktop.
+    const s = drag.samples, a = s[0], b = s[s.length - 1];
+    if (e.type === 'pointerup' && e.pointerType !== 'mouse' && b.t - a.t > 0 && e.timeStamp - b.t < 80){
+      const v = (a.y - b.y) / (b.t - a.t) * canvasScale(); // canvas px per ms
+      if (Math.abs(v) > 0.25) chatScroll.velocity = Math.max(-12, Math.min(12, v));
+    }
     drag = null;
+    chatScroll.dragging = false;
     area.classList.remove('dragging');
     if (area.hasPointerCapture(e.pointerId)) area.releasePointerCapture(e.pointerId);
   };
@@ -2224,11 +2562,13 @@ function wireChatScrolling(){
     if (!(e.key in offsets) && e.key !== 'Home' && e.key !== 'End') return;
     e.preventDefault();
     e.stopPropagation();
+    chatScroll.velocity = 0;
     scrollChatTo(e.key === 'Home' ? 0 : e.key === 'End' ? chatScroll.max
       : scrollOffsetCurrent + offsets[e.key]);
   });
   latest.addEventListener('pointerdown', (e) => e.stopPropagation());
   latest.addEventListener('click', () => {
+    chatScroll.velocity = 0;
     chatScroll.followLatest = true;
     // The button disappears at the bottom; keep keyboard focus in the chat.
     area.focus({ preventScroll: true });
@@ -2241,7 +2581,7 @@ function computeVisibleState(){
   if (visibleCount < state.messages.length){
     const next = state.messages[visibleCount];
     const replaying = replayState === 'playing' || replayState === 'paused';
-    typingActive = next.sender === 'contact' && (replaying || typingArmedId === next.id);
+    typingActive = next.sender === 'contact' && !next.call && (replaying || typingArmedId === next.id);
   }
   return { visibleCount, typingActive, typingIsContact: typingActive };
 }
@@ -2252,6 +2592,73 @@ function computeVisibleState(){
 function mediaLabel(media){
   if (!media) return '';
   return media.type === 'video' ? 'Video' : 'Photo';
+}
+
+/* ---------- Voice call messages (m.call = { missed }) ----------
+ * WhatsApp's in-chat call bubble: a round icon, "Voice call" and the
+ * duration (the message text) or a missed-call line, with the time and no
+ * ticks. Only Gen 2/3: Gen 1 (pre-2024) showed calls differently, so call
+ * messages are hidden there and the editor button is disabled. */
+const CALL_ICON_D = 104, CALL_ICON_GAP = 24, CALL_BUBBLE_H = 172, CALL_MIN_W = 400;
+function callShown(m){ return !!(m && m.call) && state.generation !== 'classic'; }
+function callTexts(m){
+  const missed = !!m.call.missed;
+  const kind = m.call.video ? 'video' : 'voice';
+  const name = m.call.video ? 'Video call' : 'Voice call';
+  if (missed && m.sender === 'contact') return { title: 'Missed ' + kind + ' call', sub: 'Tap to call back', red: true };
+  if (missed) return { title: name, sub: 'No answer', red: false };
+  return { title: name, sub: formatCallDuration(m.call), red: false };
+}
+/* WhatsApp-style call length: "45 min", "1 hr", "1 hr 20 min". 0 hours is
+ * never shown; a call is at least 1 minute. */
+function formatCallDuration(call){
+  const h = Math.max(0, Math.min(99, Math.floor(call.h || 0)));
+  let min = Math.max(0, Math.min(59, Math.floor(call.min || 0)));
+  if (!h && !min) min = 1;
+  if (!h) return min + ' min';
+  return min ? h + ' hr ' + min + ' min' : h + ' hr';
+}
+// Older call messages stored a free-text duration in m.text ("2 min", "1 hour").
+function parseCallText(text){
+  const s = String(text || '').toLowerCase();
+  const h = /(\d+)\s*h/.exec(s), mm = /(\d+)\s*m/.exec(s);
+  let hours = h ? +h[1] : 0, mins = mm ? +mm[1] : 0;
+  if (!h && !mm){ const n = /(\d+)/.exec(s); mins = n ? +n[1] : 2; }
+  hours += Math.floor(mins / 60); mins %= 60;
+  return { h: Math.min(99, hours), min: mins };
+}
+function callLabel(m){ return callTexts(m).title; }
+
+function drawCallIcon(ctx, cx, cy, d, dark, red, outgoing, video){
+  ctx.save();
+  ctx.fillStyle = dark ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.06)';
+  ctx.beginPath(); ctx.arc(cx, cy, d / 2, 0, Math.PI * 2); ctx.fill();
+  const color = red ? '#f15c6d' : (dark ? '#aebac1' : '#667781');
+  const s = d * 0.46;
+  if (video){
+    // Camera with the direction arrow drawn on its body, like WhatsApp's video call log icon.
+    drawMaterialSymbol(ctx, 'videocam', cx, cy, s * 1.1, color);
+    ctx.fillStyle = dark ? '#2a3942' : '#ffffff';
+    const bx = cx - s * 0.12, by = cy, L2 = s * 0.3, dir = outgoing ? 1 : -1;
+    ctx.strokeStyle = dark ? 'rgba(0,0,0,.55)' : '#ffffff'; ctx.lineWidth = Math.max(3, d * 0.04);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const tip = [bx + dir * L2 / 2, by - dir * L2 / 2], tail = [bx - dir * L2 / 2, by + dir * L2 / 2], H = L2 * 0.6;
+    ctx.beginPath(); ctx.moveTo(tail[0], tail[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tip[0] - dir * H, tip[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(tip[0], tip[1] + dir * H); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  drawMaterialSymbol(ctx, 'call', cx - s * 0.06, cy + s * 0.06, s, color);
+  // Direction arrow at the handset's top right: up-right for a call you
+  // made, down-left for one you received.
+  const ax = cx + s * 0.2, ay = cy - s * 0.2, L = s * 0.36;
+  const tip = outgoing ? [ax + L / 2, ay - L / 2] : [ax - L / 2, ay + L / 2];
+  const tail = outgoing ? [ax - L / 2, ay + L / 2] : [ax + L / 2, ay - L / 2];
+  const hx = outgoing ? -1 : 1, hy = outgoing ? 1 : -1, H = L * 0.62;
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(3, d * 0.045); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(tail[0], tail[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(tip[0] + hx * H, tip[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(tip[0], tip[1] + hy * H); ctx.stroke();
+  ctx.restore();
 }
 
 function formatMediaDuration(seconds){
@@ -2272,6 +2679,7 @@ function resolveReplyTarget(m){
   const senderLabel = isMeSource ? 'You' : (state.contact.name || 'Contact');
   const snippetText = target.deleted
     ? (target.sender === 'me' ? 'You deleted this message' : 'This message was deleted')
+    : target.call ? callLabel(target)
     : (target.text.trim() ? target.text : mediaLabel(target.media));
   return { target, senderLabel, snippetText, isMeSource, deletedTarget: !!target.deleted };
 }
@@ -2311,7 +2719,8 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
   let lastDate = null;
   for (let i = 0; i < visibleCount; i++){
     const m = state.messages[i];
-    if (!m.deleted && !m.media && !m.text.trim()) continue;
+    if (m.call && !callShown(m)) continue; // Gen 1 had no call bubbles
+    if (!m.deleted && !m.media && !m.call && !m.text.trim()) continue;
     if (m.date && m.date !== lastDate){
       blocks.push({ type: 'date', y, h: tokens.dateChipH, text: formatDateDivider(m.date) });
       y += tokens.dateChipH + 28;
@@ -2334,6 +2743,18 @@ function buildBlocks(ctx, tokens, visibleCount, typingActive, maxWidth){
       ctx.font = TS_FONT_SIZE + 'px ' + tokens.font;
       const delInlineW = contentW + ctx.measureText(to12h(m.time || '00:00')).width + 20 + BUBBLE_PAD_X * 2;
       if (delInlineW <= MAX_BUBBLE_W){ w = Math.max(w, delInlineW); h -= TS_ROW_H; }
+    } else if (m.call){
+      const ct = callTexts(m);
+      ctx.font = '600 ' + MSG_FONT_SIZE + 'px ' + tokens.font;
+      const titleW = ctx.measureText(ct.title).width;
+      ctx.font = Math.round(MSG_FONT_SIZE * 0.92) + 'px ' + tokens.font;
+      const subW = ctx.measureText(ct.sub).width;
+      ctx.font = TS_FONT_SIZE + 'px ' + tokens.font;
+      const tsW = ctx.measureText(to12h(m.time || '00:00')).width;
+      const textW = Math.max(titleW, subW + 28 + tsW);
+      lines = [];
+      w = Math.max(CALL_MIN_W, Math.min(MAX_BUBBLE_W, BUBBLE_PAD_X * 2 + CALL_ICON_D + CALL_ICON_GAP + textW));
+      h = CALL_BUBBLE_H;
     } else {
       quote = buildQuoteInfo(ctx, tokens, m);
       if (m.media){
@@ -2531,6 +2952,18 @@ function drawChatArea(ctx, originY, height, now){
       const iconCy = textStartY - MSG_FONT_SIZE * 0.35;
       drawNoEntryIcon(ctx, iconCx, iconCy, DEL_ICON_R, delColor);
       ctx.fillText(b.lines[0], bx + BUBBLE_PAD_X + DEL_ICON_R * 2 + DEL_ICON_GAP, textStartY);
+    } else if (m.call){
+      const ct = callTexts(m);
+      const dark = chromeMode === 'dark';
+      const icx = bx + BUBBLE_PAD_X + CALL_ICON_D / 2, icy = y + bh / 2;
+      drawCallIcon(ctx, icx, icy, CALL_ICON_D, dark, ct.red, isMe, !!m.call.video);
+      const tx = bx + BUBBLE_PAD_X + CALL_ICON_D + CALL_ICON_GAP;
+      ctx.font = '600 ' + MSG_FONT_SIZE + 'px ' + tokens.font;
+      ctx.fillStyle = dark ? '#e9edef' : '#111b21';
+      ctx.fillText(ct.title, tx, y + bh / 2 - 8);
+      ctx.font = Math.round(MSG_FONT_SIZE * 0.92) + 'px ' + tokens.font;
+      ctx.fillStyle = dark ? 'rgba(233,237,239,.6)' : 'rgba(17,27,33,.55)';
+      ctx.fillText(ct.sub, tx, y + bh - BUBBLE_PAD_BOTTOM - 10);
     } else if (b.media){
       const mediaX = bx + (bw - b.media.w) / 2;
       let mediaY = y + b.media.topPad;
@@ -2574,7 +3007,7 @@ function drawChatArea(ctx, originY, height, now){
     ctx.textAlign = 'right';
     const timeText = to12h(m.time || '00:00');
     // Deleted messages carry a time but never delivery ticks.
-    const showTicks = isMe && !m.deleted;
+    const showTicks = isMe && !m.deleted && !m.call; // call bubbles carry no ticks
     const ticksW = showTicks ? ticksWidth(TS_FONT_SIZE) : 0;
     ctx.fillText(timeText, bx + bw - BUBBLE_PAD_X - ticksW - (showTicks ? 6 : 0), tsY);
     if (showTicks){
@@ -2585,8 +3018,49 @@ function drawChatArea(ctx, originY, height, now){
 
   ctx.restore();
 
+  drawScrollDownButton(ctx, tokens, chromeMode, now);
   drawFooterBar(ctx, tokens, chromeMode, 0, originY + messagesH, CANVAS_W, footerH, now);
   drawNavBar(ctx, tokens, chromeMode, 0, originY + messagesH + footerH, CANVAS_W, navH);
+}
+
+/* WhatsApp's own "scroll to latest" button, drawn on the canvas so it shows in
+ * recordings exactly when it would in the real app (scrolled up from the
+ * bottom). Android: a round button with a double chevron; iOS: a round button
+ * with a single chevron. The invisible #chatLatestBtn is laid over it for
+ * clicks and keyboard focus (layoutComposerInput). Fades in/out over 150ms. */
+let scrollDownBtnAlpha = 0, scrollDownBtnLast = 0;
+function getScrollDownBtnGeom(){
+  const ios = state.platform === 'ios';
+  const r = ios ? 46 : 54;
+  const vp = getChatViewport();
+  return { cx: CANVAS_W - (ios ? 34 : 30) - r, cy: vp.bottom - 30 - r, r };
+}
+function drawScrollDownButton(ctx, tokens, chromeMode, now){
+  const show = !chatScroll.followLatest && chatScroll.max > 0;
+  const dt = Math.min(100, Math.max(0, now - scrollDownBtnLast));
+  scrollDownBtnLast = now;
+  const step = prefersReducedMotion ? 1 : dt / 150;
+  scrollDownBtnAlpha = Math.max(0, Math.min(1, scrollDownBtnAlpha + (show ? step : -step)));
+  if (scrollDownBtnAlpha <= 0) return;
+  const ios = state.platform === 'ios';
+  const dark = chromeMode === 'dark';
+  const { cx, cy, r } = getScrollDownBtnGeom();
+  ctx.save();
+  ctx.globalAlpha = scrollDownBtnAlpha;
+  ctx.shadowColor = 'rgba(0,0,0,' + (dark ? 0.45 : 0.18) + ')';
+  ctx.shadowBlur = 14; ctx.shadowOffsetY = 3;
+  ctx.fillStyle = ios ? (dark ? '#2c2c2e' : '#ffffff') : (dark ? '#2a3942' : '#ffffff');
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = ios ? (dark ? '#d1d1d6' : '#8e8e93') : (dark ? '#aebac1' : '#54656f');
+  ctx.lineWidth = ios ? 6 : 6.5;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const chevron = (y, w, h) => {
+    ctx.beginPath(); ctx.moveTo(cx - w, y - h / 2); ctx.lineTo(cx, y + h / 2); ctx.lineTo(cx + w, y - h / 2); ctx.stroke();
+  };
+  if (ios) chevron(cy + 2, r * 0.36, r * 0.36);
+  else { chevron(cy - r * 0.15, r * 0.3, r * 0.26); chevron(cy + r * 0.17, r * 0.3, r * 0.26); }
+  ctx.restore();
 }
 
 /* Draws the quoted-reply preview inside a bubble: a tinted rounded panel with
@@ -3435,7 +3909,9 @@ const liteRenderMQ = window.matchMedia('(max-width:1199.98px), (pointer:coarse)'
 let lastPreviewDrawAt = -1e9;
 function loop(now){
   syncComposerMirrorMode();
-  if (!liteRenderMQ.matches || anyRecorderActive() || now - lastPreviewDrawAt >= 30){
+  tickChatMomentum(now);
+  guardCreditLimit(now);
+  if (!liteRenderMQ.matches || anyRecorderActive() || chatScrollMoving() || now - lastPreviewDrawAt >= 30){
     draw(previewCtx, now);
     lastPreviewDrawAt = now;
   }
@@ -3466,6 +3942,29 @@ function syncComposerMirrorMode(){
 
 /* Pushes a message's text (changed from the phone composer) back into its
  * sidebar card, so the textarea and its Send button stay in agreement. */
+/* A chat can't go back in time: after a message's date/time changes, any later
+ * message now dated before it moves forward to the same date (and to the same
+ * time when it would otherwise sit earlier on that day). Later messages that
+ * are already after it are left alone; earlier messages are never touched. */
+function keepLaterMessagesInOrder(m){
+  if (!m.date) return;
+  const i = state.messages.indexOf(m);
+  if (i < 0) return;
+  const time = m.time || '00:00';
+  for (let j = i + 1; j < state.messages.length; j++){
+    const n = state.messages[j];
+    let changed = false;
+    if (!n.date || n.date < m.date){ n.date = m.date; changed = true; }
+    if (n.date === m.date && (n.time || '00:00') < time){ n.time = m.time; changed = true; }
+    if (!changed) continue;
+    const card = document.querySelector('.msgCard[data-msg-id="' + n.id + '"]');
+    if (!card) continue;
+    const di = card.querySelector('input[type="date"]'), ti = card.querySelector('input[type="time"]');
+    if (di) di.value = n.date;
+    if (ti) ti.value = n.time;
+  }
+}
+
 function syncMessageCardText(m){
   const card = document.querySelector('.msgCard[data-msg-id="' + m.id + '"]');
   if (!card) return;
@@ -3502,8 +4001,13 @@ function layoutComposerInput(){
   area.classList.toggle('can-scroll', chatScroll.max > 0);
   const latest = $('chatLatestBtn');
   latest.hidden = chatScroll.followLatest || chatScroll.max === 0;
-  latest.style.right = (frameRect.right - canvasRect.right + 10) + 'px';
-  latest.style.bottom = (frameRect.bottom - canvasRect.top - viewport.bottom * scaleY + 10) + 'px';
+  if (!latest.hidden){ // invisible hit target over the canvas-drawn button
+    const g = getScrollDownBtnGeom();
+    latest.style.left = (canvasRect.left - frameRect.left + (g.cx - g.r) * scaleX) + 'px';
+    latest.style.top = (canvasRect.top - frameRect.top + (g.cy - g.r) * scaleY) + 'px';
+    latest.style.width = (g.r * 2 * scaleX) + 'px';
+    latest.style.height = (g.r * 2 * scaleY) + 'px';
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -3689,6 +4193,12 @@ function makeRecorder(kind, canvas){
     $(kind + 'DownloadAgainBtn').hidden = !(s === 'complete' && ctrl.lastBlob);
     $(kind + 'DownloadAgainLabel').textContent = ctrl.downloaded ? 'Download again' : 'Download';
     $(kind + 'RetryBtn').hidden = s !== 'error';
+    const player = $(kind + 'TakePlayer');
+    if (player){
+      const show = s === 'complete' && !!ctrl.lastBlob;
+      player.hidden = !show;
+      if (!show) $(kind + 'TakeVideo').pause();
+    }
 
     const dot = $(kind + 'RecDot');
     dot.hidden = (s === 'idle' || s === 'complete' || s === 'error');
@@ -3726,6 +4236,11 @@ function makeRecorder(kind, canvas){
     ctrl.coveredMs = WTCCreditsCore.coveredMs(ent);
     ctrl.cappedAtFree = WTCCreditsCore.hitFreeCap(ent);
     ctrl.watermarkStarted = false;
+    // No clean coverage at all: ask before recording a single frame.
+    ctrl.watermarkAccepted = ctrl.preAcceptedWatermark === true;
+    ctrl.preAcceptedWatermark = false;
+    if (ctrl.coveredMs <= 0 && !ctrl.watermarkAccepted){ openCreditLimitDialog('before-start'); return; }
+    revealScriptForRecording();
     draw(previewCtx, performance.now());
     setNote(kind, '');
     ctrl.lastBlob = null;
@@ -3807,6 +4322,12 @@ function makeRecorder(kind, canvas){
   function deliver(blob, filename){
     ctrl.lastBlob = blob;
     ctrl.lastFilename = filename;
+    const takeVideo = $(kind + 'TakeVideo');
+    if (takeVideo){
+      if (ctrl.takeUrl) URL.revokeObjectURL(ctrl.takeUrl);
+      ctrl.takeUrl = URL.createObjectURL(blob);
+      takeVideo.src = ctrl.takeUrl;
+    }
     ctrl.shareable = canShareVideo(blob, filename);
     if (!ctrl.shareable){
       downloadBlob(blob, filename);
@@ -3933,6 +4454,70 @@ function updateRecTimers(now){
     ctrl.watermarkStarted = true;
     $(ctrl.kind + 'RecHelper').textContent = watermarkHelperText(ctrl);
   }
+}
+
+/* Credit-limit check, run every frame *before* drawing: one frame before a
+ * take reaches the end of its clean coverage (credits or the free 60 s), pause
+ * the recording (and any replay) and ask whether to stop with a clean video or
+ * continue with a watermark. Nothing watermarked is recorded unless the
+ * creator chooses Continue. Pro/admin (coveredMs = Infinity) never sees it. */
+const CREDIT_LIMIT_LEAD_MS = 40;
+function guardCreditLimit(now){
+  const ctrl = fullRecorder;
+  if (ctrl.state !== 'recording' || ctrl.watermarkAccepted || ctrl.coveredMs === Infinity) return;
+  if (fullRecElapsedMs(now) < ctrl.coveredMs - CREDIT_LIMIT_LEAD_MS) return;
+  ctrl.pause();
+  if (replayState === 'playing'){ pauseReplay(); replayAutoPaused = true; }
+  openCreditLimitDialog('running');
+}
+
+let creditLimitMode = 'running'; // 'running' (take paused) | 'before-start' (nothing recorded yet)
+function openCreditLimitDialog(mode){
+  creditLimitMode = mode;
+  const ctrl = fullRecorder;
+  const ent = WTCCredits.get();
+  // Plain words ("60 seconds", "2 min 30 s"), not a "01:00" timer readout.
+  const secs = Math.round(Math.max(0, ctrl.coveredMs) / 1000);
+  const clean = secs <= 90 ? secs + (secs === 1 ? ' second' : ' seconds')
+    : Math.floor(secs / 60) + ' min' + (secs % 60 ? ' ' + (secs % 60) + ' s' : '');
+  let body, upgrade = '';
+  if (ctrl.cappedAtFree){
+    body = 'Free videos stay clean for ' + clean + '. If you continue, the rest of this video will have a Texting Studio watermark. Stop now to save a clean video.';
+    upgrade = 'Go Pro for full-length videos';
+  } else if (mode === 'before-start'){
+    body = 'You’re out of credits, so this video will have a Texting Studio watermark from the start.';
+    upgrade = ent && ent.isAnonymous ? 'Sign in for 10 free credits' : 'Get more credits';
+  } else {
+    body = 'Your credits covered ' + clean + ' of video. If you continue, the rest will have a Texting Studio watermark. Stop now to save a clean video.';
+    upgrade = ent && ent.isAnonymous ? 'Sign in for 10 free credits' : 'Get more credits';
+  }
+  if (ent && ent.offline) upgrade = '';
+  const before = mode === 'before-start';
+  $('creditLimitTitle').textContent = before ? 'Out of credits' : 'Recording paused';
+  $('creditLimitBody').textContent = body;
+  $('creditLimitStopBtn').textContent = before ? 'Cancel' : 'Stop and save';
+  $('creditLimitContinueBtn').textContent = before ? 'Record with watermark' : 'Continue with watermark';
+  $('creditLimitUpgradeBtn').textContent = upgrade;
+  $('creditLimitUpgradeBtn').hidden = !upgrade;
+  const dlg = $('creditLimitDialog');
+  if (!dlg.open) dlg.showModal();
+}
+
+function wireCreditLimitDialog(){
+  const dlg = $('creditLimitDialog');
+  const close = () => { if (dlg.open) dlg.close(); };
+  // Stop/cancel: save the clean part of a running take; before the start, nothing to save.
+  const stop = () => { close(); if (creditLimitMode === 'running') fullRecorder.stop(); };
+  $('creditLimitContinueBtn').addEventListener('click', () => {
+    close();
+    if (creditLimitMode === 'before-start'){ fullRecorder.preAcceptedWatermark = true; fullRecorder.start(); return; }
+    fullRecorder.watermarkAccepted = true;
+    resumeAfterBackground();
+  });
+  $('creditLimitStopBtn').addEventListener('click', stop);
+  $('creditLimitUpgradeBtn').addEventListener('click', () => { stop(); openAccountDialog(); });
+  // Escape = the safe choice: stop with what's clean, never silently continue.
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); stop(); });
 }
 
 function updateResetButtonState(){
@@ -4108,6 +4693,10 @@ const ICONS = {
   trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
   send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
   volume: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
+  statusBar: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M8.5 6h2M14 6h1.5"/>',
+  statusBarOff: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><line x1="3" y1="3" x2="21" y2="21"/>',
+  video: '<rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5 21 7v10l-5.5-3.5"/>',
+  phone: '<path d="M5 4h3.5l1.7 4.3-2.2 1.4a11 11 0 0 0 6.3 6.3l1.4-2.2L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"/>',
   volumeOff: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
   moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
@@ -4199,6 +4788,7 @@ function wireTabs(){
   $('generationSelect').addEventListener('change', event => {
     state.generation = event.target.value;
     syncGenerationControls();
+    renderMessageList();
   });
   syncGenerationControls();
   desktopMQ.addEventListener('change', () => { if (desktopMQ.matches) closeExportSheet(); applyTabVisibility(); });
@@ -4475,6 +5065,56 @@ function wireSoundToggle(){
   apply();
 }
 
+/* Pattern over the post-recording player only (never the editing preview,
+ * which stays clean so new users aren't put off). Hidden for Pro. Right-click
+ * "Save image" on the editing preview is still blocked. */
+function syncPreviewWatermark(ent){
+  if (ent === undefined) ent = WTCCredits.get();
+  const pro = !!(ent && ent.pro);
+  $('fullTakeWm').hidden = pro;
+  $('fullTakeNote').hidden = pro;
+}
+
+function wirePreviewWatermark(){
+  syncPreviewWatermark();
+  const frame = document.querySelector('.phone-frame');
+  frame.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+/* Status bar controls (Phone section) + the stage's hide button. Per project:
+ * every change writes state.statusBar, which autosave and backups carry. */
+function syncStatusBarControls(){
+  const sb = state.statusBar;
+  $('sbClockMode').value = sb.clockMode;
+  $('sbFixedTime').value = sb.fixedTime;
+  $('sbFixedTimeWrap').hidden = sb.clockMode !== 'fixed';
+  $('sbSignal').value = String(sb.signal);
+  $('sbNetwork').value = sb.network;
+  $('sbBattery').value = String(sb.battery);
+  $('sbBatteryOut').textContent = sb.battery + '%';
+  $('sbCharging').checked = sb.charging;
+  $('sbDrain').checked = sb.drain;
+  const btn = $('statusBarToggle');
+  btn.innerHTML = iconSvg(sb.hidden ? 'statusBarOff' : 'statusBar', 18);
+  btn.setAttribute('aria-pressed', String(sb.hidden));
+  const label = sb.hidden ? 'Show the phone status bar' : 'Hide the phone status bar';
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
+}
+
+function wireStatusBarControls(){
+  const sb = () => state.statusBar;
+  $('sbClockMode').addEventListener('change', (e) => { sb().clockMode = e.target.value; syncStatusBarControls(); });
+  $('sbFixedTime').addEventListener('input', (e) => { if (e.target.value) sb().fixedTime = e.target.value; });
+  $('sbSignal').addEventListener('change', (e) => { sb().signal = Number(e.target.value); });
+  $('sbNetwork').addEventListener('change', (e) => { sb().network = e.target.value; });
+  $('sbBattery').addEventListener('input', (e) => { sb().battery = Number(e.target.value); $('sbBatteryOut').textContent = e.target.value + '%'; });
+  $('sbCharging').addEventListener('change', (e) => { sb().charging = e.target.checked; });
+  $('sbDrain').addEventListener('change', (e) => { sb().drain = e.target.checked; });
+  $('statusBarToggle').addEventListener('click', () => { sb().hidden = !sb().hidden; syncStatusBarControls(); });
+  syncStatusBarControls();
+}
+
 /* Studio (shell) light/dark theme. Independent of the phone's own chrome
  * mode; never touches the canvas. Per-browser convenience, so localStorage. */
 /* ---------------------------------------------------------------------
@@ -4528,6 +5168,7 @@ function renderPlan(ent){
 }
 
 function renderAccount(ent){
+  syncPreviewWatermark(ent);
   $('creditsChipText').textContent = WTCCreditsCore.chipLabel(ent);
   $('creditsChip').dataset.empty = String(!!ent && !ent.pro && ent.credits === 0);
   renderPlan(ent);
@@ -5060,7 +5701,7 @@ function moveMessage(id, dir){
 }
 
 function sendMessage(msg){
-  if (!msg.text.trim() && !msg.media) return;
+  if (!msg.text.trim() && !msg.media && !msg.call) return;
   const idx = state.messages.findIndex((m) => m.id === msg.id);
   if (idx < 0) return;
   revealUpTo(msg.id);
@@ -5197,7 +5838,7 @@ function renderMessageList(){
     textarea.placeholder = 'Type a message…';
     textarea.addEventListener('input', (e) => {
       m.text = e.target.value;
-      sendBtn.disabled = !e.target.value.trim() && !m.media;
+      sendBtn.disabled = !e.target.value.trim() && !m.media && !m.call;
       // Mirrors the mic<->send pop animation for the phone's composer action
       // button when this row is the one being live-mirrored into it.
       if (getPendingComposerMessage() === m){
@@ -5237,13 +5878,44 @@ function renderMessageList(){
     sendBtn.className = 'sendBtn';
     sendBtn.innerHTML = iconSvg('send') + ' Send';
     sendBtn.title = 'Reveal this message in the live preview';
-    sendBtn.disabled = !m.text.trim() && !m.media;
+    sendBtn.disabled = !m.text.trim() && !m.media && !m.call;
     sendBtn.addEventListener('click', () => sendMessage(m));
+    if (m.call){
+      // A call's message box is its duration: hours + minutes fields, so the
+      // bubble always reads "45 min" / "1 hr 20 min" like WhatsApp.
+      textarea.hidden = true;
+      const dur = document.createElement('div');
+      dur.className = 'callDuration';
+      if (m.call.missed){
+        dur.innerHTML = '<span class="callDurNote">Missed calls have no duration</span>';
+      } else {
+        const field = (key, label, max) => {
+          const wrap = document.createElement('label');
+          wrap.className = 'callDurField';
+          const input = document.createElement('input');
+          input.type = 'number'; input.min = '0'; input.max = String(max); input.step = '1'; input.inputMode = 'numeric';
+          input.value = String(m.call[key] || 0);
+          input.setAttribute('aria-label', label === 'hr' ? 'Call hours' : 'Call minutes');
+          input.addEventListener('input', () => {
+            const v = parseInt(input.value, 10);
+            m.call[key] = Number.isFinite(v) ? Math.max(0, Math.min(max, v)) : 0;
+          });
+          input.addEventListener('change', () => { input.value = String(m.call[key]); });
+          input.addEventListener('keydown', (e) => { if (e.key === 'Enter'){ e.preventDefault(); sendMessage(m); } });
+          wrap.appendChild(input);
+          wrap.appendChild(document.createTextNode(label));
+          return wrap;
+        };
+        dur.appendChild(field('h', 'hr', 99));
+        dur.appendChild(field('min', 'min', 59));
+      }
+      composeRow.insertBefore(dur, textarea);
+    }
     composeRow.appendChild(sendBtn);
 
     card.appendChild(composeRow);
 
-    const earlierCandidates = state.messages.slice(0, idx).filter((cand) => cand.deleted || cand.text.trim() || cand.media);
+    const earlierCandidates = state.messages.slice(0, idx).filter((cand) => cand.deleted || cand.text.trim() || cand.media || cand.call);
     const replyCandidates = earlierCandidates.slice(-REPLY_CANDIDATE_LIMIT);
     if (m.replyTo && !replyCandidates.some((cand) => cand.id === m.replyTo)){
       // currently-selected target fell outside the last-5 window (more messages
@@ -5283,6 +5955,8 @@ function renderMessageList(){
     const dateInput = document.createElement('input');
     dateInput.type = 'date'; dateInput.value = m.date;
     dateInput.addEventListener('input', (e) => { m.date = e.target.value; });
+    // Reorder on commit, not every keystroke, so half-typed years don't cascade.
+    dateInput.addEventListener('change', () => keepLaterMessagesInOrder(m));
     dateWrap.appendChild(dateInput);
     fieldsRow.appendChild(dateWrap);
 
@@ -5291,10 +5965,12 @@ function renderMessageList(){
     const timeInput = document.createElement('input');
     timeInput.type = 'time'; timeInput.value = m.time;
     timeInput.addEventListener('input', (e) => { m.time = e.target.value; });
+    // Reorder on commit, not every keystroke, so half-typed years don't cascade.
+    timeInput.addEventListener('change', () => keepLaterMessagesInOrder(m));
     timeWrap.appendChild(timeInput);
     fieldsRow.appendChild(timeWrap);
 
-    if (m.sender === 'me'){
+    if (m.sender === 'me' && !m.call){ // call bubbles carry no ticks
       const statusWrap = document.createElement('div');
       statusWrap.innerHTML = '<label>Ticks</label>';
       const statusSelect = document.createElement('select');
@@ -5337,6 +6013,47 @@ function renderMessageList(){
         renderMessageList();
       });
       mediaWrap.appendChild(removeMediaBtn);
+    } else if (m.call){
+      const callTag = document.createElement('span');
+      callTag.className = 'mediaTag';
+      callTag.innerHTML = iconSvg(m.call.video ? 'video' : 'phone');
+      callTag.setAttribute('aria-hidden', 'true');
+      mediaWrap.appendChild(callTag);
+      const callType = document.createElement('select');
+      callType.className = 'callKind';
+      callType.setAttribute('aria-label', 'Call type');
+      [['voice', 'Voice call'], ['video', 'Video call']].forEach(([v, label]) => {
+        const opt = document.createElement('option'); opt.value = v; opt.textContent = label;
+        if ((m.call.video ? 'video' : 'voice') === v) opt.selected = true;
+        callType.appendChild(opt);
+      });
+      callType.addEventListener('change', (e) => { m.call.video = e.target.value === 'video'; renderMessageList(); });
+      mediaWrap.appendChild(callType);
+      const callKind = document.createElement('select');
+      callKind.className = 'callKind';
+      callKind.setAttribute('aria-label', 'Call result');
+      [['answered', 'Answered'], ['missed', 'Missed']].forEach(([v, label]) => {
+        const opt = document.createElement('option'); opt.value = v; opt.textContent = label;
+        if ((m.call.missed ? 'missed' : 'answered') === v) opt.selected = true;
+        callKind.appendChild(opt);
+      });
+      callKind.addEventListener('change', (e) => { m.call.missed = e.target.value === 'missed'; renderMessageList(); });
+      mediaWrap.appendChild(callKind);
+      const removeCallBtn = document.createElement('button');
+      removeCallBtn.type = 'button';
+      removeCallBtn.className = 'small';
+      removeCallBtn.innerHTML = iconSvg('trash');
+      removeCallBtn.setAttribute('aria-label', 'Turn back into a text message');
+      removeCallBtn.title = 'Turn back into a text message';
+      removeCallBtn.addEventListener('click', () => { m.call = null; renderMessageList(); });
+      mediaWrap.appendChild(removeCallBtn);
+      if (state.generation === 'classic'){
+        const note = document.createElement('span');
+        note.className = 'callNote';
+        note.textContent = 'Hidden in Gen 1';
+        note.title = 'Call bubbles came with the 2024 WhatsApp design. Switch to Gen 2 or Gen 3 to show it.';
+        mediaWrap.appendChild(note);
+      }
     } else {
       const mediaBtn = document.createElement('button');
       mediaBtn.type = 'button';
@@ -5358,6 +6075,22 @@ function renderMessageList(){
       });
       mediaWrap.appendChild(mediaBtn);
       mediaWrap.appendChild(mediaFileInput);
+      const classic = state.generation === 'classic';
+      [[false, 'phone', 'Voice call'], [true, 'video', 'Video call']].forEach(([video, icon, label]) => {
+        const callBtn = document.createElement('button');
+        callBtn.type = 'button';
+        callBtn.className = 'mediaBtn';
+        callBtn.innerHTML = iconSvg(icon) + ' ' + label;
+        callBtn.disabled = classic;
+        callBtn.title = classic
+          ? 'Call bubbles came with the 2024 WhatsApp design. Switch to Gen 2 or Gen 3.'
+          : 'Turn this message into a ' + label.toLowerCase() + '. Type the duration in the message box.';
+        callBtn.addEventListener('click', () => {
+          m.call = { missed: false, video, h: 0, min: 2 };
+          renderMessageList();
+        });
+        mediaWrap.appendChild(callBtn);
+      });
     }
     delRow.appendChild(mediaWrap);
 
@@ -5451,10 +6184,13 @@ function serializeProjectData(){
     platform: state.platform,
     generation: state.generation,
     timeStepEvery: state.timeStepEvery,
+    statusBar: { ...state.statusBar },
     theme: { ...state.theme, wallpaperImg: state.theme.wallpaperImg ? state.theme.wallpaperImg.src : null },
-    messages: state.messages.map((m) => ({
+    // While the tour shows sample messages, save the real ones instead.
+    messages: (tourRealMessages || state.messages).map((m) => ({
       ...m,
       media: m.media ? { type: m.media.type, img: m.media.img ? m.media.img.src : null, duration: m.media.duration } : null,
+      call: m.call ? { missed: !!m.call.missed, video: !!m.call.video, h: m.call.h || 0, min: m.call.min || 0 } : null,
     })),
     timeline: { ...state.timeline },
   };
@@ -5524,6 +6260,9 @@ function deserializeProjectData(data){
       deleted: m.deleted === true,
       replyTo: pickId(m.replyTo),
       media: img ? { type: pickEnum(m.media.type, ['image', 'video'], 'image'), img, duration: pickNum(m.media.duration, 0, 86400, 0) } : null,
+      call: !img && m.call && typeof m.call === 'object' ? (Number.isFinite(m.call.min) || Number.isFinite(m.call.h)
+        ? { missed: m.call.missed === true, video: m.call.video === true, h: Math.round(pickNum(m.call.h, 0, 99, 0)), min: Math.round(pickNum(m.call.min, 0, 59, 0)) }
+        : { missed: m.call.missed === true, video: m.call.video === true, ...parseCallText(m.text) }) : null,
     });
   });
   const timeline = {};
@@ -5534,8 +6273,19 @@ function deserializeProjectData(data){
     });
   }
   const step = Number.isInteger(src.timeStepEvery) && src.timeStepEvery >= 0 && src.timeStepEvery <= 10 ? src.timeStepEvery : 3;
+  const sbSrc = src.statusBar && typeof src.statusBar === 'object' ? src.statusBar : {};
+  const statusBar = {
+    hidden: sbSrc.hidden === true,
+    clockMode: pickEnum(sbSrc.clockMode, ['chat', 'fixed'], 'chat'),
+    fixedTime: typeof sbSrc.fixedTime === 'string' && /^\d{2}:\d{2}$/.test(sbSrc.fixedTime) ? sbSrc.fixedTime : '03:00',
+    battery: Math.round(pickNum(sbSrc.battery, 1, 100, 82)),
+    charging: sbSrc.charging === true,
+    drain: sbSrc.drain === true,
+    signal: Math.round(pickNum(sbSrc.signal, 0, 4, 4)),
+    network: pickEnum(sbSrc.network, ['5G', '4G', 'LTE', 'wifi', 'none'], '5G'),
+  };
   return {
-    contact, theme, messages, timeline, timeStepEvery: step,
+    contact, theme, messages, timeline, timeStepEvery: step, statusBar,
     platform: pickEnum(src.platform, ['android', 'ios'], 'android'),
     generation: GENERATIONS.includes(src.generation) ? src.generation : 'classic',
   };
@@ -5596,6 +6346,7 @@ function syncUIFromState(){
 
   $('projectNameText').textContent = currentProjectName;
   $('timeStepSelect').value = String(state.timeStepEvery);
+  syncStatusBarControls();
 
   resetPreview();
   stopReplay();
@@ -5723,6 +6474,7 @@ async function bootProject(){
     state.platform = data.platform;
     state.generation = data.generation;
     state.timeStepEvery = data.timeStepEvery;
+    state.statusBar = data.statusBar;
     state.theme = data.theme;
     state.messages = data.messages;
     state.timeline = data.timeline;
@@ -5751,9 +6503,250 @@ async function bootProject(){
 /* ---------------------------------------------------------------------
  * Init
  * ------------------------------------------------------------------- */
+/* ---------- First-run tour ----------
+ * Coach-mark steps over the real UI: chat, Messages, a content guide over one
+ * sample message card (sender, reply, date+time, media/deleted, Add message),
+ * then look, record and credits. Below 1200px the Messages/look/record steps
+ * point at the Content / Appearance / Export tabs instead.
+ * Shown once per browser (localStorage, a per-viewer convenience), replayable
+ * from the header "?" button. Pure DOM: it never touches the canvas. */
+const TOUR_KEY = 'wtc-tour-done';
+const TOUR_STEPS = [
+  { title: 'This is your chat',
+    body: 'Everything in this phone is exactly what your video records. You can also type your own messages straight into its message bar.',
+    target: () => document.querySelector('.phone-frame') },
+  { title: 'Write the conversation',
+    body: 'Add messages, choose Contact or Me, then press Send to reveal each one. Click into a contact message to show “typing…”.',
+    mobileBody: 'Your messages are in Content. Add them, choose Contact or Me, then press Send to reveal each one in the chat.',
+    target: () => $('panelMessages'), scroll: 'panelMessages',
+    mobileTarget: () => document.querySelector('.tabsBar [data-tab="content"]') },
+  // Content guide: points at the parts of one sample message card.
+  { title: 'Who sends it', content: true, inPanel: true,
+    body: 'Contact is the other person; Me is you. Switch it any time and the bubble moves to that side of the chat.',
+    target: () => tourCardPart('.seg') },
+  { title: 'Reply to a message', content: true, inPanel: true,
+    body: 'Pick an earlier message here to quote it above this one, just like swiping to reply in WhatsApp.',
+    target: () => tourCardPart('.replyRow') },
+  { title: 'Date and time', content: true, inPanel: true,
+    body: 'Set when each message was sent. Change a date and the messages after it move forward so the chat stays in order.',
+    target: () => { const row = tourCardPart('.fieldsRow'); return row ? [row.children[0], row.children[1]] : null; } },
+  { title: 'Photos and deleted messages', content: true, inPanel: true,
+    body: 'Add media attaches a photo or video. Mark as deleted turns it into “This message was deleted”.',
+    target: () => tourCardPart('.delRow') },
+  { title: 'Add more messages', content: true, inPanel: true, endsContent: true,
+    body: 'Add message puts a new card at the end. Write it, then press its Send button to reveal it in the chat.',
+    target: () => $('addMessageBtn') },
+  { title: 'Make it look real', noBack: true,
+    body: 'Pick Android or iOS, set the contact’s name and photo, and change the wallpaper or bubble colours.',
+    mobileBody: 'Wallpaper, light or dark mode and bubble colours are in Appearance. Phone style and the contact are at the top of Content.',
+    target: () => [$('platformControls'), $('panelContent'), $('panelAppearance')], scroll: 'top',
+    mobileTarget: () => document.querySelector('.tabsBar [data-tab="appearance"]') },
+  { title: 'Record your video',
+    body: 'Press Start recording, then send your messages or press Play to replay your timing. Stop saves the video. Save screenshot grabs a still.',
+    mobileBody: 'Recording and screenshots are in Export. Start recording, send your messages, then press Stop to save the video.',
+    target: () => $('fullStartBtn').closest('.recorder-panel'),
+    mobileTarget: () => document.querySelector('.tabsBar [data-tab="export"]') },
+  { title: 'Your credits',
+    body: 'Screenshots and videos use credits. Tap here to see your balance, sign in for more, or go Pro.',
+    target: () => $('creditsChip') },
+];
+let tourIndex = -1;
+let tourReturnFocus = null;
+
+/* Sample messages for the content guide. A brand-new project's demo script
+ * (or a project with fewer than two messages) is swapped for a sample while
+ * the guide runs; on Skip or at the end of the guide the real messages come
+ * back (an untouched demo script counts as "no messages", so a new user
+ * starts on an empty chat). While a sample is shown, serializeProjectData
+ * saves tourRealMessages instead, so the sample never reaches the project. */
+const TOUR_SAMPLE_TEXTS = ['hey are you still awake', 'yeah whats up', 'i keep hearing something tapping on my window', 'its probably nothing'];
+let tourRealMessages = null;
+let projectBooted = null; // bootProject()'s promise, set in init()
+
+function tourIsUntouchedDemo(){
+  return state.messages.length === TOUR_SAMPLE_TEXTS.length
+    && state.messages.every((m, i) => m.text === TOUR_SAMPLE_TEXTS[i] && !m.media && !m.deleted);
+}
+
+function tourInstallSample(){
+  if (tourRealMessages) return;
+  const demo = tourIsUntouchedDemo();
+  if (!demo && state.messages.length >= 2) return; // use the creator's own cards
+  tourRealMessages = demo ? [] : state.messages;
+  if (!demo){
+    const ids = TOUR_SAMPLE_TEXTS.map(() => uid());
+    const senders = ['contact', 'me', 'contact', 'contact'];
+    state.messages = TOUR_SAMPLE_TEXTS.map((text, i) => ({ id: ids[i], sender: senders[i], text, date: today(),
+      time: '23:4' + (7 + i), status: 'read', deleted: false, replyTo: i === 3 ? ids[2] : null, media: null }));
+  }
+  resetPreview();
+  renderMessageList();
+}
+
+function tourRemoveSample(){
+  if (!tourRealMessages) return;
+  state.messages = tourRealMessages;
+  tourRealMessages = null;
+  resetPreview();
+  renderMessageList();
+}
+
+// A part of the second message card (the first one has no Reply to row).
+function tourCardPart(sel){
+  const card = document.querySelectorAll('#messageList .msgCard')[1] || document.querySelector('#messageList .msgCard');
+  return card ? card.querySelector(sel) : null;
+}
+let tourRaf = 0;
+
+function tourIsMobile(){ return !desktopMQ.matches; }
+
+function tourTargetRect(step){
+  let els = (tourIsMobile() && step.mobileTarget ? step.mobileTarget() : step.target());
+  els = (Array.isArray(els) ? els : [els]).filter(el => el && !el.hidden && el.getClientRects().length);
+  if (!els.length) return null;
+  let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
+  els.forEach(el => { const q = el.getBoundingClientRect(); l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); b = Math.max(b, q.bottom); });
+  // Keep the outline on screen even when a tall panel runs past the bottom.
+  const pad = 6, vh = window.innerHeight, vw = window.innerWidth;
+  l = Math.max(4, l - pad); t = Math.max(4, t - pad);
+  r = Math.min(vw - 4, r + pad); b = Math.min(vh - 4, b + pad);
+  return { left: l, top: t, width: Math.max(0, r - l), height: Math.max(0, b - t) };
+}
+
+// Bring the step's target into view by scrolling only its own panel (never
+// scrollIntoView, which would scroll #app; see the "shell must never scroll" note).
+function tourPrepareStep(step){
+  if (step.inPanel){
+    // Message-card parts: open Content (phones) and scroll the target to the
+    // middle of its own scroller, below the docked mini preview.
+    if (tourIsMobile() && activeTab !== 'content'){ activeTab = 'content'; applyTabVisibility(); }
+    let el = step.target();
+    el = Array.isArray(el) ? el[0] : el;
+    if (!el) return;
+    const scroller = tourIsMobile() ? $('workspace') : $('leftPanel');
+    const top = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    scroller.scrollTop += top - scroller.clientHeight * (tourIsMobile() ? 0.5 : 0.38);
+    return;
+  }
+  if (tourIsMobile()){
+    const ws = $('workspace');
+    if (ws) ws.scrollTop = 0; // phone undocked and the tabs bar visible
+    return;
+  }
+  const panel = $('leftPanel');
+  if (step.scroll === 'top') panel.scrollTop = 0;
+  else if (step.scroll){
+    const el = $(step.scroll);
+    panel.scrollTop += el.getBoundingClientRect().top - panel.getBoundingClientRect().top - 12;
+  }
+}
+
+function tourLayout(){
+  if (tourIndex < 0) return;
+  const step = TOUR_STEPS[tourIndex];
+  const hole = $('tourHole'), card = $('tourCard');
+  const r = tourTargetRect(step);
+  const vw = window.innerWidth, vh = window.innerHeight, gap = 14, m = 12;
+  const cw = card.offsetWidth, ch = card.offsetHeight;
+  if (!r){
+    hole.style.cssText = 'left:50%;top:50%;width:0;height:0;';
+    card.style.left = Math.round((vw - cw) / 2) + 'px';
+    card.style.top = Math.round((vh - ch) / 2) + 'px';
+    return;
+  }
+  hole.style.left = r.left + 'px'; hole.style.top = r.top + 'px';
+  hole.style.width = r.width + 'px'; hole.style.height = r.height + 'px';
+  // Prefer the side with room: right, left, below, above; else overlap the bottom.
+  const clampY = y => Math.min(Math.max(m, y), vh - ch - m);
+  const clampX = x => Math.min(Math.max(m, x), vw - cw - m);
+  let x, y;
+  if (r.left + r.width + gap + cw + m <= vw){ x = r.left + r.width + gap; y = clampY(r.top); }
+  else if (r.left - gap - cw >= m){ x = r.left - gap - cw; y = clampY(r.top); }
+  else if (r.top + r.height + gap + ch + m <= vh){ y = r.top + r.height + gap; x = clampX(r.left + r.width / 2 - cw / 2); }
+  else if (r.top - gap - ch >= m){ y = r.top - gap - ch; x = clampX(r.left + r.width / 2 - cw / 2); }
+  else { y = vh - ch - m; x = clampX(r.left + r.width / 2 - cw / 2); }
+  card.style.left = Math.round(x) + 'px'; card.style.top = Math.round(y) + 'px';
+}
+
+function tourShowStep(i){
+  tourIndex = i;
+  const step = TOUR_STEPS[i];
+  const last = i === TOUR_STEPS.length - 1;
+  $('tourStep').textContent = (i + 1) + ' / ' + TOUR_STEPS.length;
+  $('tourTitle').textContent = step.title;
+  $('tourBody').textContent = (tourIsMobile() && step.mobileBody) || step.body;
+  $('tourBackBtn').hidden = i === 0 || !!step.noBack; // no going back into a cleared sample
+  $('tourNextBtn').textContent = last ? 'Done' : 'Next';
+  $('tourSkipBtn').hidden = last;
+  tourPrepareStep(step);
+  tourLayout();
+  $('tourNextBtn').focus({ preventScroll: true });
+}
+
+function tourLoop(){
+  tourLayout(); // follows resizes, docking and panel scrolls
+  tourRaf = requestAnimationFrame(tourLoop);
+}
+
+function startTour(){
+  if (tourIndex >= 0) return;
+  tourReturnFocus = document.activeElement;
+  $('tourRoot').hidden = false;
+  tourInstallSample();
+  tourShowStep(0);
+  tourRaf = requestAnimationFrame(tourLoop);
+}
+
+function endTour(){
+  if (tourIndex < 0) return;
+  tourIndex = -1;
+  cancelAnimationFrame(tourRaf);
+  $('tourRoot').hidden = true;
+  tourRemoveSample();
+  try { localStorage.setItem(TOUR_KEY, '1'); } catch (e) {}
+  if (tourReturnFocus && tourReturnFocus.focus) tourReturnFocus.focus({ preventScroll: true });
+}
+
+function wireTour(){
+  $('tourBtn').addEventListener('click', startTour);
+  $('tourSkipBtn').addEventListener('click', endTour);
+  $('tourBackBtn').addEventListener('click', () => { if (tourIndex > 0) tourShowStep(tourIndex - 1); });
+  $('tourNextBtn').addEventListener('click', () => {
+    if (tourIndex >= TOUR_STEPS.length - 1){ endTour(); return; }
+    if (TOUR_STEPS[tourIndex].endsContent) tourRemoveSample(); // content guide done: clear the sample
+    tourShowStep(tourIndex + 1);
+  });
+  $('tourRoot').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape'){ e.preventDefault(); endTour(); return; }
+    if (e.key !== 'Tab') return; // keep focus inside the card
+    const btns = [...$('tourCard').querySelectorAll('button')].filter(b => !b.hidden);
+    const i = btns.indexOf(document.activeElement);
+    if (e.shiftKey && i <= 0){ e.preventDefault(); btns[btns.length - 1].focus(); }
+    else if (!e.shiftKey && i === btns.length - 1){ e.preventDefault(); btns[0].focus(); }
+  });
+  desktopMQ.addEventListener('change', () => { if (tourIndex >= 0) tourShowStep(tourIndex); });
+
+  let seen = false;
+  try { seen = localStorage.getItem(TOUR_KEY) === '1'; } catch (e) { seen = true; }
+  if (seen) return;
+  // First visit: wait for the layout and project to settle, and never stack on
+  // top of the sign-in dialog (it may open from ?signin=1).
+  // Start only after the saved project has loaded, so the sample swap can't race it.
+  // (setTimeout 0: init() assigns projectBooted after wireTour() runs.)
+  setTimeout(async () => {
+    await projectBooted;
+    setTimeout(() => {
+      if ($('accountDialog').open || anyRecorderActive()) return;
+      startTour();
+    }, 700);
+  }, 0);
+}
+
 function init(){
   wireGlobalControls();
   wireSoundToggle();
+  wireStatusBarControls();
+  wirePreviewWatermark();
   wireStudioThemeToggle();
   wireUploadButtons();
   wireBubblePopover();
@@ -5790,6 +6783,8 @@ function init(){
   setReplayButtons();
 
   wireProjectsUI();
+  wireTour();
+  wireCreditLimitDialog();
 
   composerInputEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter'){
@@ -5830,11 +6825,11 @@ function init(){
   });
 
   // Refresh line measurements once the embedded fonts are available.
-  Promise.all([window.chatEmojiReady, ...['44px ChatRoboto', '44px ChatInter', '600 44px ChatInter'].map((f) => document.fonts.load(f))])
+  Promise.all([window.chatEmojiReady, ...['44px ChatRoboto', '500 36px ChatRoboto', '44px ChatInter', '600 42px ChatInter'].map((f) => document.fonts.load(f))])
     .then(() => wrapCache.clear(), () => wrapCache.clear());
   requestAnimationFrame(loop);
   checkMp4Backend();
-  bootProject();
+  projectBooted = bootProject().catch(() => {});
 
   // Best-effort extra save points beyond the periodic autosave loop, so a
   // refresh right after an edit reliably picks up the latest state too.
