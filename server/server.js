@@ -26,11 +26,14 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const ffmpegPath = require("ffmpeg-static");
+const { createConversionLimiter } = require("./rate-limit");
+const { sendError, handleError } = require("./errors");
 
 const PORT = 8787;
 const HOST = "127.0.0.1";
 
 const app = express();
+app.disable("x-powered-by");
 
 // This tool only ever runs on the user's own machine and is only ever
 // reachable from pages the user opened themselves (localhost or a local
@@ -38,7 +41,7 @@ const app = express();
 // video clips), so allowing all origins is fine and keeps setup simple —
 // it avoids needing to special-case "file://" (which browsers usually
 // send as the literal Origin header "null").
-app.use(cors({ origin: true }));
+app.use(cors({ origin: true, exposedHeaders: ["Retry-After"] }));
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -49,21 +52,21 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.post("/convert", (req, res) => {
+app.post("/convert", createConversionLimiter(), (req, res) => {
   upload.single("video")(req, res, async (uploadErr) => {
     if (uploadErr) {
-      console.error("[convert] upload error:", uploadErr.message);
-      return res.status(400).json({ error: "Upload failed: " + uploadErr.message });
+      console.error("[convert] upload error:", uploadErr);
+      return sendError(res, 400);
     }
 
     const file = req.file;
     if (!file || !file.buffer || file.buffer.length === 0) {
-      return res.status(400).json({ error: "No video file was received (field name must be 'video')." });
+      return sendError(res, 400);
     }
 
     if (!ffmpegPath) {
       console.error("[convert] ffmpeg-static did not resolve a binary path for this platform.");
-      return res.status(500).json({ error: "Bundled ffmpeg binary was not found. Try deleting node_modules and running npm install again." });
+      return sendError(res);
     }
 
     const tmpDir = os.tmpdir();
@@ -75,7 +78,7 @@ app.post("/convert", (req, res) => {
       await fsp.writeFile(inputPath, file.buffer);
     } catch (writeErr) {
       console.error("[convert] failed to write temp input file:", writeErr);
-      return res.status(500).json({ error: "Could not write temporary file on the server." });
+      return sendError(res);
     }
 
     const ffmpegArgs = [
@@ -106,7 +109,7 @@ app.post("/convert", (req, res) => {
       console.error("[convert] failed to start ffmpeg:", spawnErr);
       await cleanup(inputPath, outputPath);
       if (!res.headersSent) {
-        res.status(500).json({ error: "Could not start the ffmpeg process: " + spawnErr.message });
+        sendError(res);
       }
     });
 
@@ -115,10 +118,7 @@ app.post("/convert", (req, res) => {
         console.error(`[convert] ffmpeg exited with code ${code}\n${stderrOutput}`);
         await cleanup(inputPath, outputPath);
         if (!res.headersSent) {
-          res.status(500).json({
-            error: "ffmpeg failed to convert the video.",
-            details: stderrOutput.slice(-4000),
-          });
+          sendError(res);
         }
         return;
       }
@@ -130,7 +130,7 @@ app.post("/convert", (req, res) => {
         console.error("[convert] output file missing after ffmpeg reported success:", statErr);
         await cleanup(inputPath, outputPath);
         if (!res.headersSent) {
-          res.status(500).json({ error: "ffmpeg reported success but produced no output file." });
+          sendError(res);
         }
         return;
       }
@@ -139,7 +139,7 @@ app.post("/convert", (req, res) => {
         console.error("[convert] output file is empty");
         await cleanup(inputPath, outputPath);
         if (!res.headersSent) {
-          res.status(500).json({ error: "ffmpeg produced an empty output file." });
+          sendError(res);
         }
         return;
       }
@@ -152,11 +152,7 @@ app.post("/convert", (req, res) => {
       const readStream = fs.createReadStream(outputPath);
       readStream.on("error", async (streamErr) => {
         console.error("[convert] error streaming output file:", streamErr);
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Failed while sending the converted file." });
-        } else {
-          res.destroy();
-        }
+        sendError(res);
       });
       readStream.on("close", () => {
         cleanup(inputPath, outputPath);
@@ -172,7 +168,7 @@ async function cleanup(...paths) {
       await fsp.unlink(p);
     } catch (err) {
       if (err.code !== "ENOENT") {
-        console.error(`[cleanup] could not remove ${p}:`, err.message);
+        console.error(`[cleanup] could not remove ${p}:`, err);
       }
     }
   }
@@ -180,13 +176,14 @@ async function cleanup(...paths) {
 
 // Multer errors (e.g. file too large) and any other body-parsing errors
 // that escape the /convert handler above.
-app.use((err, req, res, next) => {
-  console.error("[server] unhandled error:", err);
-  if (res.headersSent) return next(err);
-  res.status(500).json({ error: err.message || "Unexpected server error." });
-});
+app.use((req, res) => sendError(res, 404));
+app.use(handleError);
 
-app.listen(PORT, HOST, () => {
-  console.log(`MP4 backend listening on http://${HOST}:${PORT}`);
-  console.log("Keep this window open while recording chat videos. Close it when you're done.");
-});
+if (require.main === module) {
+  app.listen(PORT, HOST, () => {
+    console.log(`MP4 backend listening on http://${HOST}:${PORT}`);
+    console.log("Keep this window open while recording chat videos. Close it when you're done.");
+  });
+}
+
+module.exports = app;

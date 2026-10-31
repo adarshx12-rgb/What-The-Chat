@@ -62,3 +62,33 @@ This program needs to be running **at the moment you click Stop** on a
 recording, so it can convert that clip. It's completely fine to close it
 between recording sessions and reopen it (double-click `start-server.bat`
 again) whenever you come back to record more videos.
+
+## Conversion rate limits
+
+`POST /convert` accepts at most **6 attempts per rolling minute** and **30 per
+rolling hour**, shared across this local server. Failed uploads count too.
+Excess attempts return HTTP 429 with a `Retry-After` header (seconds) and JSON
+`code: "rate_limit_exceeded"` before the upload is parsed or FFmpeg starts.
+The recorder downloads the original recording and displays the retry delay.
+Health checks and CORS preflight requests do not consume this budget.
+
+The limiter stores at most 30 timestamps in memory; restarting the process
+resets it. It ignores forwarded IP headers and remains bound to `127.0.0.1`.
+These limits are for the existing single-process local converter. A hosted
+service would need authentication, a shared durable limiter, and resource
+limits across workers before exposing conversion publicly.
+
+Run `npm test` from `server/` to verify rolling windows, parallel requests,
+header spoofing, upload rejection, CORS, and an actual FFmpeg conversion.
+
+## Error responses
+
+Upload errors return a generic HTTP 400 response. Internal failures return the
+same generic HTTP 500 response, without exception messages, stack traces,
+file paths, or FFmpeg output. Unknown routes return a generic JSON 404.
+Error responses are not cached. If a download has already started, a failure
+closes the connection rather than appending error details to the video.
+
+Full error objects (including available stack traces) and bounded FFmpeg
+diagnostics stay in the server terminal. Use those logs to troubleshoot;
+the browser continues to save the original recording when conversion fails.

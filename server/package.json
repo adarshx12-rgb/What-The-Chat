@@ -5,7 +5,8 @@
   "description": "Local-only backend that re-encodes recorded chat videos into standard H.264/AAC MP4 using ffmpeg.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
