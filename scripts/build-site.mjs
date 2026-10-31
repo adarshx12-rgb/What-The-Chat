@@ -16,6 +16,7 @@ const FILES = [
   'privacy-policy.html',
   'terms-and-conditions.html',
   'refund-policy.html',
+  'shipping-policy.html',
   '404.html',
   '500.html',
   'robots.txt',
