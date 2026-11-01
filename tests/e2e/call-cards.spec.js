@@ -145,3 +145,20 @@ test('call controls and preview fit desktop, tablet and mobile', async ({ page, 
     }
   } finally { await context.close(); }
 });
+
+test('a call card can be turned back into a text message', async ({ page }) => {
+  await openStudio(page);
+  await page.evaluate(() => {
+    state.generation = 'current'; state.platform = 'android';
+    state.messages = [{ id: uid(), sender: 'me', text: '', date: today(), time: '21:30', deleted: false, media: null, replyTo: null, status: 'read', call: null }];
+    renderMessageList();
+  });
+  await page.getByRole('button', { name: 'Video call', exact: true }).click();
+  expect(await page.evaluate(() => !!state.messages[0].call)).toBe(true);
+  await page.getByRole('button', { name: 'Text message', exact: true }).click();
+  expect(await page.evaluate(() => state.messages[0].call)).toBeNull();
+  await expect(page.locator('#messageList textarea').first()).toBeVisible();
+  await page.locator('#messageList .msgCard').first().screenshot({ path: test.info().outputPath('card.png') });
+  await page.getByRole('button', { name: 'Voice call', exact: true }).click();
+  await page.locator('#messageList .msgCard').first().screenshot({ path: test.info().outputPath('call-card.png') });
+});
