@@ -27,7 +27,7 @@ jobs:
       - name: Edge Function helpers (signatures, packs, CORS)
         run: |
           deno test supabase/functions/_shared/
-          deno check supabase/functions/billing/index.ts supabase/functions/razorpay-webhook/index.ts
+          deno check --node-modules-dir=none supabase/functions/billing/index.ts supabase/functions/razorpay-webhook/index.ts
       - name: Dependency audit (high and critical)
         run: |
           (cd tests && npm audit --audit-level=high)
