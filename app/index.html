@@ -1065,6 +1065,16 @@
           <option value="current">Gen 3 &middot; 2026 rollout</option>
         </select>
         <p class="helperText" id="generationHelp"></p>
+        <div id="displaySizeField">
+          <label for="displaySizeSelect">Phone display size</label>
+          <select id="displaySizeSelect" aria-describedby="displaySizeHelp">
+            <option value="360">Larger &middot; 360&nbsp;dp (many Samsung phones)</option>
+            <option value="393">Standard &middot; 393&nbsp;dp</option>
+            <option value="412">Smaller &middot; 412&nbsp;dp (Pixel, OnePlus)</option>
+            <option value="432">Smallest &middot; 432&nbsp;dp (Display size: Small)</option>
+          </select>
+          <p class="helperText" id="displaySizeHelp">Scales the whole phone screen, like Android&rsquo;s display size.</p>
+        </div>
         <div class="statusBarBlock">
           <p class="statusBarHeading">Status bar</p>
           <div class="statusRow">
@@ -1431,11 +1441,29 @@ const BUBBLE_PAD_X = 26, BUBBLE_PAD_TOP = 18, BUBBLE_PAD_BOTTOM = 14, TS_ROW_H =
 const LINE_HEIGHT = 42, MSG_FONT_SIZE = 32, TS_FONT_SIZE = 22;
 const BUBBLE_GAP = 16, GROUP_GAP_EXTRA = 6;
 const MIN_BUBBLE_W = 160;
-const MAX_BUBBLE_W = Math.round(CANVAS_W * 0.80);
-const MAX_TEXT_W = MAX_BUBBLE_W - BUBBLE_PAD_X * 2;
+/* Phone display size (Android only). Android lays WhatsApp out in dp and
+ * multiplies by the phone's density, so the same 1080px screen shows the app
+ * bigger on a 360dp-wide phone than on a 412dp one. The studio's metrics were
+ * measured on a 393dp phone; another width draws the whole phone UI scaled by
+ * 393 / dp onto the same 1080x1920 canvas (checked against a real 412dp
+ * capture to within ~2px). Drawing code works in the logical VW x VH space. */
+const DISPLAY_DPS = [360, 393, 412, 432];
+const BASE_DISPLAY_DP = 393;
+let VIEW_SCALE = 1, VW = CANVAS_W, VH = CANVAS_H;
+let MAX_BUBBLE_W = Math.round(CANVAS_W * 0.80);
+let MAX_TEXT_W = MAX_BUBBLE_W - BUBBLE_PAD_X * 2;
 const FOOTER_H = 150;
 const WHATSAPP_GREEN = '#00a884';
-const MEDIA_W = Math.round(CANVAS_W * 0.76), MEDIA_MIN_H = 220, MEDIA_MAX_H = 980;
+let MEDIA_W = Math.round(CANVAS_W * 0.76);
+const MEDIA_MIN_H = 220, MEDIA_MAX_H = 980;
+function syncViewScale(){
+  const dp = state.platform === 'android' && DISPLAY_DPS.includes(state.displayDp) ? state.displayDp : BASE_DISPLAY_DP;
+  VIEW_SCALE = BASE_DISPLAY_DP / dp;
+  VW = CANVAS_W / VIEW_SCALE; VH = CANVAS_H / VIEW_SCALE;
+  MAX_BUBBLE_W = Math.round(VW * 0.80);
+  MAX_TEXT_W = MAX_BUBBLE_W - BUBBLE_PAD_X * 2;
+  MEDIA_W = Math.round(VW * 0.76);
+}
 const MEDIA_INSET = 8, MEDIA_RADIUS = 14, MEDIA_CAPTION_GAP = 10;
 const BUBBLE_DEFAULTS = {
   light: { me: '#d9fdd3', contact: '#ffffff' },
@@ -1611,6 +1639,7 @@ const state = {
   generation: 'current',
   timeStepEvery: 3, // new messages bump the clock 1 min every N messages; 0 = never
   chatFontSize: 'medium', // 'small' | 'medium' | 'large'
+  displayDp: 393, // Android phone width in dp (DISPLAY_DPS); 393 = studio default
   statusBar: { hidden: false, clockMode: 'chat', fixedTime: '03:00', battery: 82, charging: false, drain: false, signal: 4, network: '5G' },
   theme: {
     chromeMode: 'light',
@@ -2528,7 +2557,7 @@ function chatScrollMoving(){
 function getChatViewport(){
   const tokens = getPlatformTokens();
   const top = tokens.statusBarH + tokens.headerH;
-  const bottom = CANVAS_H - FOOTER_H - getComposerFooterExtraH() - tokens.navBarH;
+  const bottom = VH - FOOTER_H - getComposerFooterExtraH() - tokens.navBarH;
   return { top, bottom, height: bottom - top };
 }
 
@@ -2542,7 +2571,7 @@ function scrollChatTo(offset){
 function wireChatScrolling(){
   const area = $('chatScrollArea');
   const latest = $('chatLatestBtn');
-  const canvasScale = () => CANVAS_H / previewCanvas.getBoundingClientRect().height;
+  const canvasScale = () => VH / previewCanvas.getBoundingClientRect().height;
   let drag = null;
 
   area.addEventListener('wheel', (e) => {
@@ -2945,7 +2974,7 @@ function drawChatArea(ctx, originY, height, now){
   const BUBBLE_PAD_X = tokens.padX;
   const { msgFontSize: MSG_FONT_SIZE, lineHeight: LINE_HEIGHT, tsFontSize: TS_FONT_SIZE } = tokens;
   const chromeMode = state.theme.chromeMode;
-  if (!tokens.glass) drawWallpaper(ctx, 0, originY, CANVAS_W, height);
+  if (!tokens.glass) drawWallpaper(ctx, 0, originY, VW, height);
 
   const navH = tokens.navBarH;
   const footerH = FOOTER_H + getComposerFooterExtraH();
@@ -2966,7 +2995,7 @@ function drawChatArea(ctx, originY, height, now){
   const clipTop = tokens.glass ? 0 : originY;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, clipTop, CANVAS_W, originY + messagesH - clipTop);
+  ctx.rect(0, clipTop, VW, originY + messagesH - clipTop);
   ctx.clip();
 
   for (const b of blocks){
@@ -2978,14 +3007,14 @@ function drawChatArea(ctx, originY, height, now){
       ctx.font = tokens.dateFont + ' ' + tokens.font;
       const tw = ctx.measureText(text).width;
       const pillH = tokens.dateChipH, pillW = tw + (tokens.datePadX ? tokens.datePadX * 2 : Math.round(pillH * 0.95));
-      const px = CANVAS_W / 2 - pillW / 2;
+      const px = VW / 2 - pillW / 2;
       ctx.fillStyle = tokens.dateBg ? tokens.dateBg[chromeMode] : (chromeMode === 'dark' ? '#182229' : '#ffffff');
       const cr = tokens.dateRadius;
       roundRectPath(ctx, px, y, pillW, pillH, { tl: cr, tr: cr, br: cr, bl: cr });
       ctx.fill();
       ctx.fillStyle = tokens.dateText ? tokens.dateText[chromeMode] : (chromeMode === 'dark' ? '#8696a0' : '#54656f');
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(text, CANVAS_W / 2, y + pillH / 2 + 1);
+      ctx.fillText(text, VW / 2, y + pillH / 2 + 1);
       continue;
     }
 
@@ -3025,7 +3054,7 @@ function drawChatArea(ctx, originY, height, now){
     const m = b.msg;
     const isMe = m.sender === 'me';
     const bw = b.w, bh = b.h;
-    const bx = isMe ? (CANVAS_W - CHAT_PAD_X - bw) : CHAT_PAD_X;
+    const bx = isMe ? (VW - CHAT_PAD_X - bw) : CHAT_PAD_X;
     // Tails, every era: Android puts a pointed nub on the top outer corner of
     // the FIRST bubble in a run; iOS curls a tail off the bottom outer corner
     // of the LAST bubble in a run. Other bubbles are fully rounded.
@@ -3118,8 +3147,8 @@ function drawChatArea(ctx, originY, height, now){
   ctx.restore();
 
   drawScrollDownButton(ctx, tokens, chromeMode, now);
-  drawFooterBar(ctx, tokens, chromeMode, 0, originY + messagesH, CANVAS_W, footerH, now);
-  drawNavBar(ctx, tokens, chromeMode, 0, originY + messagesH + footerH, CANVAS_W, navH);
+  drawFooterBar(ctx, tokens, chromeMode, 0, originY + messagesH, VW, footerH, now);
+  drawNavBar(ctx, tokens, chromeMode, 0, originY + messagesH + footerH, VW, navH);
 }
 
 /* WhatsApp's own "scroll to latest" button, drawn on the canvas so it shows in
@@ -3132,7 +3161,7 @@ function getScrollDownBtnGeom(){
   const ios = state.platform === 'ios';
   const r = ios ? 46 : 54;
   const vp = getChatViewport();
-  return { cx: CANVAS_W - (ios ? 34 : 30) - r, cy: vp.bottom - 30 - r, r };
+  return { cx: VW - (ios ? 34 : 30) - r, cy: vp.bottom - 30 - r, r };
 }
 function drawScrollDownButton(ctx, tokens, chromeMode, now){
   const show = !chatScroll.followLatest && chatScroll.max > 0;
@@ -3348,8 +3377,9 @@ function getComposerLayout(footerX, footerY, footerW, footerH){
   if (state.generation !== 'classic'){
     const pillH = 127, btnR = 64.5;
     return {
-      field: { x: footerX + 15, y: footerY + (footerH - pillH) / 2 - 5, w: 909, h: pillH },
-      actionCx: footerX + 1003, actionCy: footerY + footerH / 2 - 2, actionR: btnR,
+      // Measured at 1080 wide: pill 15-924, mic centre 1003 (77 from the right).
+      field: { x: footerX + 15, y: footerY + (footerH - pillH) / 2 - 5, w: footerW - 171, h: pillH },
+      actionCx: footerX + footerW - 77, actionCy: footerY + footerH / 2 - 2, actionR: btnR,
     };
   }
   const pillH = 126;
@@ -3859,12 +3889,12 @@ function drawTopChrome(ctx, typingIsContact){
     drawTopGlassEdge(ctx, totalTopH, chromeMode, tokens.statusBarH);
   } else {
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, CANVAS_W, totalTopH);
+    ctx.fillRect(0, 0, VW, totalTopH);
   }
 
   // The iOS status bar is the system's, styled by WhatsApp's light/dark theme
   // (verified against WABetaInfo's iOS 26 captures), never by the wallpaper.
-  drawStatusIcons(ctx, tokens, state.theme.chromeMode, CANVAS_W, tokens.statusBarH);
+  drawStatusIcons(ctx, tokens, state.theme.chromeMode, VW, tokens.statusBarH);
 
   const headerCy = tokens.statusBarH + tokens.headerH / 2;
   if (tokens.glass) drawGlassSurface(ctx, 18, headerCy - 53, 106, 106, 53, chromeMode);
@@ -3896,7 +3926,7 @@ function drawTopChrome(ctx, typingIsContact){
   ctx.fillStyle = nameColor;
   ctx.font = (tokens.headerNameWeight || 600) + ' ' + (tokens.headerNameSize || 40) + 'px ' + tokens.font;
   // Android: the name stops before the video icon (left edge ~745).
-  const textWidth = ah ? 715 - textX : CANVAS_W - textX - (state.platform === 'ios' ? 295 : 360);
+  const textWidth = ah ? (VW - 365) - textX : VW - textX - (state.platform === 'ios' ? 295 : 360);
 
   let subtitle = null;
   // 1:1 chats show "typing..." in the header while the contact types (with the
@@ -3925,25 +3955,31 @@ function drawTopChrome(ctx, typingIsContact){
     ctx.restore();
   }
 
-  drawHeaderActionIcons(ctx, tokens, chromeMode, CANVAS_W, headerCy);
+  drawHeaderActionIcons(ctx, tokens, chromeMode, VW, headerCy);
 }
 
 function draw(ctx, now){
   const tokens = getPlatformTokens();
+  syncViewScale();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-  if (tokens.glass) drawWallpaper(ctx, 0, 0, CANVAS_W, CANVAS_H);
+  // Draw the phone UI in logical VW x VH units (phone display size).
+  ctx.setTransform(VIEW_SCALE, 0, 0, VIEW_SCALE, 0, 0);
+  if (tokens.glass) drawWallpaper(ctx, 0, 0, VW, VH);
   const { typingIsContact } = computeVisibleState();
   const chatY = tokens.statusBarH + tokens.headerH;
   // Glass chrome sits on top of (and blurs) the chat, so the chat draws first.
   if (tokens.glass){
-    drawChatArea(ctx, chatY, CANVAS_H - chatY, now);
+    drawChatArea(ctx, chatY, VH - chatY, now);
     drawTopChrome(ctx, typingIsContact);
   } else {
     drawTopChrome(ctx, typingIsContact);
-    drawChatArea(ctx, chatY, CANVAS_H - chatY, now);
+    drawChatArea(ctx, chatY, VH - chatY, now);
   }
-  if (exportWatermarkActive(now)) drawWatermark(ctx);
   drawStatusBarBlackout(ctx);
+  // The watermark is the studio's, not the phone's: always full canvas size.
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (exportWatermarkActive(now)) drawWatermark(ctx);
   copyExportCrop();
 }
 
@@ -3959,7 +3995,7 @@ const exportCropCanvas = document.createElement('canvas');
 const exportCropCtx = exportCropCanvas.getContext('2d');
 let exportCropTopActive = 0; // > 0 while a cropped take is running
 // Even height so H.264 encoders accept the frame size.
-function exportCropTop(){ return state.statusBar.hidden ? Math.round(getPlatformTokens().statusBarH / 2) * 2 : 0; }
+function exportCropTop(){ syncViewScale(); return state.statusBar.hidden ? Math.round(getPlatformTokens().statusBarH * VIEW_SCALE / 2) * 2 : 0; }
 function prepareExportCrop(top){
   exportCropCanvas.width = CANVAS_W;
   exportCropCanvas.height = CANVAS_H - top;
@@ -3974,7 +4010,7 @@ function drawStatusBarBlackout(ctx){
   const h = getPlatformTokens().statusBarH;
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,.55)';
-  ctx.fillRect(0, 0, CANVAS_W, h);
+  ctx.fillRect(0, 0, VW, h);
   ctx.fillStyle = 'rgba(255,255,255,.92)';
   ctx.font = '600 26px ChatInter, "Segoe UI", sans-serif';
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
@@ -4117,13 +4153,13 @@ function syncMessageCardText(m){
 function layoutComposerInput(){
   const tokens = getPlatformTokens();
   const footerH = FOOTER_H + getComposerFooterExtraH();
-  const footerY = CANVAS_H - footerH - tokens.navBarH;
+  const footerY = VH - footerH - tokens.navBarH;
   const composerY = footerY + (footerH - FOOTER_H);
-  const { field } = getComposerLayout(0, composerY, CANVAS_W, FOOTER_H);
+  const { field } = getComposerLayout(0, composerY, VW, FOOTER_H);
   const canvasRect = previewCanvas.getBoundingClientRect();
   const frameRect = previewCanvas.parentElement.getBoundingClientRect();
-  const scaleX = canvasRect.width / CANVAS_W;
-  const scaleY = canvasRect.height / CANVAS_H;
+  const scaleX = canvasRect.width / VW;
+  const scaleY = canvasRect.height / VH;
   composerInputEl.style.left = (canvasRect.left - frameRect.left + field.x * scaleX) + 'px';
   composerInputEl.style.top = (canvasRect.top - frameRect.top + field.y * scaleY) + 'px';
   composerInputEl.style.width = (field.w * scaleX) + 'px';
@@ -4906,6 +4942,9 @@ const desktopMQ = window.matchMedia('(min-width:1200px)');
 
 function syncGenerationControls(){
   $('generationSelect').value = state.generation;
+  // Android only: iOS scales by device model, which the studio doesn't model.
+  $('displaySizeField').hidden = state.platform !== 'android';
+  $('displaySizeSelect').value = String(state.displayDp);
   $('generationHelp').textContent = state.generation === 'current'
     ? (state.platform === 'android' ? 'Rounded-bubble rollout. Availability varies by WhatsApp version.' : 'Liquid Glass chat rollout. Availability varies by WhatsApp version.')
     : (state.generation === 'classic' ? 'Original green-header era on Android.' : 'Neutral-header era with compact message bubbles.');
@@ -4950,6 +4989,17 @@ function wireTabs(){
     state.generation = event.target.value;
     syncGenerationControls();
     renderMessageList();
+  });
+  $('displaySizeSelect').addEventListener('change', event => {
+    // A cropped take's crop height is fixed at Start; the status bar's
+    // height would change under it.
+    if (exportCropTopActive){
+      event.target.value = String(state.displayDp);
+      showToast('Stop the recording to change the display size.');
+      return;
+    }
+    state.displayDp = Number(event.target.value);
+    syncViewScale();
   });
   syncGenerationControls();
   desktopMQ.addEventListener('change', () => { if (desktopMQ.matches) closeExportSheet(); applyTabVisibility(); });
@@ -6365,6 +6415,7 @@ function serializeProjectData(){
     generation: state.generation,
     timeStepEvery: state.timeStepEvery,
     chatFontSize: state.chatFontSize,
+    displayDp: state.displayDp,
     statusBar: { ...state.statusBar },
     theme: { ...state.theme, wallpaperImg: state.theme.wallpaperImg ? state.theme.wallpaperImg.src : null },
     // While the tour shows sample messages, save the real ones instead.
@@ -6471,6 +6522,7 @@ function deserializeProjectData(data){
   return {
     contact, theme, messages, timeline, timeStepEvery: step, statusBar,
     chatFontSize: pickEnum(src.chatFontSize, ['small', 'medium', 'large'], 'medium'),
+    displayDp: pickEnum(Number(src.displayDp), DISPLAY_DPS, BASE_DISPLAY_DP),
     platform: pickEnum(src.platform, ['android', 'ios'], 'android'),
     generation: GENERATIONS.includes(src.generation) ? src.generation : 'classic',
   };
@@ -6661,6 +6713,7 @@ async function bootProject(){
     state.generation = data.generation;
     state.timeStepEvery = data.timeStepEvery;
     state.chatFontSize = data.chatFontSize;
+    state.displayDp = data.displayDp;
     state.statusBar = data.statusBar;
     state.theme = data.theme;
     state.messages = data.messages;
@@ -6994,7 +7047,7 @@ function init(){
     e.preventDefault(); // keep composer focus — canvas has no tabindex, so a
                          // default mousedown here would otherwise blur it
     const rect = previewCanvas.getBoundingClientRect();
-    const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
+    const scaleX = VW / rect.width, scaleY = VH / rect.height;
     const cx = (e.clientX - rect.left) * scaleX;
     const cy = (e.clientY - rect.top) * scaleY;
 
