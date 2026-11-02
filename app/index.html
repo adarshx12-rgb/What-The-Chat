@@ -1495,11 +1495,22 @@ const BUBBLE_PRESETS = {
 // 2024 and 2026 iOS screenshots). Applied only while the project still uses
 // the stock dark defaults, so custom colours are never overridden.
 const IOS_DARK_BUBBLES = { me: '#254c38', contact: '#232526' };
+// Modern Android (2024+) dark mode, measured from the creator's own native
+// dark-mode captures (Nov 2 2026): muted green me bubble, neutral grey
+// contact bubble and composer pill. Classic keeps the older #005c4b/#202c33.
+const ANDROID_DARK_BUBBLES = { me: '#254b3a', contact: '#1f2428', composer: '#22272b' };
+// The stock dark pair actually drawn for the current platform/generation.
+function stockDarkBubbles(tokens){
+  if (tokens.iosNeutralDark) return IOS_DARK_BUBBLES;
+  if (tokens.androidModern) return ANDROID_DARK_BUBBLES;
+  return BUBBLE_DEFAULTS.dark;
+}
 function bubbleFill(isMe, tokens){
   const th = state.theme;
-  if (tokens.iosNeutralDark && th.chromeMode === 'dark'){
-    if (isMe && !th.bubbleMeCustomized && th.bubbleColorMe === BUBBLE_DEFAULTS.dark.me) return IOS_DARK_BUBBLES.me;
-    if (!isMe && !th.bubbleContactCustomized && th.bubbleColorContact === BUBBLE_DEFAULTS.dark.contact) return IOS_DARK_BUBBLES.contact;
+  if (th.chromeMode === 'dark'){
+    const stock = stockDarkBubbles(tokens);
+    if (isMe && !th.bubbleMeCustomized && th.bubbleColorMe === BUBBLE_DEFAULTS.dark.me) return stock.me;
+    if (!isMe && !th.bubbleContactCustomized && th.bubbleColorContact === BUBBLE_DEFAULTS.dark.contact) return stock.contact;
   }
   return isMe ? th.bubbleColorMe : th.bubbleColorContact;
 }
@@ -3602,7 +3613,7 @@ function drawFooterBarAndroid(ctx, tokens, chromeMode, x, y, w, h, now){
   const hasText = !!getComposerDisplayText().trim();
   ctx.save();
   roundRectPath(ctx, field.x, field.y, field.w, field.h, {tl:field.h/2,tr:field.h/2,br:field.h/2,bl:field.h/2});
-  ctx.fillStyle = chromeMode === 'dark' ? '#202c33' : '#ffffff';
+  ctx.fillStyle = chromeMode === 'dark' ? (modern ? ANDROID_DARK_BUBBLES.composer : '#202c33') : '#ffffff';
   ctx.shadowColor = 'rgba(0,0,0,.12)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 2;
   ctx.fill(); ctx.restore();
 
@@ -4950,6 +4961,8 @@ function syncGenerationControls(){
     : (state.generation === 'classic' ? 'Original green-header era on Android.' : 'Neutral-header era with compact message bubbles.');
   $('platformAndroidBtn').setAttribute('aria-pressed', String(state.platform === 'android'));
   $('platformIosBtn').setAttribute('aria-pressed', String(state.platform === 'ios'));
+  // The stock dark bubble pair depends on platform + era; refresh the swatches.
+  renderBubblePresets();
 }
 
 function applyTabVisibility(){
@@ -5762,8 +5775,11 @@ function renderBubblePresets(){
   const wrap = $('bubblePresets');
   const th = state.theme;
   const hadFocus = wrap.contains(document.activeElement);
-  $('bubbleDotMe').style.background = th.bubbleColorMe;
-  $('bubbleDotContact').style.background = th.bubbleColorContact;
+  // Swatches show what is drawn: the stock dark pair differs per platform/era.
+  const tokens = getPlatformTokens();
+  const swatch = (preset) => (th.chromeMode === 'dark' && preset.id === 'whatsapp') ? stockDarkBubbles(tokens) : preset;
+  $('bubbleDotMe').style.background = bubbleFill(true, tokens);
+  $('bubbleDotContact').style.background = bubbleFill(false, tokens);
   const named = BUBBLE_PRESETS[th.chromeMode].find((pr) => th.bubblePreset
     ? pr.id === th.bubblePreset : (pr.me === th.bubbleColorMe && pr.contact === th.bubbleColorContact));
   $('bubbleColorsName').textContent = named ? named.name : 'Custom';
@@ -5777,8 +5793,9 @@ function renderBubblePresets(){
     btn.classList.toggle('active', active);
     btn.setAttribute('aria-pressed', String(active));
     btn.title = preset.id === 'whatsapp' ? 'WhatsApp default bubbles' : preset.name + ' bubbles';
-    btn.innerHTML = '<span class="presetDots" aria-hidden="true"><span style="background:' + preset.contact +
-      '"></span><span style="background:' + preset.me + '"></span></span><span>' + preset.name + '</span>';
+    const shown = swatch(preset);
+    btn.innerHTML = '<span class="presetDots" aria-hidden="true"><span style="background:' + shown.contact +
+      '"></span><span style="background:' + shown.me + '"></span></span><span>' + preset.name + '</span>';
     btn.addEventListener('click', () => applyBubblePreset(preset));
     wrap.appendChild(btn);
     if (hadFocus && active) btn.focus();

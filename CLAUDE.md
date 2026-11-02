@@ -219,6 +219,12 @@ This folder **is** a git repository now (it wasn't in earlier sessions — that 
 - **Smoother scrolling:** touch drags fling with momentum (`tickChatMomentum()`, ~325ms exponential decay, stopped by any new touch, wheel or key). `chatScrollMoving()` makes phones repaint every frame while the chat moves, instead of the battery-saving ~30fps.
 - **Credit-limit popup** (`#creditLimitDialog`, `guardCreditLimit()` run before each draw): 40ms before a take reaches its clean coverage (credits or the free 60 s), the recording (and any replay) pauses and asks **Stop and save** (clean video) or **Continue with watermark**, plus a sign-in/upgrade link. Escape = stop. With zero coverage it asks before recording starts ("Out of credits": Cancel / Record with watermark). Nothing watermarked is recorded without consent. Pro/admin never see it.
 
+## Android dark-mode bubble colours (November 2 2026)
+
+- Measured from the creator's own native Android dark-mode screenshots: me bubble `#254b3a` (muted green), contact bubble `#1f2428` (neutral grey), composer pill `#22272b`. The old `#005c4b` / `#202c33` were too bright/blue for current WhatsApp.
+- `ANDROID_DARK_BUBBLES` + `stockDarkBubbles(tokens)`: `bubbleFill()` swaps them in for refreshed/current Android only while the project still uses the stock dark defaults (same pattern as `IOS_DARK_BUBBLES`). Classic Android keeps `#005c4b`/`#202c33`; custom colours and presets are never overridden. The Appearance swatches show the colours actually drawn (`renderBubblePresets()` is re-run from `syncGenerationControls()`).
+- Not changed: the dark header (`#0b141a` vs measured `#0b1014`, barely visible). Test: `tests/e2e/dark-bubbles.spec.js`.
+
 ## Phone status bar settings (November 1 2026)
 
 - Per project `state.statusBar` = `{hidden, clockMode:'chat'|'fixed', fixedTime, battery 1-100, charging, drain, signal 0-4, network:'5G'|'4G'|'LTE'|'wifi'|'none'}`. It's saved with the project and backups. `deserializeProjectData()` validates it; old projects get the defaults (chat clock, fixed 03:00, 82%, full signal, 5G).
